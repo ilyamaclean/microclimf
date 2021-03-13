@@ -1,0 +1,37 @@
+Package: microclimf
+Type: Package
+Title: Fast above, below or within canopy gridded microclimate modelling with R
+Version: 0.1.0
+Authors@R: c(
+    person("Ilya", "Maclean", email = "i.m.d.maclean@exeter.ac.uk", role = "cre"))
+Maintainer: Ilya M. D. Maclean <i.m.d.maclean@exeter.ac.uk>
+Description: The functions in the microclimf package contain tools for 
+    fast modelling of the mechanistic processes that govern below or above canopy
+    microclimate on gridded data. It builds on the microclima and microclimc packages, but 
+    contains all the functions needed to run the model in isolation, with no other 
+    microclimate package dependancies. A simplified means of estimating soil temperatures is 
+    included, eliminating the need to run the model in time-steps. In consequences calculations
+    are performed simultaniously on all grid cells and over all time-increments. The models
+    can be run either in hourly or in daily time-increments, the latter quicker with with lower
+    memory requirements. In interpolation method to derive hourly estimates from daily data is 
+    also included.
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.1
+Imports: ncdf4,
+    sp,
+    raster,
+    rgdal,
+    stats,
+    abind,
+    zoo
+Suggests: knitr,
+    rmarkdown,
+    plotly,
+	  testthat,
+VignetteBuilder: knitr
+URL: https://github.com/ilyamaclean/microclimf
+BugReports: http://github.com/microclimf/issues
+Depends: 
+    R (>= 2.10)
