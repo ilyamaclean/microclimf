@@ -212,11 +212,12 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
   return(list(weather=weather,rainfall=rainfall,vegp=vegp,soilc=soilc))
 }
 
-#' Create object of class microin
+#' Create object of class microin with weather data as data.frame
 #'
 #' @description The function `modelin` creates an object of class microin
 #' which unpacks various component inputs and reformats as required
-#' for running the model in hourly timesteps
+#' for running the model in hourly timesteps. Here it is assumed that the input
+#' weather data are a data.frame - i.e. not spatially variable.
 #'
 #' @param weather a data.frame of weather variables (see details)
 #' @param rainfall a vector of daily rainfall
@@ -227,7 +228,7 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
 #' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
 #' @param runchecks optional logical indicating whteher to call [checkinputs()] to run
 #' checks on format and units of input data.
-#' @param daily optional logical indicating whether input weather data are daily
+#' @param daily optional logical indicating whether `weather` is daily or hourly
 #' @details The format and and units of `weather` must follow that in the example
 #' dataset `climdata`. The array of Plant Area index values in `vegp` must
 #' of the same x and y dims as `dtm` but can contain any number of repeated
@@ -237,11 +238,11 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
 #' the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
 #' metres and the coordinate reference system must be defined.
 #'
-#' @seealso [checkinputs()], [modelin_dy()]
+#' @seealso [checkinputs()], [modelin_dy()], [modelina()]
 #'
 #' @import raster
 #' @export
-modelin <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, runchecks = TRUE, daily = FALSE) {
+modelin <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, runchecks = TRUE,daily = FALSE) {
   if (runchecks) {
     rc<-checkinputs(weather,rainfall,vegp,soilc,dtm,merid,dst,daily)
     weather<-rc$weather
@@ -294,6 +295,121 @@ modelin <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, run
   class(out) <-"microin"
   out
 }
+#' Create object of class microin with weather data as an array
+#'
+#' @description The function `modelin` creates an object of class microin
+#' which unpacks various component inputs and reformats as required
+#' for running the model in hourly timesteps. Here it is assumed that the input
+#' weather data are as arrays - i.e. variable in space
+#'
+#' @param climarray a list of arrays of weather variables (see details). See also [nctoarray()]
+#' @param rainarray an array of daily rainfall (see details)
+#' @param tme an object of class POSIXlt giving the dates and times for each weather variable stroed in the array
+#' @param r a raster object giving with the resolution, spatial extent, and projection of the weather data (see details)
+#' @param altcorrect a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)
+#' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
+#' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
+#' @param dtm a RasterLayer onject of elevations (see details)
+#' @param merid optionally, longitude of local time zone meridian (decimal degrees)
+#' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
+#' @param runchecks optional logical indicating whether to call [checkinputs()] to run
+#' checks on format and units of input data.
+#' @param daily optional logical indicating whether `climarray` is daily or hourly
+#' @details The units of `climarray` must follow those in the dataset `climdata`.
+#' It must be a list with each component of the list an array, named using the same
+#' names as the column headers in weather (e.g. temp for temperature), excluding `obs_time`.
+#' Dimensions 1 and 2 of the array must be the same as `r` and dimension 3 must have
+#' the same length as `tme`. If `r` has a different resolution to `dtm` the climate
+#' data are resampled to match the resolution of `dtm`. The array of Plant Area index values in `vegp` must
+#' of the same x and y dims as `dtm` but can contain any number of repeated
+#' measures up to the number of entries in `tme`. Data are interpolated to the
+#' time increment of `tme`. Other vegetation paramaters, including vegetation
+#' height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
+#' the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
+#' metres and the coordinate reference system must be defined. If `altcorrect`>0,
+#' and the dimenions of `r` are not identical to those of `dtm`, the elevation
+#' difference between each pixel of the dtm and the dtm coarsed to the resolution of
+#' `r` is calaculated and an elevational lapse rate correction is applied to the
+#' temperature data to accoutn for these elevation differences. If `altcorrect`=1,
+#' a fixed lapse rate of 5 degrees per 100m is applied. If `altcorrect`=2, humidity-dependent
+#' lapse rates are calaculate and applied.
+#'
+#' @seealso [modelin()], [modelina_dy()], [nctoarray()]
+#'
+#' @import raster
+#' @export
+modelina<-function(climarray,rainarray,tme,r,altcorrect = 0, vegp, soilc, dtm, merid = 0, dst = 0, runchecks = FALSE, daily = FALSE) {
+  # Create weather and rainfall dataset
+  weather<-.catoweather(climarray)
+  rainfall<-apply(rainarray,3,mean,na.rm=T)
+  # Run checks
+  if (runchecks) {
+    rc<-checkinputs(weather,rainfall,vegp,soilc,dtm,merid,dst,daily)
+    weather<-rc$weather
+    rainfall<-rc$rainfall
+    vegp<-rc$vegp
+    soilc<-rc$soilc
+  }
+  # Resample climdata
+  tc<-suppressWarnings(.resa(climarray$temp,r,dtm))
+  difr<-suppressWarnings(.resa(climarray$difrad,r,dtm))
+  # ~~ Calculate dni
+  di<-climarray$swrad-climarray$difrad
+  jd<-.jday(tme)
+  lt<-tme$hour+tme$min/60+tme$sec/3600
+  ll<-.latslonsfromr(r)
+  n<-length(tme)
+  sa<-.solalt(.vta(lt,r),.rta(raster(ll$lats),n),.rta(raster(ll$lons),n),.vta(jd,r),merid,dst)
+  ze<-90-sa
+  si<-cos(ze*(pi/180))
+  si[si<0]<-0
+  dirr<-suppressWarnings(.resa(di/si,r,dtm))
+  dirr[is.na(dirr)]<-0
+  dirr[dirr>1352]<-1352; dirr[dirr<0]<-0
+  dp<-climarray$difrad/climarray$swrad
+  dp[is.na(dp)]<-0.5; dp[dp<0]<-0; dp[dp>1]<-1
+  dp<-suppressWarnings(.resa(dp,r,dtm))
+  skyem<-suppressWarnings(.resa(climarray$skyem,r,dtm))
+  pk<-suppressWarnings(.resa(climarray$pres,r,dtm))
+  # ~~ Derived variables
+  estl<-.satvap(climarray$temp)
+  ea<-(climarray$relhum/100)*estl
+  tdew<-.dewpoint(ea,climarray$temp)
+  estl<-suppressWarnings(.resa(estl,r,dtm))
+  ea<-suppressWarnings(.resa(ea,r,dtm))
+  tdew<-suppressWarnings(.resa(tdew,r,dtm))
+  vegx<-.rta(vegp$x,n)
+  lref<-.rta(vegp$leafr,n)
+  gref<-.rta(soilc$groundr,n)
+  pai<-.unpackpai(vegp$pai,n)
+  clump<-.rta(vegp$clump,n)
+  soilp<-.soilinit(soilc)
+  # Elevation correction
+  # ~~ Fix lapse rate
+  if (altcorrect>0) {
+    dtmc<-resample(dtm,r)
+    dtmc<-resample(dtmc,dtm)
+    elevd<-dtmc-dtm
+  }
+  if (altcorrect==1) {
+    tcdif<-elevd*(5/1000)
+    tc<-.rta(tcdif,n)+tc
+  }
+  if (altcorrect==2) {
+    lr<-.lapserate(climarray$temp,climarray$relhum,climarray$pres)
+    lr<-suppressWarnings(.resa(lr,r,dtm))
+    tcdif<-.rta(elevd,n)*lr
+    tc<-tcdif+tc
+  }
+  out<-list(tme=tme,tc=tc,difr=difr,dirr=dirr,dp=dp,skyem=skyem,
+            estl=estl,ea=ea,tdew=tdew,pk=pk,pai=pai,vegx=vegx,lref=lref,veghgt=vegp$hgt,
+            gsmax=vegp$gsmax,clump=clump,gref=gref,rho=soilp$rho,Vm=soilp$Vm,leafd=vegp$leafd,
+            Vq=soilp$Vq,Mc=soilp$Mc,soilb=soilp$soilb,psi_e=soilp$psi_e,Smax=soilp$Smax,
+            dtm=dtm,lat=ll$lat,long=ll$long,merid=merid, dst=dst,
+            climdata=weather,prec=rainfall,soilc=soilc)
+  class(out) <-"microin"
+  out
+}
 #' Create object of class microindaily
 #'
 #' @description The function `modelin` creates an object of class microindaily
@@ -326,6 +442,59 @@ modelin_dy <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, 
   micro_mn<-modelin(climd$climn,rainfall,vegp,soilc,dtm,merid,dst,runchecks,daily=TRUE)
   micro_mx<-modelin(climd$climx,rainfall,vegp,soilc,dtm,merid,dst,runchecks,daily=TRUE)
   out<-list(micro_mn=micro_mn,micro_mx=micro_mx,climdata=weather)
+  class(out)<-"microindaily"
+  return(out)
+}
+#' Create object of class microindaily with weather data as an array
+#'
+#' @description The function `modelin` creates an object of class microin
+#' which unpacks various component inputs and reformats as required
+#' for running the model in hourly timesteps. Here it is assumed that the input
+#' weather data are as arrays - i.e. variable in space
+#'
+#' @param climarray a list of arrays of weather variables (see details). See also [nctoarray()]
+#' @param rainarray an array of daily rainfall (see details)
+#' @param tme an object of class POSIXlt giving the dates and times for each weather variable stroed in the array
+#' @param r a raster object giving with the resolution, spatial extent, and projection of the weather data (see details)
+#' @param altcorrect a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)
+#' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
+#' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
+#' @param dtm a RasterLayer onject of elevations (see details)
+#' @param merid optionally, longitude of local time zone meridian (decimal degrees)
+#' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
+#' @param runchecks optional logical indicating whether to call [checkinputs()] to run
+#' checks on format and units of input data.
+#' @details The units of `climarray` must follow those in the dataset `climdata`.
+#' It must be a list with each component of the list an array, named using the same
+#' names as the column headers in weather (e.g. temp for temperature), excluding `obs_time`.
+#' Dimensions 1 and 2 of the array must be the same as `r` and dimension 3 must have
+#' the same length as `tme`. If `r` has a different resolution to `dtm` the climate
+#' data are resampled to match the resolution of `dtm`. The array of Plant Area index values in `vegp` must
+#' of the same x and y dims as `dtm` but can contain any number of repeated
+#' measures up to the number of entries in `tme`. Data are interpolated to the
+#' time increment of `tme`. Other vegetation paramaters, including vegetation
+#' height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
+#' the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
+#' metres and the coordinate reference system must be defined. If `altcorrect`>0,
+#' and the dimenions of `r` are not identical to those of `dtm`, the elevation
+#' difference between each pixel of the dtm and the dtm coarsed to the resolution of
+#' `r` is calaculated and an elevational lapse rate correction is applied to the
+#' temperature data to accoutn for these elevation differences. If `altcorrect`=1,
+#' a fixed lapse rate of 5 degrees per 100m is applied. If `altcorrect`=2, humidity-dependent
+#' lapse rates are calaculate and applied.
+#'
+#' @seealso [modelin_dy()], [modelina()], [nctoarray()]
+#'
+#' @import raster
+#' @export
+modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soilc, dtm, merid = 0, dst = 0, runchecks = FALSE) {
+  climdata<-.catoweather(climarray)
+  climd<-.climtodaily(climarray,climdata)
+  tme2<-tme[climd$smn]
+  micro_mn<-modelina(climd$climn,rainarray,tme2,r,altcorrect,vegp,soilc,dtm,merid,dst,runchecks,daily=TRUE)
+  tme2<-tme[climd$smx]
+  micro_mx<-modelina(climd$climn,rainarray,tme2,r,altcorrect,vegp,soilc,dtm,merid,dst,runchecks,daily=TRUE)
+  out<-list(micro_mn=micro_mn,micro_mx=micro_mx,climdata=climdata)
   class(out)<-"microindaily"
   return(out)
 }

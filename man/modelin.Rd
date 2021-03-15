@@ -2,7 +2,7 @@
 % Please edit documentation in R/runfunctions.R
 \name{modelin}
 \alias{modelin}
-\title{Create object of class microin}
+\title{Create object of class microin with weather data as data.frame}
 \usage{
 modelin(
   weather,
@@ -34,12 +34,13 @@ modelin(
 \item{runchecks}{optional logical indicating whteher to call [checkinputs()] to run
 checks on format and units of input data.}
 
-\item{daily}{optional logical indicating whether input weather data are daily}
+\item{daily}{optional logical indicating whether `weather` is daily or hourly}
 }
 \description{
 The function `modelin` creates an object of class microin
 which unpacks various component inputs and reformats as required
-for running the model in hourly timesteps
+for running the model in hourly timesteps. Here it is assumed that the input
+weather data are a data.frame - i.e. not spatially variable.
 }
 \details{
 The format and and units of `weather` must follow that in the example
@@ -52,5 +53,5 @@ the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
 metres and the coordinate reference system must be defined.
 }
 \seealso{
-[checkinputs()], [modelin_dy()]
+[checkinputs()], [modelin_dy()], [modelina()]
 }

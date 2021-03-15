@@ -772,3 +772,224 @@
             raddir=raddir,raddif=raddif,radlw=radlw)
   return(out)
 }
+#' Resample array
+.resa<-function(varin,r,dtm) {
+  if (dim(varin)[1]!=dim(dtm)[1] | dim(varin)[2]!=dim(dtm)[2]) {
+    b<-brick(varin)
+    extent(b)<-extent(r)
+    b<-resample(b,dtm)
+    a<-as.array(b)
+  } else a<-varin
+  a
+}
+#' Latitudes from raster
+.latsfromr <- function(r) {
+  e <- extent(r)
+  lts <- rep(seq(e@ymax - res(r)[2] / 2, e@ymin + res(r)[2] / 2, length.out = dim(r)[1]), dim(r)[2])
+  lts <- array(lts, dim = dim(r)[1:2])
+  lts
+}
+#' Longitudes from raster
+.lonsfromr <- function(r) {
+  e <- extent(r)
+  lns <- rep(seq(e@xmin + res(r)[1] / 2, e@xmax - res(r)[1] / 2, length.out = dim(r)[2]), dim(r)[1])
+  lns <- lns[order(lns)]
+  lns <- array(lns, dim = dim(r)[1:2])
+  lns
+}
+#' Lats and longs form raster, including reprojection
+.latslonsfromr <- function(r) {
+  lats<-.latsfromr(r)
+  lons<-.latsfromr(r)
+  xy<-data.frame(x=as.vector(lons),y=as.vector(lats))
+  xy <- sf::st_as_sf(xy, coords = c('x', 'y'), crs = sf::st_crs(r)$wkt)
+  ll <- sf::st_transform(xy, 4326)
+  ll <- data.frame(lat = sf::st_coordinates(ll)[,2],
+                   long = sf::st_coordinates(ll)[,1])
+  lons<-array(ll$long,dim=dim(lons))
+  lats<-array(ll$lat,dim=dim(lats))
+  return(list(lats=lats,lons=lons))
+}
+#' Lape rates
+.lapserate <- function(tc, rh, pk) {
+  e0 <- 0.6108 * exp(17.27 * tc / (tc + 237.3))
+  ws <- 0.622 * e0 / pk
+  ea <- e0 * (rh / 100)
+  rv <- 0.622 * ea / (pk - ea)
+  lr <- 9.8076 * (1 + (2501000 * rv) / (287 * (tc + 273.15))) / (1003.5 +
+                                                                   (0.622 * 2501000 ^ 2 * rv) / (287 * (tc + 273.15) ^ 2))
+  lr
+}
+# Run checks for climate arrays
+.checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, daily = FALSE) {
+  check.vals<-function(x,mn,mx,char,unit) {
+    sel<-which(is.na(x))
+    if (length(sel)>0) stop(paste0("Missing values in climdata$",char))
+    sel<-which(x<mn)
+    if (length(sel)>0) {
+      mx<-min(x)
+      stop(paste0(mx," outside range of typical ",char," values. Units should be ",unit))
+    }
+    sel<-which(x>mx)
+    if (length(sel)>0) {
+      mx<-max(x)
+      stop(paste0(mx," outside range of typical ",char," values. Units should be ",unit))
+    }
+  }
+  check.mean<-function(x,mn,mx,char,unit) {
+    me<-mean(x,na.rm=T)
+    if (me<mn | me>mx) stop(paste0("Mean ",char," of ",me," implausible. Units should be ",unit))
+  }
+  up.lim<-function(x,mx,char) {
+    mxx<-max(x,na.rm=T)
+    x[x>mx]<-mx
+    if (mxx>mx) stop(paste0(char," values too high"))
+    x
+  }
+  if (class(dtm)[1] != "RasterLayer") stop("dtm must be a raster")
+  # get si
+  if (is.na(crs(dtm))) stop("dtm must have a coordinate reference system specified")
+  ll<-.latlongfromraster(dtm)
+  tme<-as.POSIXlt(weather$obs_time,tz="UTC")
+  # check tme
+  sel<-which(is.na(tme))
+  if (length(sel)>0) stop("Cannot recognise all times in tme")
+  jd<-.jday(tme)
+  lt<-tme$hour+tme$min/60+tme$sec/3600
+  sa<-.solalt(lt,ll$lat,ll$long,jd,merid,dst)
+  ze<-90-sa
+  si<-cos((90-sa)*(pi/180))
+  si[si<0]<-0
+  # Check weather  values
+  check.vals(weather$temp,-50,65,"temperature","deg C")
+  weather$relhum<-up.lim(weather$relhum,100,"relative humidity")
+  check.vals(weather$relhum,0,100,"relative humidity","percentage (0-100)")
+  check.mean(weather$relhum,5,100,"relative humidity","percentage (0-100)")
+  check.vals(weather$pres,84,109,"pressure","kPa ~101.3")
+  check.vals(weather$swrad,0,1350,"shortwave radiation","W / m^2")
+  check.vals(weather$difrad,0,1350,"diffuse radiation","W / m^2")
+  weather$skyem<-up.lim(weather$skyem,1,"sky emissivity")
+  check.mean(weather$skyem,0.3,0.99,"sky emissivity","in range 0 - 1")
+  check.vals(weather$skyem,0.3,1,"sky emissivity","in range 0 - 1")
+  check.vals(weather$windspeed,0,100,"wind speed","m/s")
+  if (max(weather$windspeed)>30) stop("Maximum wind speed seems quite high. Check units are m/s and for 2 m above ground")
+  # Check direct radiation at low solar angles
+  dirr<-weather$swrad-weather$difrad
+  sel<-which(dirr<0)
+  if (length(sel)>0) {
+    weather$difrad[sel]<-weather$swrad[sel]
+    stop("Diffuse radiation values higher than total shortwave radiation")
+  }
+  dni<-dirr/si
+  dni[is.na(dni)]<-0
+  dni2<-ifelse(dni>1352,1352,dni)
+  dirr2<-dni2*si
+  dif<-dirr-dirr2
+  if (max(dif) > 0.01) {
+    stop("Computed direct radiation values too high near dawn / dusk. Divide values by cos (zenith angle) and then cap at 1352")
+    weather$difrad<-weather$difrad+dif
+  }
+  dirr<-weather$swrad-weather$difrad
+  sel<-which(dirr<0)
+  weather$swrad[sel]<-weather$difrad[sel]
+  weather$swrad<-ifelse(weather$swrad>1352,1352,weather$swrad)
+  weather$difrad<-ifelse(weather$difrad>1352,1352,weather$difrad)
+  # Wind direction
+  mn<-min(weather$winddir)
+  mx<-max(weather$winddir)
+  if (mn<0 | mx>360) {
+    weather$winddir<-weather$winddir%%360
+    stop("wind direction must be in range 0-360. Apply modulo operation")
+  }
+  # Check other variables
+  hrs<-dim(weather)[1]
+  if (daily) {
+    dys<-hrs
+  } else dys<-hrs/24
+  if(dys != floor(dys)) stop ("weather needs to include data for entire days (24 hours)")
+  if(length(rainfall) != dys) stop("duration of rainfall sequence doesn't match other climate data")
+  # Check vegp data
+  xy<-dim(dtm)[1:2]
+  if (dim(vegp$pai)[1] != xy[1]) stop("y dimension of vegp$pai does not match dtm")
+  if (dim(vegp$pai)[2] != xy[2]) stop("x dimension of vegp$pai does not match dtm")
+  if (class(vegp$x)[1] != "RasterLayer") stop("vegp$x must be a raster")
+  if (class(vegp$gsmax)[1] != "RasterLayer") stop("vegp$gsmax must be a raster")
+  if (class(vegp$leafr)[1] != "RasterLayer") stop("vegp$leafr must be a raster")
+  if (class(vegp$clump)[1] != "RasterLayer") stop("vegp$clump must be a raster")
+  if (class(vegp$leafd)[1] != "RasterLayer") stop("vegp$leafd must be a raster")
+  if (dim(vegp$x)[1] != xy[1]) stop("y dimension of vegp$x does not match dtm")
+  if (dim(vegp$x)[2] != xy[2]) stop("x dimension of vegp$x does not match dtm")
+  if (dim(vegp$gsmax)[1] != xy[1]) stop("y dimension of vegp$gsmax does not match dtm")
+  if (dim(vegp$gsmax)[2] != xy[2]) stop("x dimension of vegp$gsmax does not match dtm")
+  if (dim(vegp$leafr)[1] != xy[1]) stop("y dimension of vegp$leafr does not match dtm")
+  if (dim(vegp$leafr)[2] != xy[2]) stop("x dimension of vegp$leafr does not match dtm")
+  if (dim(vegp$clump)[1] != xy[1]) stop("y dimension of vegp$clump does not match dtm")
+  if (dim(vegp$clump)[2] != xy[2]) stop("x dimension of vegp$clump does not match dtm")
+  if (dim(vegp$leafd)[1] != xy[1]) stop("y dimension of vegp$leafd does not match dtm")
+  if (dim(vegp$leafd)[2] != xy[2]) stop("x dimension of vegp$leafd does not match dtm")
+  if (dim(vegp$x)[3]>1) stop("time variant vegp$x not supported")
+  if (dim(vegp$gsmax)[3]>1) stop("time variant vegp$x not supported")
+  if (dim(vegp$leafr)[3]>1) stop("time variant vegp$leafr not supported")
+  if (dim(vegp$clump)[3]>1) stop("time variant vegp$clump not supported")
+  if (dim(vegp$leafd)[3]>1) stop("time variant vegp$leafd not supported")
+  # Check soil data
+  xx<-unique(getValues(soilc$soiltype))
+  if (max(xx,na.rm=T) > 11) stop("Unrecognised soil type")
+  if (min(xx,na.rm=T) < 1) stop("Unrecognised soil type")
+  if (class(soilc$soiltype)[1] != "RasterLayer") stop("soilc$soiltype must be a raster")
+  if (class(soilc$groundr)[1] != "RasterLayer") stop("soilc$groundr must be a raster")
+  if (dim(soilc$soiltype)[1] != xy[1]) stop("y dimension of soilc$soiltype does not match dtm")
+  if (dim(soilc$soiltype)[2] != xy[2]) stop("x dimension of soilc$soiltype does not match dtm")
+  if (dim(soilc$groundr)[1] != xy[1]) stop("y dimension of soilc$groundr does not match dtm")
+  if (dim(soilc$groundr)[2] != xy[2]) stop("x dimension of soilc$groundr does not match dtm")
+  if (dim(soilc$soiltype)[3]>1) stop("time variant soilc$soiltype not supported")
+  if (dim(soilc$groundr)[3]>1) stop("time variant soilc$groundr not supported")
+  xx<-getValues(soilc$groundr)
+  xx<-xx[is.na(xx)==F]
+  check.vals(xx,0,1,"soil reflectivity","range 0 to 1")
+  xx<-getValues(vegp$leafr)
+  xx<-xx[is.na(xx)==F]
+  check.vals(xx,0,1,"leaf reflectivity","range 0 to 1")
+  xx<-getValues(vegp$clump)
+  xx<-xx[is.na(xx)==F]
+  check.vals(xx,0,1,"vegetation clumping factor","range 0 to 1")
+  xx<-getValues(vegp$leafd)
+  xx<-xx[is.na(xx)==F]
+  check.vals(xx,0,5,"leaf diamater","metres")
+  xx<-getValues(vegp$gsmax)
+  xx<-xx[is.na(xx)==F]
+  check.vals(xx,0,2,"maximum stomatal conductance","mol / m^2 /s")
+  if (mean(xx)>1) warning(paste0("Mean leaf diameter of ",mean(xx)," seems large. Check units are in metres"))
+  # PAI
+  if (class(vegp$pai)[1] != "array") {
+    if (class(vegp$pai)[1] == "RasterLayer") {
+      vegp$pai<-array(getValues(vegp$pai,format="matrix"))
+      warning("vegp$pai assumed time-invariant and converted to an array")
+    } else stop("vegp$pai must be an array or a raster")
+  }
+  xx<-vegp$pai
+  xx<-xx[is.na(xx)==F]
+  if (min(xx)<0) stop("Minimum vegp$pai must be greater than or equal to zero")
+  if (max(xx)>15) warning(paste0("Maximum vegp$pai of ",max(xx)," seems high"))
+  return(list(weather=weather,rainfall=rainfall,vegp=vegp,soilc=soilc))
+}
+#' convert climate array to data.frame of weather
+.catoweather<-function(climarray) {
+  # ~~~~ Wind
+  uwind<-climarray$windspeed*cos(climarray$winddir*(pi/180))
+  vwind<-climarray$windspeed*sin(climarray$winddir*(pi/180))
+  uw<-apply(uwind,3,mean,na.rm=T)
+  vw<-apply(vwind,3,mean,na.rm=T)
+  ws=sqrt(uw^2+vw^2)
+  wd=(atan2(vw,uw)*(180/pi))%%360
+  weather<-data.frame(obs_time=tme,
+                      temp=apply(climarray$temp,3,mean,na.rm=T),
+                      relhum=apply(climarray$relhum,3,mean,na.rm=T),
+                      pres=apply(climarray$pres,3,mean,na.rm=T),
+                      swrad=apply(climarray$swrad,3,mean,na.rm=T),
+                      difrad=apply(climarray$difrad,3,mean,na.rm=T),
+                      skyem=apply(climarray$skyem,3,mean,na.rm=T),
+                      windspeed=ws,
+                      winddir=wd)
+  weather
+}
