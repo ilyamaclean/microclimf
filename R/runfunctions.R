@@ -554,6 +554,8 @@ modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soil
 #' determines how much of the canopy should be treated as wet surface when calaculating
 #' latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
 #' is such that `surfwet` ~ 1.
+#' @import raster
+#' @export
 #'
 #' @examples
 #' library(raster)
@@ -660,6 +662,9 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit =
 #' determines how much of the canopy should be treated as wet surface when calaculating
 #' latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
 #' is such that `surfwet` ~ 1.
+#'
+#' @import raster
+#' @export
 #'
 #' @examples
 #' library(raster)
