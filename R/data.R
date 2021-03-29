@@ -45,7 +45,7 @@
 "soilc"
 #' A table of soil parameters
 #'
-#' A table of soil paramaters for different soil types
+#' A table of soil parameters for different soil types
 #'
 #' @format A data frame with the following columns:
 #' \describe{

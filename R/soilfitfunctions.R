@@ -232,6 +232,7 @@
 #' @return `a` constant controlling sub-surface and surface water exchange.
 #' @return `pwr` exponent controlling sub-surface and surface water exchange.
 #' @return `rms` RMS Error of model fit.
+#' @export
 #'
 #' @details The format and and units of `weather` must follow that in the example
 #' dataset `climdata`. In this version of the model, all precipitation is assumed to

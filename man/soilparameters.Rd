@@ -36,6 +36,6 @@ A data frame with the following columns:
 soilparameters
 }
 \description{
-A table of soil paramaters for different soil types
+A table of soil parameters for different soil types
 }
 \keyword{datasets}
