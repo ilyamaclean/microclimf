@@ -4,7 +4,7 @@
 \alias{fitsoilm}
 \title{Function for deriving parameters for soil moisture model}
 \usage{
-fitsoilm(weather, rainfall, soilm, soiltype, plotout = TRUE, max.iter = 20)
+fitsoilm(weather, rainfall, soilm, soiltype, plotout = 2, max.iter = 20)
 }
 \arguments{
 \item{weather}{a data.frame of weather variables (see details).}
@@ -15,7 +15,8 @@ fitsoilm(weather, rainfall, soilm, soiltype, plotout = TRUE, max.iter = 20)
 
 \item{soiltype}{a soil type as listed in [soilparameters()].}
 
-\item{plotout}{optional logical indicating whether to plot fit on eahc iteration.}
+\item{plotout}{optional integer indicating whether to plot fit on each iteration (2),
+the final fit only (1) or not at all (0).}
 
 \item{max.iter}{maximum number of iterations used for fitting the model.}
 }

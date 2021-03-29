@@ -224,7 +224,8 @@
 #' @param rainfall a vector of daily rainfall.
 #' @param soilm a vector of daily soil moisture values.
 #' @param soiltype a soil type as listed in [soilparameters()].
-#' @param plotout optional logical indicating whether to plot fit on eahc iteration.
+#' @param plotout optional integer indicating whether to plot fit on each iteration (2),
+#' the final fit only (1) or not at all (0).
 #' @param max.iter maximum number of iterations used for fitting the model.
 #' @return a list wiht the following components:
 #' @return `mult` multiplier for net radiation.
@@ -251,7 +252,7 @@
 #' # Fit simple model
 #' soilmcoefs<-fitsoilm(weather, rainfall, soilm, "Clay")
 #' soilmcoefs
-fitsoilm <- function(weather, rainfall, soilm, soiltype, plotout = TRUE, max.iter=20) {
+fitsoilm <- function(weather, rainfall, soilm, soiltype, plotout = 2, max.iter=20) {
   # Calculate net radiation
   swrad<-(1-0.15)*weather$swrad
   lwout<-5.67*10^-8*0.95*(climdata$temp+273.15)^4
@@ -273,7 +274,7 @@ fitsoilm <- function(weather, rainfall, soilm, soiltype, plotout = TRUE, max.ite
     dif<-rmsa[i-1]-rmsa[i]
     tst<-ifelse(dif<0.00005,0,1)
     tst<-ifelse(i>max.iter,0,tst)
-    if (plotout) {
+    if (plotout > 1) {
       ymx<-soilparameters$Smax[ii]
       sg<-.soilgen(rainfall,rnetp,out$mult,out$rmu,out$a,soilm,
                    soilparameters$Ksat[ii],ymx,out$pwr)
@@ -283,7 +284,7 @@ fitsoilm <- function(weather, rainfall, soilm, soiltype, plotout = TRUE, max.ite
     }
     i<-i+1
   }
-  if (plotout) {
+  if (plotout > 0) {
     par(mar=c(5,5,1,1))
     ymx<-max(sg$s,soilm)
     ymx<-ceiling(ymx*10)/10
