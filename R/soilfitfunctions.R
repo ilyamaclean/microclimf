@@ -250,7 +250,7 @@
 #' soilm<-matrix(soilm,ncol=24,byrow=T)
 #' soilm<-apply(soilm,1,mean)
 #' # Fit simple model
-#' soilmcoefs<-fitsoilm(weather, rainfall, soilm, "Clay")
+#' soilmcoefs<-fitsoilm(weather, rainfall, soilm, "Clay loam")
 #' soilmcoefs
 fitsoilm <- function(weather, rainfall, soilm, soiltype, plotout = 2, max.iter=20) {
   # Calculate net radiation

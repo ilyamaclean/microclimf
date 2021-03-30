@@ -4,7 +4,7 @@
 #' soil model to predict the daily soil moisture fraction in the surface and
 #' sub-surface layers
 #'
-#' @param rainfall a vector of daily tainfall (mm/day)
+#' @param rainfall a vector of daily rainfall (mm/day)
 #' @param rnet a vector of hourly net radiation (W/m^2)
 #' @param soiltype a soil type (as listed in [soilparameters()])
 #' @param soilinit initial soil moisture fractions in surface and sub-surface layers

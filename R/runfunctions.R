@@ -240,7 +240,7 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
 #'
 #' @seealso [checkinputs()], [modelin_dy()], [modelina()]
 #'
-#' @import raster
+#' @import raster sp
 #' @export
 modelin <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, runchecks = TRUE,daily = FALSE) {
   if (runchecks) {
