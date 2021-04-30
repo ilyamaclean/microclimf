@@ -318,6 +318,7 @@ fitsoilm <- function(weather, rainfall, soilm, soiltype, plotout = 2, max.iter=2
 #' dataset `climdata`. If `soilmcoefs` is not supplied, the inbuilt parameters in
 #' [soilparameters()] are used to derive soil moisture.
 #'
+#' @export
 #' @examples
 #' require(NicheMapR) # - see https://github.com/mrke/NicheMapR
 #' require(microclimc) # - see https://github.com/ilyamaclean/microclimc

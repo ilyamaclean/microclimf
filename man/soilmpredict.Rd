@@ -7,7 +7,7 @@
 soilmpredict(rainfall, rnet, soiltype, soilinit = c(NA, NA), soilmcoefs = NA)
 }
 \arguments{
-\item{rainfall}{a vector of daily tainfall (mm/day)}
+\item{rainfall}{a vector of daily rainfall (mm/day)}
 
 \item{rnet}{a vector of hourly net radiation (W/m^2)}
 

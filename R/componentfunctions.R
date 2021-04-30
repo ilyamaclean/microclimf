@@ -377,6 +377,8 @@ wind <- function(micro, xyf = NA, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr
 #' from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.
 #' @param twi optional raster of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
+#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
 #' @return an object of class micro with the following components added:
 #' @return `T0` ground surface temperature (deg C)
 #' @return `theta` surface soil moisure fraction
@@ -386,8 +388,9 @@ wind <- function(micro, xyf = NA, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr
 #' @seealso [groundrad()], [soiltemp_dy()]
 #' @details if [groundrad()] has not been run to add additional elements to `micro`
 #' it is automatically called.
-soiltemp_hr  <- function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
-                         slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
+soiltemp_hr  <- function(micro, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(NA, NA),
+                         tfact = 1.5, slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA,
+                         twi = NA, soilmcoefs = NA, soiltcoefs = NA) {
   # run ground rad if not run
   rhg<-ifelse(reqhgt<0,0.05,reqhgt)
   if (is.null(micro$gHa[1])) {
@@ -405,8 +408,24 @@ soiltemp_hr  <- function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA),
   mx<-max(rsu,na.rm=T)
   mn<-min(rsu,na.rm=T)
   # Calculate max and min soil moisture
-  thetamx<-.multisoil(micro,soilinit,tfact,mx,twi)
-  thetamn<-.multisoil(micro,soilinit,tfact,mn,twi)
+  if (is.na(soilmcoefs[1])) {
+    thetamx<-.multisoil(micro,soilinit,tfact,mx,twi)
+    thetamn<-.multisoil(micro,soilinit,tfact,mn,twi)
+  } else {
+    clim<-micro$climdata
+    soilc<-micro$soilc
+    alb<-mean(.is(soilc$groundr),na.rm=T)
+    swrad<-(1-alb)*clim$swrad
+    lwout<- 5.67e-8*0.95*(clim$temp+273.15)^4
+    lwnet<-(1-clim$skyem)*lwout
+    rnet<-swrad-lwnet
+    rnet1<-rnet*mx
+    rnet2<-rnet*mn
+    sm<-soilmpredict(micro$prec,rnet1,"Loam",soilinit,soilmcoefs)
+    thetamx<-soilmdistribute(sm$soilm1,micro$dtm)
+    sm<-soilmpredict(micro$prec,rnet2,"Loam",soilinit,soilmcoefs)
+    thetamn<-soilmdistribute(sm$soilm1,micro$dtm)
+  }
   # Adjust soil moisture
   rsua<-.rta(raster(rsu),dim(thetamn)[3])
   theta<-(rsua/mx)*(thetamx-thetamn)+thetamn
@@ -417,7 +436,16 @@ soiltemp_hr  <- function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA),
   theta[theta<0.0002]<-0.0002
   sm<-log(theta/(1-theta))+8.516993
   # Get paramaters
-  scfs<-.soilcoefs(micro$soilc)
+  if (is.na(soiltcoefs[1])) {
+    scfs<-.soilcoefs(micro$soilc)
+  } else {
+    d<-dim(micro$dtm)[1:2]
+    scfs<-list(int=array(soiltcoefs$int,dim=d),
+               t1=array(soiltcoefs$t1,dim=d),
+               t2=array(soiltcoefs$t2,dim=d),
+               t3=array(soiltcoefs$t3,dim=d))
+
+  }
   # Predict soil surface temperature
   T0<-.rta(raster(scfs$int),hiy)+
     .rta(raster(scfs$t1),hiy)*rnet+
@@ -480,6 +508,8 @@ soiltemp_hr  <- function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA),
 #' from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.
 #' @param twi optional raster of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
+#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
 #' @return an object of class micro with the following components added:
 #' @return `T0` ground surface temperature (deg C)
 #' @return `theta` surface soil moisure fraction
@@ -489,8 +519,9 @@ soiltemp_hr  <- function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA),
 #' @seealso [groundrad()], [soiltemp_dy()]
 #' @details if [groundrad()] has not been run to add additional elements to `micro`
 #' it is automatically called.
-soiltemp_dy  <- function(microd, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
-                         slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
+soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
+                         slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA,
+                         soilmcoefs = NA, soiltcoefs = NA) {
   # run ground rad and conductivity if not run
   rhg<-ifelse(reqhgt<0,0.05,reqhgt)
   micro_mn<-microd$micro_mn
@@ -518,8 +549,24 @@ soiltemp_dy  <- function(microd, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA)
   # Calculate max and min soil moisture
   climd<-micro_mn$climdata
   micro_mn$climdata<-microd$climdata
-  thetamx<-.multisoil(micro_mn,soilinit,tfact,mx,twi)
-  thetamn<-.multisoil(micro_mn,soilinit,tfact,mn,twi)
+  if (is.na(soilmcoefs[1])) {
+    thetamx<-.multisoil(micro_mn,soilinit,tfact,mx,twi)
+    thetamn<-.multisoil(micro_mn,soilinit,tfact,mn,twi)
+  } else {
+    clim<-micro_mn$climdata
+    soilc<-micro_mn$soilc
+    alb<-mean(.is(soilc$groundr),na.rm=T)
+    swrad<-(1-alb)*clim$swrad
+    lwout<- 5.67e-8*0.95*(clim$temp+273.15)^4
+    lwnet<-(1-clim$skyem)*lwout
+    rnet<-swrad-lwnet
+    rnet1<-rnet*mx
+    rnet2<-rnet*mn
+    sm<-soilmpredict(micro$prec,rnet1,"Loam",soilinit,soilmcoefs)
+    thetamx<-soilmdistribute(sm$soilm1,micro_mn$dtm)
+    sm<-soilmpredict(micro$prec,rnet2,"Loam",soilinit,soilmcoefs)
+    thetamn<-soilmdistribute(sm$soilm1,micro_mn$dtm)
+  }
   # Adjust soil moisture
   rsua<-.rta(raster(rsu),dim(thetamn)[3])
   theta<-(rsua/mx)*(thetamx-thetamn)+thetamn
@@ -530,7 +577,16 @@ soiltemp_dy  <- function(microd, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA)
   theta[theta<0.0002]<-0.0002
   sm<-log(theta/(1-theta))+8.516993
   # Get paramaters
-  scfs<-.soilcoefs(micro_mn$soilc)
+  if (is.na(soiltcoefs[1])) {
+    scfs<-.soilcoefs(micro$soilc)
+  } else {
+    d<-dim(micro$dtm)[1:2]
+    scfs<-list(int=array(soiltcoefs$int,dim=d),
+               t1=array(soiltcoefs$t1,dim=d),
+               t2=array(soiltcoefs$t2,dim=d),
+               t3=array(soiltcoefs$t3,dim=d))
+
+  }
   # Predict soil surface temperature
   T0mn<-.rta(raster(scfs$int),diy)+
     .rta(raster(scfs$t1),diy)*rnet1+
@@ -595,7 +651,7 @@ soiltemp_dy  <- function(microd, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA)
 #' Calculates Latent heat exchange
 #'
 #' @description The function `PenMont` applies a varient of the Penman-Monteith
-#' equation, with G calaculated from ground temperatures, to calculate latent
+#' equation, with G calculated from ground temperatures, to calculate latent
 #' heat exchange
 #' @param tc air temperature (deg c)
 #' @param pk atmospheric pressure (kPa)

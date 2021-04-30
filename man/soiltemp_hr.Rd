@@ -6,7 +6,7 @@
 \usage{
 soiltemp_hr(
   micro,
-  reqhgt,
+  reqhgt = 0.05,
   xyf = NA,
   zf = NA,
   soilinit = c(NA, NA),
