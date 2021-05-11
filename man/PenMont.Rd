@@ -58,7 +58,7 @@ Optionally `G` The ground heat flux (W/m^2)
 }
 \description{
 The function `PenMont` applies a varient of the Penman-Monteith
-equation, with G calaculated from ground temperatures, to calculate latent
+equation, with G calculated from ground temperatures, to calculate latent
 heat exchange
 }
 \details{

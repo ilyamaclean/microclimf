@@ -16,7 +16,9 @@ soiltemp_hr(
   hor = NA,
   wsa = NA,
   maxhgt = NA,
-  twi = NA
+  twi = NA,
+  soilmcoefs = NA,
+  soiltcoefs = NA
 )
 }
 \arguments{
@@ -50,6 +52,10 @@ from height of tallest vegetation or as 2 m, whichever is greater, if not suppli
 
 \item{twi}{optional raster of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
+
+\item{soilmcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilm()]}
+
+\item{soiltcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilt()]}
 }
 \value{
 an object of class micro with the following components added:
