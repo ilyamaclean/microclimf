@@ -16,24 +16,25 @@ knitr::opts_chunk$set(
 )
 ```
 * [Overview](#overview)
-* [Model inputs](#model-inputs)  
-  + [Meterological data](#meterological-data)
-  + [Vegetation paramaters](#vegetation-paramaters)
-  + [Soil paramaters](#soil-paramaters)
- 
-* [Ground heat flux](#Ground-heat-flux)
-  + [Overview](#ground-overview)
+* [Quick start](#quick-start)
+* [Model inputs](#model-inputs)
+  + [Meteorological data](#meteorological-data)
+  + [Vegetation parameters](#vegetation-parameters)
+  + [Soil parameters](#soil-parameters)
+* [Fitting soil temperature and moisture data](#fitting-soil-temperature-and-moisture-data)
+  + [Fitting soil moisture](#fitting-soil-moisture)
+  + [Fitting soil temperature](#fitting-soil-temperature)
+* [Preparing model inputs](#preparing-model-inputs)
+* [Running the model](#running-the-model)
   + [Soil moisture](#soil-moisture)
-  + [Soil temperature](#lsoil-temperature)
-  
-* [Radiation](#radiation)
-
-* [Sensible heat flux](#sensible)
-
-* [Latent heat flux](#sensible)
-
-* [Running the model](#running)
-
+  + [Radiation](#radiation)
+  + [Ground surface temperature](#ground-surface-temperature)
+  + [Sensible heat flux and wind](#sensible-heat-flux-and-wind)
+  + [Latent heat](#latent-heat)
+  + [Air temperature](#air-temperature)
+    + [Below canopy air and leaf temperatures](#below-canopy-air-and-leaf-temperatures)
+    + [Below ground temperature](#below-ground-temperature)
+  + [Running the whole model](#running-the-whole-model)
 
 ## Overview
 This vignette describes the R package ‘microclimf’. The package contains a series of functions for predicting above and below canopy or below-ground microclimatic conditions, founded on the principles of energy conservation. It is assumed that energy cannot be destroyed or created through ordinary means. Opaque surfaces in the environment, namely the canopy and the ground, absorb radiation from the sun, but also emit radiation as thermal energy. These surfaces also exchange sensible heat with the surrounding air and undergo latent heat fluxes, namely evaporative and evapotranspirative cooling. The temperature of the environment is calculated by assuming that these various components of the energy budget always remain in balance, such that: 
@@ -45,7 +46,7 @@ where R is the net flux density of radiation absorbed by the surface (the total 
 With the exception of absorbed radiation, the other terms all have a dependence on temperature, and temperature. The computational efficiency of microclimf is founded on the principle that these fluxes are in steady-state such that temperatures can be estimated by rearranging the equations to solve for temperature using the Penman-Monteith method (Penman 1948; Monteith 1965), with calculations performed simultaneously on all grid cells and for all-periods, thus circumventing need for a model that is run in time-steps. This necessitates some simplifying assumptions about the rare of heat storage in the soil, as described below. Each of the terms is also assumed to be determined by properties of the environment, as described below.
 
 ## Quick start
-Here we provide brief instructions for how to run `microclimf` for those broadly familiar with microclimate modelling. Five sets of input variables are needed: (1) a dataset of hourly weather, (2) a vector of daily rainfall, (3) a digital elevation dataset, (4) a dataset of vegetation parameters and (5) a dataset of soil properties. The datasets should have exactly the same format and units as the example datasets included with the package. The spatial resolution and extent of outputs is determined by the spatial resolution of the digital elevation dataset, and the spatial datasets of vegetation parameters and soil properties should also match the digital elevation dataset in terms of resolution and extent. 
+Here I provide brief instructions for how to run `microclimf` for those broadly familiar with microclimate modelling. Five sets of input variables are needed: (1) a dataset of hourly weather, (2) a vector of daily rainfall, (3) a digital elevation dataset, (4) a dataset of vegetation parameters and (5) a dataset of soil properties. The datasets should have exactly the same format and units as the example datasets included with the package. The spatial resolution and extent of outputs is determined by the spatial resolution of the digital elevation dataset, and the spatial datasets of vegetation parameters and soil properties should also match the digital elevation dataset in terms of resolution and extent. 
 The model can be run in two modes: either in hourly time increments or, more computationally efficiently, in daily time increments (for hours corresponding to the maximum and minimum daily temperatures). If run in the latter mode, there is also the also the option to return hourly values derived by fitting the same diurnal cycle to temperatures as are present in the input climate dataset.
 
 In the code below, the model is run in hourly time increments. An object of class `microin` is first created using function `modelin`, in effect combining the datasets needed to drive the model into the right format for running the model. Function `runmicro_hr` then runs the model in hourly time-steps, deriving microclimatic conditions 5 cm above ground. The model returns temperatures (leaf, ground and air), relative humidity, wind speed, and components of the radiation budget, all as 3D arrays, representing values for each pixel and time-period. In the final lines of codes, selected outputs are plotted
@@ -154,15 +155,14 @@ Soil type 7 corresponds to Clay loam. A full list of which numeric values corres
 soilparameters
 ```
 
-## Deriving additional model paramters
+## Fitting soil temperature and moisture data
 If users do not have their own empirical soil temperature and moisture data, and wish instead to use relationships inbuilt into `microclimf` then they can skip straight to the preparing model inputs section. 
 
-### Fitting soil temperature and moisture data
 To ensure computational efficiency calculations in `microclimf` are performed simultaneously on all grid cells and for all-periods, thus circumventing need for a model that is run in time-steps. This necessitates some simplifying assumptions to be made about the influence of heat storage in the soil, as one would normally need to use a set of time-dependent differential equation that describes soil temperatures as a function of depth and time. This is the type of approach used in other packages such as `NicheMapR` and `microclimc`. 
 
-The starting point of `microclimf` is thus to estimate ground surface temperatures, and in lieu of explicit first-principles calculations of soil temperatures, it is assumed that, for a given soil type, a reasonable empirical approximation of the difference between soil surface temperature and air temperature at reference height can be approximated from soil moisture and net radiation. Thus, prior to computing temperatures, the fractional soil moisture content of the must be estimated. This is achieved using a simple, computationally efficient two-layer soil model run for a point location, in which the volumetric soil moisture fraction at each daily time-increment in a top shallow soil layer is computed from precipitation and net radiation, and the exchange of with an underlying deeper soil layer, with hydraulic conductivity between layers assumed to be dependent on the mean fractional water content of the soil in the antecedent time step. Derived parameters of this relationship for given soil types, empirically calibrated for Cornwall, UK, are provided in the `soilparameters` table. However, users may prefer instead to fit their own relationships for a study area using empirical data, or alternatively using a more complex model. 
+The starting point of `microclimf` is thus to estimate ground surface temperatures, and in lieu of explicit first-principles calculations of soil temperatures, it is assumed that, for a given soil type, a reasonable empirical approximation of the difference between soil surface temperature and air temperature at reference height can be approximated from soil moisture, net radiation and wind speed. Thus, prior to computing temperatures, the fractional soil moisture content of the must be estimated. This is achieved using a simple, computationally efficient two-layer soil model run for a point location, in which the volumetric soil moisture fraction at each daily time-increment in a top shallow soil layer is computed from precipitation and net radiation, and the exchange of with an underlying deeper soil layer, with hydraulic conductivity between layers assumed to be dependent on the mean fractional water content of the soil in the antecedent time step. Derived parameters of this relationship for given soil types, empirically calibrated for Cornwall, UK, are provided in the `soilparameters` table. However, users may prefer instead to fit their own relationships for a study area using empirical data, or alternatively using a more complex model. 
 
-#### Fitting soil moisture
+### Fitting soil moisture
 In the example below, the `microclimc` wrapper for `NicheMapR` package is used to run a complex 15-layer soil moisture model. The parameters for fitting a relationship with the simpler soil model are then estimated by iteration and the final relationship and outputs shown.
 
 ```{r eval=FALSE}
@@ -184,8 +184,8 @@ Here, the red lines are values form NicheMapR and the black lines those form the
 
 ![](images/plot1.png)\
 
-#### Fitting soil temperature
-In lieu of explicit first-principles calculations of soil temperatures, it is assumed that, for a given soil type, a reasonable empirical approximation of the difference between hourly soil surface temperature and air temperature at reference height can be approximated from soil moisture and net radiation. In the example below, the `microclimc` wrapper for `NicheMapR` package is used to run a complex first principles multi-layer soil temperature model. The parameters for fitting a relationship with the simpler soil moisture model are then estimated by linear regression and the final relationship and outputs shown.
+### Fitting soil temperature
+In lieu of explicit first-principles calculations of soil temperatures, it is assumed that, for a given soil type, a reasonable empirical approximation of the difference between hourly soil surface temperature and air temperature at reference height can be approximated from soil moisture and net radiation. In the example below, the `microclimc` wrapper for `NicheMapR` package is used to run a complex first principles multi-layer soil temperature model. The parameters for fitting a relationship with the simpler soil moisture model are then estimated by linear regression and the final relationship and outputs shown. 
 
 ```{r eval=FALSE}
 require(NicheMapR) # - see https://github.com/mrke/NicheMapR
@@ -200,7 +200,7 @@ soiltcoefs<-fitsoilt(climdata, rainfall, soiltemp, "Clay loam")
 soiltcoefs
 ```
 
-Here again, the red lines are values from `NicheMapR` and the black lines those from the simple model. As can be seen, the simple soil model approximates soil surface temperature relatively well, though the extremes are not always that well-captured.
+Here again, the red lines are values from `NicheMapR` and the black lines those from the simple model. As can be seen, the simple soil model approximates soil surface temperature relatively well, though the extremes are not always perfectly captured.
 
 ![](images/plot2.png)\
 
@@ -256,6 +256,7 @@ mypal <- colorRampPalette(c("red","orange","yellow","green","blue","darkblue"))(
 plot(raster(sma[,,188]),col=mypal,zlim=c(0,0.5)) # soil moisture on driest day of year
 plot(raster(sma[,,2]),col=mypal,zlim=c(0,0.5)) # soil moisture on 2nd day of year
 ```
+
 ### Radiation
 The next stage, needed to calculate soil surface temperature, is to estimate radiation absorbed by the ground.  Opaque surfaces, such as the ground or canopy absorb solar radiation, whereas the air, which is almost transparent, absorbs relatively little. In consequence, these surfaces, when exposed to sunlight will typically heat up by more than the surrounding air. Net radiation, R, is the radiation absorbed by an object, less that emitted. All objects emit radiation as a function of their absolute temperature to the power of 4 in accordance with the Stefan–Boltzmann law. Thus, as an object heats up it emits more radiation, which in turn affects the energy balance.
 
@@ -268,7 +269,7 @@ Radiation absorbed by the ground, accounting for terrain and vegetation cover, i
 ```{r eval=FALSE}
 # Run modelin if not run already:
 micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
-micro<_groundrad(micro)
+micro<-groundrad(micro)
 # Plot shortwave radiation on 12th hour of year
 plot(raster(micro$radGsw[,,12])) #
 ```
@@ -310,6 +311,7 @@ Latent heat is the form of heat energy released or absorbed by a surface as a re
 For a leaf, the water vapour conductance depends both on stomatal and boundary layer conductance, with the latter generally assumed identical to that for heat exchange. Under optimal conditions, stomatal conductance varies through the canopy only in response to photosynthetically active radiation, and in `microclimf` is thus be estimated from a specified maximal stomatal conductance for a given vegetation type and from estimates of radiation transmission through the canopy.
 
 ### Air temperature
+
 #### Above canopy
 Air temperatures above canopy are derived by solving the energy budget equation for canopy surface temperature using function `PenMont` as described below. 
 
@@ -327,6 +329,7 @@ plot(raster(micro$Tz[,,4094]),col=mypal)
 
 ![](images/plot7.png)\
 
+
 ### Below ground temperature
 The amount of heat stored in the air is small compared to amount of heat transferred though it, but this is not the case with soil. Here, heat storage must be considered. The assumption in `microclimf` is that fluctuations in surface temperature are increasing dampened at greater depths, but that there is also a phase shift in temperature fluctuations, with heat storage resulting in time-delays in timing of maximal temperatures, as follows. 
 
@@ -337,6 +340,7 @@ The phase shift, $t_s$, is given by $t_s=24z/2\pi D$ where where D is the dampin
 Thus, temperatures at user-specified depths are calculated by first computing the computing a difference between surface temperatures and the annual mean temperature. The phase shift applied to these temperature differences, and a rolling mean then calculated, with duration over which this mean is computed, contingent on the periodicity of the expected temperature cycle. Computations are performed using functions `below_hr` and `below_dy` as in the example below:
 
 ```{r eval=FALSE}
+micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
 T10cm<-below_hr(micro, reqhgt = -0.1)
 # Plot temperature of hottest hour
 mypal <- colorRampPalette(c("darkblue","blue","green","yellow","orange","red"))(255)
@@ -344,7 +348,7 @@ plot(raster(T10cm[,,4094]),col=mypal)
 ```
 ![](images/plot8.png)\
 
-## Running the whole model
+### Running the whole model
 Using functions `runmicro_hr` or `runmicro_dy`, there is no need run the model for each component seperately. The entire workflow is evoked as in the following example:
 
 ```{r eval=FALSE}
@@ -352,8 +356,8 @@ Using functions `runmicro_hr` or `runmicro_dy`, there is no need run the model f
 mout<-runmicro_hr(micro, 0.05)
 # Plot air temperature on hottest hour
 plot(raster(mout$Tz[,,4094]))
-# Run model 5 cm below ground
-mout<-runmicro_hr(micro, -0.05)
+# Run model 10 cm below ground
+mout<-runmicro_hr(micro, -0.1)
 # Plot ground temperatures on hottest hour
 plot(raster(mout$Tz[,,4094]))
 ```
