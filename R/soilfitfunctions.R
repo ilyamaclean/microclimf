@@ -346,8 +346,12 @@ fitsoilt <- function(weather, rainfall, soiltemp, soiltype, theta = NA, plotout 
   sm<-log(theta/(1-theta))+8.516993
   # Get parameters
   Tanom<-soiltemp-reftemp
-  m1<-summary(lm(Tanom~sm*rnet))
-  pred<-m1$coef[1,1]+m1$coef[3,1]*rnet+m1$coef[2,1]*sm+m1$coef[4,1]*rnet*sm
+  wind<-weather$windspeed
+  wind<-log(wind+1)
+  m1<-summary(lm(Tanom~sm*rnet*wind))
+  pred<-m1$coef[1,1]+m1$coef[3,1]*rnet+m1$coef[2,1]*sm+m1$coef[4,1]*wind+
+    m1$coef[5,1]*rnet*sm+m1$coef[6,1]*wind*sm+m1$coef[7,1]*rnet*wind+
+    m1$coef[8,1]*rnet*sm*wind
   pred<-pred+reftemp
   ymn<-floor(min(pred,soiltemp))
   ymx<-ceiling(max(pred,soiltemp))
@@ -359,7 +363,9 @@ fitsoilt <- function(weather, rainfall, soiltemp, soiltype, theta = NA, plotout 
     plot(pred~tme,type="l",col=rgb(0,0,0,0.5),ylim=c(ymn,ymx),xlab="",ylab="",cex.axis=2,cex.lab=2)
   }
   rms<-sqrt(sum((pred-soiltemp)^2)/length(pred))
-  return(list(int=m1$coef[1,1],t1=m1$coef[3,1],t2=m1$coef[2,1],t3=m1$coef[4,1],rms=rms))
+  return(list(int=m1$coef[1,1],t1=m1$coef[3,1],t2=m1$coef[2,1],t3=m1$coef[4,1],
+              t4=m1$coef[5,1],t5=m1$coef[6,1],t6=m1$coef[7,1],t7=m1$coef[8,1],
+              rms=rms))
 }
 
 

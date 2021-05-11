@@ -94,7 +94,7 @@
   u<-unique(as.vector(.is(soiltype)))
   u<-u[is.na(u)==F]
   int<-array(NA,dim=dim(soiltype)[1:2])
-  t1<-int; t2<-int;	t3<-int;
+  t1<-int; t2<-int;	t3<-int; t4<-int; t5<-int; t6<-int; t7<-int
   for (i in 1:length(u)) {
     sel<-which(soilparameters$Number==u[i])
     sop<-soilparameters[sel,]
@@ -103,8 +103,12 @@
     t1[sel]<-sop$t1
     t2[sel]<-sop$t2
     t3[sel]<-sop$t3
+    t4[sel]<-sop$t4
+    t5[sel]<-sop$t5
+    t6[sel]<-sop$t6
+    t7[sel]<-sop$t7
   }
-  return(list(int=int,t1=t1,t2=t2,t3=t3))
+  return(list(int=int,t1=t1,t2=t2,t3=t3,t4=t4,t5=t5,t6=t6,t7=t7))
 }
 #' Calculates the astronomical Julian day
 .jday <- function(tme) {

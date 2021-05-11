@@ -381,7 +381,7 @@ wind <- function(micro, xyf = NA, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr
 #' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
 #' @return an object of class micro with the following components added:
 #' @return `T0` ground surface temperature (deg C)
-#' @return `theta` surface soil moisure fraction
+#' @return `theta` surface soil moisture fraction
 #' @return additional terms needed for subsequent modelling.
 #' @import raster
 #' @export
@@ -443,14 +443,25 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(N
     scfs<-list(int=array(soiltcoefs$int,dim=d),
                t1=array(soiltcoefs$t1,dim=d),
                t2=array(soiltcoefs$t2,dim=d),
-               t3=array(soiltcoefs$t3,dim=d))
-
+               t3=array(soiltcoefs$t3,dim=d),
+               t4=array(soiltcoefs$t4,dim=d),
+               t5=array(soiltcoefs$t5,dim=d),
+               t6=array(soiltcoefs$t6,dim=d),
+               t7=array(soiltcoefs$t7,dim=d))
   }
+  # Calculate wind
+  dbm<-micro$dbm
+  w2<-(micro$uf/0.4)*(log((2-micro$d)/micro$zm)+dbm$psi_m)
+  w2<-log(w2+1)
   # Predict soil surface temperature
   T0<-.rta(raster(scfs$int),hiy)+
     .rta(raster(scfs$t1),hiy)*rnet+
     .rta(raster(scfs$t2),hiy)*sm+
-    .rta(raster(scfs$t3),hiy)*rnet*sm
+    .rta(raster(scfs$t3),hiy)*w2+
+    .rta(raster(scfs$t4),hiy)*sm*rnet+
+    .rta(raster(scfs$t5),hiy)*sm*w2+
+    .rta(raster(scfs$t6),hiy)*rnet*w2+
+    .rta(raster(scfs$t7),hiy)*rnet*sm*w2
   T0<-T0+micro$tc
   T0<-.lim(T0,micro$tdew)
   # Calculate soil conductivity and specific heat capacity
@@ -512,7 +523,7 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(N
 #' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
 #' @return an object of class micro with the following components added:
 #' @return `T0` ground surface temperature (deg C)
-#' @return `theta` surface soil moisure fraction
+#' @return `theta` surface soil moisture fraction
 #' @return additional terms needed for subsequent modelling.
 #' @import raster
 #' @export
@@ -584,18 +595,36 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
     scfs<-list(int=array(soiltcoefs$int,dim=d),
                t1=array(soiltcoefs$t1,dim=d),
                t2=array(soiltcoefs$t2,dim=d),
-               t3=array(soiltcoefs$t3,dim=d))
-
+               t3=array(soiltcoefs$t3,dim=d),
+               t4=array(soiltcoefs$t3,dim=d),
+               t5=array(soiltcoefs$t3,dim=d),
+               t6=array(soiltcoefs$t3,dim=d),
+               t7=array(soiltcoefs$t3,dim=d))
   }
+  # Calculate wind
+  dbm1<-micro_mn$dbm
+  dbm2<-micro_mx$dbm
+  w2_mn<-(micro_mn$uf/0.4)*(log((2-micro_mn$d)/micro_mn$zm)+dbm1$psi_m)
+  w2_mx<-(micro_mx$uf/0.4)*(log((2-micro_mx$d)/micro_mx$zm)+dbm2$psi_m)
+  w2_mn<-log(w2_mn+1)
+  w2_mx<-log(w2_mx+1)
   # Predict soil surface temperature
   T0mn<-.rta(raster(scfs$int),diy)+
     .rta(raster(scfs$t1),diy)*rnet1+
     .rta(raster(scfs$t2),diy)*sm+
-    .rta(raster(scfs$t3),diy)*rnet1*sm
+    .rta(raster(scfs$t3),diy)*w2_mn+
+    .rta(raster(scfs$t4),diy)*sm*rnet1+
+    .rta(raster(scfs$t5),diy)*sm*w2_mn+
+    .rta(raster(scfs$t6),diy)*rnet1*w2_mn+
+    .rta(raster(scfs$t7),diy)*rnet1*sm*w2_mn
   T0mx<-.rta(raster(scfs$int),diy)+
     .rta(raster(scfs$t1),diy)*rnet2+
     .rta(raster(scfs$t2),diy)*sm+
-    .rta(raster(scfs$t3),diy)*rnet2*sm
+    .rta(raster(scfs$t3),diy)*w2_mx+
+    .rta(raster(scfs$t4),diy)*sm*rnet2+
+    .rta(raster(scfs$t5),diy)*sm*w2_mx+
+    .rta(raster(scfs$t6),diy)*rnet2*w2_mx+
+    .rta(raster(scfs$t7),diy)*rnet2*sm*w2_mx
   T0mn<-T0mn+micro_mn$tc
   T0mx<-T0mx+micro_mx$tc
   T0mn<-.lim(T0mn,micro_mn$tdew)
@@ -962,8 +991,10 @@ below_dy<-function(microd, reqhgt, expand = TRUE, xyf = NA, zf = NA, soilinit = 
       if (day_ps > 0) Tzd<-abind(Tzd[,,(dim(Tzd)[3]-(day_ps-1)):dim(Tzd)[3]],Tzd)
       Tzd<-Tzd[,,1:l]+.rta(raster(Tav),l)
     } else {
-      Tzd<-abind(T0d[,,(dim(T0d)[3]-(day_ps-1)):dim(T0d)[3]],T0d)
-      Tzd<-Tzd[,,1:l]
+      if (day_ps > 0) {
+        Tzd<-abind(T0d[,,(dim(T0d)[3]-(day_ps-1)):dim(T0d)[3]],T0d)
+        Tzd<-Tzd[,,1:l]
+      } else Tzd<-T0d
     }
   } else Tzd<-.rta(raster(Tav),l)
   if (expand) {

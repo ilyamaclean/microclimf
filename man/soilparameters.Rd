@@ -22,7 +22,11 @@ A data frame with the following columns:
   \item{int}{temperature model intercept}
   \item{t1}{temperature model radiation coefficient}
   \item{t2}{temperature model soil moisture coefficient}
-  \item{t3}{temperature model interaction coefficient}
+  \item{t3}{temperature model wind coefficient}
+  \item{t4}{temperature model soil moisture * radiation interaction coefficient}
+  \item{t5}{temperature model soil moisture * wind interaction coefficient}
+  \item{t6}{temperature model radiation * wind interaction coefficient}
+  \item{t7}{temperature model three-way interaction coefficient}
   \item{mult}{soil moisture model radiation coefficient}
   \item{rmu}{soil moisture model rainfall coefficient}
   \item{a}{soil moisture model deeper layer multiplier coefficient}

@@ -62,7 +62,7 @@ an object of class micro with the following components added:
 
 `T0` ground surface temperature (deg C)
 
-`theta` surface soil moisure fraction
+`theta` surface soil moisture fraction
 
 additional terms needed for subsequent modelling.
 }
