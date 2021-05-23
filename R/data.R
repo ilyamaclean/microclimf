@@ -24,14 +24,35 @@
 #' @format A RasterLayer object with 50 rows and 50 columns
 #' @source \url{http://www.tellusgb.ac.uk/}
 "dtmcaerth"
+#' A dataset of global climate variables
 #'
+#' A global dataset containing containing the following climate variables averaged
+#' over the period 2008 to 2017. Used by [vegpfromhab()] to generate plant arrea index values.
+#'
+#' @format An array with 94 rows, 192 columns and the following five climate variables:
+#' \describe{
+#'   \item{1}{mean annual temperature (ºC)}
+#'   \item{2}{coefficient of variation in temperature (K)}
+#'   \item{3}{mean annual temperature (mm per year)}
+#'   \item{4}{coefficient of variation in annual rainfall (mm per 0.25 days)}
+#'   \item{5}{numeric month with the most rainfall (1-12)}
+#' }
+#' @source \url{http://www.ncep.noaa.gov/}
+"globclim"
+#' A one m resolution dataset of habitat types
+#'
+#' A dataset of habitat types expressed as integers for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
+#' (xmin, xmax, ymin, ymax) using the Ordance Survey GB Grid Reference system (CRS: 27700). Integer values
+#' correspond to habitat types listed in [vegpfromhab()].
+#'
+#' @format A RasterLayer object with 50 rows and 50 columns
+"habitats"
 #' Daily rainfall
 #'
 #' A vector of daily rainfall for 169500, 12500 (x, y) using the Ordance Survey GB Grid Reference system (CRS: 27700).
 #'
 #' @format A vector of daily rainfall (mm/day)
 "rainfall"
-#'
 #' A dataset of soil characteristics.
 #'
 #' An object of class soilcharac for the area bounded by 169475, 169525, 12475, 12525
@@ -76,7 +97,6 @@
 #' }
 #' @source: \url{https://onlinelibrary.wiley.com/doi/full/10.1002/ird.1751}
 "soilparameters"
-#'
 #' A dataset of vegetation parameters.
 #'
 #' An object of class vegparams for the area for the area bounded by 169475, 169525, 12475, 12525
