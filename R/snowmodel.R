@@ -46,6 +46,7 @@
 #' @param zm optionally, numeric value of roughness length for momentum transfer of snow surface (m)
 #' @param umin optionally, numeric value indicating minimum wind speed used in conductivity calculations (m/s)
 #' @return a vector of snow temperatures (deg C)
+#' @export
 SnowTemp<-function(tc,u2,rh,pk,Rsw,skyem,snowalb,snowem=0.99,zm=0.002,umin=0.5) {
   zpd=6.5*zm
   zh<-0.2*zm
@@ -89,6 +90,7 @@ SnowTemp<-function(tc,u2,rh,pk,Rsw,skyem,snowalb,snowem=0.99,zm=0.002,umin=0.5) 
 #' @return `snowdens` snow density (g/cm^3)
 #' @return `snowtemp` snow temperature (deg C)
 #' @return `snowalb` snow albedo (range 0 to 1)
+#' @export
 #' @details The format and and units of `weather` must follow that in the example
 #' dataset `climdata`.
 pSnow <- function(weather,precd,meltfact=6.54,snowem=0.99,zm=0.002,umin=0.5,astc=1.5) {
@@ -171,6 +173,7 @@ pSnow <- function(weather,precd,meltfact=6.54,snowem=0.99,zm=0.002,umin=0.5,astc
 #' @return `psnowdepth` predicted snow depth (cm)
 #' @return `RMS` Root-mean-square error of predicted snow depths (cm)
 #' @return `meltfact` a snow melt factor for use with [pSnow()]
+#' @export
 #' @details The format and and units of `weather` must follow that in the example
 #' dataset `climdata`.
 fitsnow<-function(weather,snowdepth,precd,plotout=T,snowem=0.99,zm=0.002,umin=0.5,astc=1.5) {
