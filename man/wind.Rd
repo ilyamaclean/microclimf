@@ -55,7 +55,7 @@ an object of class microin with the following components added:
 aditional terms required for subsequent modelling
 }
 \description{
-The function `wind` downscales wind spped accounting for
+The function `wind` downscales wind speed accounting for
 vegetation and terrain
 }
 \details{

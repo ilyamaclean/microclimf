@@ -230,7 +230,7 @@ canopyrad <- function(micro, slr = NA, apr = NA, hor = NA) {
 }
 #' Downscales wind
 #'
-#' @description The function `wind` downscales wind spped accounting for
+#' @description The function `wind` downscales wind speed accounting for
 #' vegetation and terrain
 #' @param micro object of class microin as returned by [modelin()]
 #' @param xyf optional spatial smoothing factor applied in calculation of wind speeds (see details)
@@ -451,7 +451,7 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(N
   }
   # Calculate wind
   dbm<-micro$dbm
-  w2<-(micro$uf/0.4)*(log((2-micro$d)/micro$zm)+dbm$psi_m)
+  w2<-(micro$uf/0.4)*(log((micro$maxhgt-micro$d)/micro$zm)+dbm$psi_m)
   w2<-log(w2+1)
   # Predict soil surface temperature
   T0<-.rta(raster(scfs$int),hiy)+
@@ -604,8 +604,8 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
   # Calculate wind
   dbm1<-micro_mn$dbm
   dbm2<-micro_mx$dbm
-  w2_mn<-(micro_mn$uf/0.4)*(log((2-micro_mn$d)/micro_mn$zm)+dbm1$psi_m)
-  w2_mx<-(micro_mx$uf/0.4)*(log((2-micro_mx$d)/micro_mx$zm)+dbm2$psi_m)
+  w2_mn<-(micro_mn$uf/0.4)*(log((micro$maxhgt-micro_mn$d)/micro_mn$zm)+dbm1$psi_m)
+  w2_mx<-(micro_mx$uf/0.4)*(log((micro$maxhgt-micro_mx$d)/micro_mx$zm)+dbm2$psi_m)
   w2_mn<-log(w2_mn+1)
   w2_mx<-log(w2_mx+1)
   # Predict soil surface temperature
@@ -859,7 +859,7 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
   Tz[selB]<-tln$tn[selB]
   # Calculate conductivity from reqhgt to maxhgt
   gTr<-.gturb(micro$uf,micro$d,micro$zm,micro$maxhgt,reqhgt,dbm$psi_h)
-  gTh<-.gturb(micro$uf,micro$d,micro$zm,reqhgt,micro$vha,dbm$psi_h)
+  gTh<-suppressWarnings(.gturb(micro$uf,micro$d,micro$zm,reqhgt,micro$vha,dbm$psi_h))
   eh<-.satvap(TH$tcan)*surfwet
   er<-(gTr*micro$ea+gTh*eh)/(gTr+gTh)
   # Calculate relative humidity
