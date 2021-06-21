@@ -248,7 +248,7 @@
   Tdew[sel]<-Tfrost[sel]
   Tdew
 }
-#' Calculates bulk surface stomaal conductivity
+#' Calculates bulk surface stomatal conductivity
 .layercond <- function(Rsw, gsmax, q50 = 100) {
   rpar<-Rsw*4.6
   gs <- (.rta(gsmax,dim(Rsw)[3])*rpar)/(rpar+q50)
@@ -387,7 +387,7 @@
   xx<-(z1-d)/(z0-d)
   xx[xx<0.001]<-0.001
   ln<-log(xx)
-  lnr<-ln*log((2-d)/zh)
+  lnr<-ln*log((z1-d)/zh)
   psx<-lnr*psi_h
   g<-(0.4*43*uf)/(ln+psx)
   gmin<-(43*2.026628e-05)/2

@@ -2,10 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.layercond}
 \alias{.layercond}
-\title{Calculates bulk surface stomaal conductivity}
+\title{Calculates bulk surface stomatal conductivity}
 \usage{
 .layercond(Rsw, gsmax, q50 = 100)
 }
 \description{
-Calculates bulk surface stomaal conductivity
+Calculates bulk surface stomatal conductivity
 }
