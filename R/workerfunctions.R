@@ -265,18 +265,15 @@
 }
 #' Calculate zero plane displacement
 .zeroplanedis <- function(hgt, pai) {
-  pai[pai < 0.1] <- 0.1
-  pai[pai > 20] <- 20
-  m<-0.0609*log(pai)+0.5894
-  d<-m*hgt
+  d<-(1-(1-exp(-sqrt(7.5*pai)))/sqrt(7.5*pai))*hgt
   d
 }
 #' Calculate roughness length governing momentum transfer
-.roughlength <- function(hgt, pai, zm0 = 0.004) {
-  pai[pai < 0.1] <- 0.1
-  pai[pai > 20] <- 20
-  m <- 0.1*pai+0.08+(pai>0.6)*(-0.0239*log(pai)+0.1275)
-  zm<-m*hgt
+.roughlength <- function(hgt, pai, zm0 = 0.003) {
+  d<-.zeroplanedis(hgt,pai)
+  ur<-sqrt(zm0+(0.3*pai)/2)
+  ur[ur>0.3]<-0.3
+  zm<-(hgt-d)*exp(-0.4*ur-0.193)
   zm[zm<zm0]<-zm0
   zm
 }
@@ -360,14 +357,10 @@
   return(list(psi_h=psi_h,psi_m=psi_m))
 }
 # Calculates below canopy mixing length
-.mixinglength <- function(hgt, PAI, x) {
-  Ld<-PAI/hgt
-  lmg<-(0.2/(pi*Ld))^0.5
-  lms <- (0.015*hgt/(pi*PAI))^(1/3)
-  wgt<-x/2
-  sel<-which(x>1)
-  wgt[sel]<-1-(0.5/x[sel])
-  l_m<-wgt*lms+(1-wgt)*lmg
+.mixinglength <- function(hgt, pai, zm0 = 0.003) {
+  d<-.zeroplanedis(hgt,pai)
+  zm<-.roughlength(hgt,pai,zm0)
+  l_m<-(0.32*(hgt-d))/log((hgt-d)/zm)
   l_m
 }
 # Ensures uz above canopy cannot drop below frictisan velocity
@@ -996,4 +989,13 @@
                       windspeed=ws,
                       winddir=wd)
   weather
+}
+#' Corrects wind profile
+.windcorrect <- function(uz, windhgt, maxhgt) {
+  d<-0.08
+  zm<-0.01476
+  zh<-0.1*zm
+  uf<-(0.4*uz)/log((windhgt-d)/zm)
+  uo<-(uf/0.4)*log((maxhgt+2-d)/zm)
+  uo
 }

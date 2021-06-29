@@ -10,6 +10,7 @@ modelin(
   vegp,
   soilc,
   dtm,
+  windhgt = 2,
   merid = 0,
   dst = 0,
   runchecks = TRUE,
@@ -25,7 +26,9 @@ modelin(
 
 \item{soilc}{an object of class soilcharac as returned by [soilcfromtype()]}
 
-\item{dtm}{a RasterLayer onject of elevations (see details)}
+\item{dtm}{a RasterLayer object of elevations (see details)}
+
+\item{windhgt}{height of wind speed measurement (m) in weather dataset (see details).}
 
 \item{merid}{optionally, longitude of local time zone meridian (decimal degrees)}
 
@@ -50,7 +53,12 @@ measures up to the number of entries in `weather`. Data are interpolated to the
 time increment of `weather`. Other vegetation paramaters, including vegetation
 height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
 the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
-metres and the coordinate reference system must be defined.
+metres and the coordinate reference system must be defined. As not all wind
+measurements are at reference height, the height of the wind speed measurement
+must be specified if not 2 m. To enable calculation of below-canopy wind profiles
+in tall canopy, the wind speed is adjusted to give values for a height 2 m above
+the maximum vegetation height, using the wind-height profile for a reference grass
+surface.
 }
 \seealso{
 [checkinputs()], [modelin_dy()], [modelina()]

@@ -336,7 +336,7 @@ wind <- function(micro, xyf = NA, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr
     vha[vha<0.001]<-0.001
     pai<-micro$pai
     pai[pai<0.0001]<-0.0001
-    l_m <- .mixinglength(vha,pai,micro$vegx)
+    l_m <- .mixinglength(vha,pai)
     a<-((0.2*pai*vha)/l_m)^0.5
     urb<-micro$uf*exp((a*(reqhgt/vha-1)))
     ur[selb]<-urb[selb]
