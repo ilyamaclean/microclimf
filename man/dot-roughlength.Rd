@@ -4,7 +4,7 @@
 \alias{.roughlength}
 \title{Calculate roughness length governing momentum transfer}
 \usage{
-.roughlength(hgt, pai, zm0 = 0.004)
+.roughlength(hgt, pai, zm0 = 0.003)
 }
 \description{
 Calculate roughness length governing momentum transfer

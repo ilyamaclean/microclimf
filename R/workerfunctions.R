@@ -357,10 +357,11 @@
   return(list(psi_h=psi_h,psi_m=psi_m))
 }
 # Calculates below canopy mixing length
-.mixinglength <- function(hgt, pai, zm0 = 0.003) {
+.mixinglength <- function(hgt, pai, zm0 = 0.003, mnlm = 0.04) {
   d<-.zeroplanedis(hgt,pai)
   zm<-.roughlength(hgt,pai,zm0)
   l_m<-(0.32*(hgt-d))/log((hgt-d)/zm)
+  l_m[l_m<mnlm]<-mnlm
   l_m
 }
 # Ensures uz above canopy cannot drop below frictisan velocity

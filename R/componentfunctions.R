@@ -293,7 +293,7 @@ wind <- function(micro, xyf = NA, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr
     hgt<-.smr(micro$veghgt,xyf)
     hgt[hgt<0.004*10]<-0.004*10
     pai2<-.sma(micro$pai,xyf,zf)
-    pai2[pai2<0]<-0
+    pai2[pai2<0.001]<-0.001
     le<-length(tme)
     d<-.zeroplanedis(.rta(hgt,le),pai2)
     d[d<(0.004*6.5)]<-0.004*6.5

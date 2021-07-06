@@ -75,15 +75,15 @@ plot(raster(mout$T0[,,4094])) # hottest hour
 Alternatively, the model can be run in daily  time increments. The default when so doing, as in the example, below, is to use the diurnal cycles in the hourly input data to expand the daily outputs to hourly values. Alternatively, the expand option in `runmicro_dy` can be set to FALSE. 
 
 ```{r eval=FALSE}
-#' # Create model input with inbuilt datasets
-#' microd<-modelin_dy(climdata,rainfall,vegp,soilc,dtmcaerth)
-#' # Run model 5 cm above ground  performing hourly expansion (takes ~50 seconds to run)
-#' mout<-runmicro_dy(microd, 0.05)
-#' # Plot air temperatures on hottest hour
-#' plot(raster(mout$Tz[,,4094]))
-#' # Plot mean air temperatures
-#' mairt<-apply(mout$Tz,c(1,2),mean)
-#' plot(raster(mairt))
+# Create model input with inbuilt datasets
+microd<-modelin_dy(climdata,rainfall,vegp,soilc,dtmcaerth)
+# Run model 5 cm above ground  performing hourly expansion (takes ~50 seconds to run)
+mout<-runmicro_dy(microd, 0.05)
+# Plot air temperatures on hottest hour
+plot(raster(mout$Tz[,,4094]))
+# Plot mean air temperatures
+mairt<-apply(mout$Tz,c(1,2),mean)
+plot(raster(mairt))
 ```
 
 ## Model inputs
