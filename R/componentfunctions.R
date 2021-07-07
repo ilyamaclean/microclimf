@@ -734,6 +734,40 @@ PenMont <- function(tc,pk,ea,radabs,gHa,gs,g0,T0,es=NA,tdew=NA,surfwet=1,allout=
   } else out<-list(tcan=tcan,H=H)
   return(out)
 }
+#' Estimate foliage density and plant area index above z
+#'
+#' @description The function `foliageden` applies a mirrored gamma distribution
+#' to estimate, for a given height `z` below canopy, the foliage density and
+#' the plant area index above `z`
+#'
+#' @param z height above ground (m)
+#' @param hgt the height of the canopy (m)
+#' @param pai total plant area index of canopy
+#' @param shape optional shape parameter for gamma distribution (see details)
+#' @param rate optional rate parameter for gamm distribution (see details)
+#'
+#' @details a broadly realistic estimate of foliage density is generated
+#' using a mirrored gamma distribution (i.e. right (top) rather than left-skewed).
+#' in applying the gamma distribution `z / hgt` is re-scaled to the range 0-10.
+#'
+#' @export
+#' @return a list of leaf densities and plant area index values
+#'
+#' @examples
+#' z<-c(1:1000)/100
+#' fdp<-foliageden(z,10,10)
+#' plot(z~fdp$leafden, xlab = "Foliage density")
+#' plot(z~fdp$pai_a, xlab = "PAI above z")
+foliageden<-function(z,hgt,pai,shape=1.5,rate=shape/7) {
+  # reverse and rescale z
+  x<-((hgt-z)/hgt)*10
+  # totAL DENS
+  td<-pgamma(10,shape,rate) # total density
+  rfd<-dgamma(x,shape,rate)/td # relative foliage density
+  tdf<-(pai/hgt)*rfd*10 # total foliage density
+  paia<-pgamma(x,shape,rate)*(pai/td) # pai above
+  return(list(leafden=tdf,pai_a=paia))
+}
 #' Estimate temperature and humidity at specified height above ground
 #'
 #' @description The function `temphumE` runs the above ground component of
@@ -805,8 +839,8 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
   TH<-PenMont(micro$tc,micro$pk,micro$ea,radabs,micro$gHa,
               gBs,micro$g0,micro$T0,micro$estl,micro$tdew,surfwet)
   # Select below and above canopy
-  selA<-which(micro$vha<reqhgt)
-  selB<-which(micro$vha>=reqhgt)
+  selA<-which(micro$vha<=reqhgt)
+  selB<-which(micro$vha>reqhgt)
   # Calculate temperature at reqhgt above canopy
   zh<-0.2*micro$zm
   dbm<-micro$dbm
@@ -817,12 +851,22 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
   Tz<-TH$tcan-(TH$H/(503.96*micro$uf)/ln)
   sel<-which(is.na(Tz) | is.infinite(Tz))
   Tz[sel]<-TH$tcan[sel]
-  # If not specified, calaculate pai above reqhgt
+  # If not specified, calaculate pai above reqhgt and leaf density
   if (class(pai_a)[1]=="logical") {
+    ldp<-foliageden(reqhgt,micro$vha,micro$pai)
+    pai_a<-ldp$pai_a
+    leafdens<-ldp$leafden
     m<-(micro$vha-reqhgt)/micro$vha
     m[m<0]<-0
     pai_a<-m*micro$pai
+  } else {
+    leafdens<-pai_a/(micro$vha-reqhgt)
   }
+  # Limit leaf density
+  sel<-which((micro$vha-reqhgt)<=0)
+  leafdens[sel]<-0
+  leafdens<-.lim(leafdens,3.5,up=TRUE)
+  leafdens[is.na(leafdens)]<-3.5
   # Calculate absorbed short and longwave radiation
   radz<-.radabs(micro,pai_a)
   radzabs<-radz$radzsw+radz$radzlw
@@ -848,14 +892,9 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
   Th<-TH$tcan-(TH$H/(503.96*micro$uf)/ln)
   sel<-which(is.na(Th) | is.infinite(Th))
   Th[sel]<-TH$tcan[sel]
-  # Calculate sub-canopy temperatures
-  leafdens<-pai_a/(micro$vha-reqhgt)
-  sel<-which((micro$vha-reqhgt)<=0)
-  leafdens[sel]<-0
-  leafdens<-.lim(leafdens,3.5,up=TRUE)
-  leafdens[is.na(leafdens)]<-3.5
-  tln<-.tleaf(Th,micro$T0,micro$estl,micro$ea,micro$pk,gtt,gt0,gHa,gv,gL,
-              radzabs,leafdens,surfwet,soilrh)
+
+  tln<-suppressWarnings(.tleaf(Th,micro$T0,micro$estl,micro$ea,micro$pk,gtt,gt0,gHa,gv,gL,
+                               radzabs,leafdens,surfwet,soilrh))
   Tz[selB]<-tln$tn[selB]
   # Calculate conductivity from reqhgt to maxhgt
   gTr<-.gturb(micro$uf,micro$d,micro$zm,micro$maxhgt,reqhgt,dbm$psi_h)
