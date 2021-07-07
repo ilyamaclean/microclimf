@@ -137,7 +137,7 @@ The model is most sensitive to `pai`. The plant area index is essentially the to
 The model is less sensitive to other parameters. The parameter `x` represents how vertically or horizontally the leaves of the canopy are orientated and controls how much direct radiation is transmitted through the canopy at a given solar angle (when the sun is low above the horizon, less radiation is transmitted through vertically orientated leaves). Users may refer to Campbell (1986) Agric For Meteorol, 36: 317-321 for a detailed explanation. Values for deciduous woodland are typically around 1, but for grassland may be closer to 0.2. The parameter ‘gsmax’ is the maximum stomatal conductance (mol / m^2 / s) of leaves and is needed for evapotranspiration calculations. Values typically range from 0.23 for deciduous broadleaf forest to 0.55 for wetland vegetation. Körner (1995) https://link.springer.com/chapter/10.1007/978-3-642-79354-7_22 gives values for major vegetation types of the world. The parameter ‘leafr’ is the leaf reflectance to shortwave radiation, typically around 0.23. The parameter ‘clump’ dictates how much radiation passes through gaps in the canopy, sand therefore represents the sub-pixel canopy clumpiness, with values ranging from 0 (uniform) to 1 (highly clumped). The parameter ‘leafw’ is the mean diameter of leaves (m, in the direction of wind-flow).
 
 ### Soil parameters
-The inbuilt dataset `soilc` gives an example of the vegetation parameters needed to run the model. Here the attributes are shown and plotted:
+The inbuilt dataset `soilc` gives an example of the soil parameters needed to run the model. Here the attributes are shown and plotted:
 
 ```{r, fig.show='hold'}
 attributes(soilc)

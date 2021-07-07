@@ -573,7 +573,7 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
     rnet<-swrad-lwnet
     rnet1<-rnet*mx
     rnet2<-rnet*mn
-    sm<-soilmpredict(micro$prec,rnet1,"Loam",soilinit,soilmcoefs)
+    sm<-soilmpredict(micro_mn$prec,rnet1,"Loam",soilinit,soilmcoefs)
     thetamx<-soilmdistribute(sm$soilm1,micro_mn$dtm)
     sm<-soilmpredict(micro$prec,rnet2,"Loam",soilinit,soilmcoefs)
     thetamn<-soilmdistribute(sm$soilm1,micro_mn$dtm)
@@ -589,9 +589,9 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
   sm<-log(theta/(1-theta))+8.516993
   # Get paramaters
   if (is.na(soiltcoefs[1])) {
-    scfs<-.soilcoefs(micro$soilc)
+    scfs<-.soilcoefs(micro_mn$soilc)
   } else {
-    d<-dim(micro$dtm)[1:2]
+    d<-dim(micro_mn$dtm)[1:2]
     scfs<-list(int=array(soiltcoefs$int,dim=d),
                t1=array(soiltcoefs$t1,dim=d),
                t2=array(soiltcoefs$t2,dim=d),
@@ -604,8 +604,8 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
   # Calculate wind
   dbm1<-micro_mn$dbm
   dbm2<-micro_mx$dbm
-  w2_mn<-(micro_mn$uf/0.4)*(log((micro$maxhgt-micro_mn$d)/micro_mn$zm)+dbm1$psi_m)
-  w2_mx<-(micro_mx$uf/0.4)*(log((micro$maxhgt-micro_mx$d)/micro_mx$zm)+dbm2$psi_m)
+  w2_mn<-(micro_mn$uf/0.4)*(log((micro_mn$maxhgt-micro_mn$d)/micro_mn$zm)+dbm1$psi_m)
+  w2_mx<-(micro_mx$uf/0.4)*(log((micro_mn$maxhgt-micro_mx$d)/micro_mx$zm)+dbm2$psi_m)
   w2_mn<-log(w2_mn+1)
   w2_mx<-log(w2_mx+1)
   # Predict soil surface temperature

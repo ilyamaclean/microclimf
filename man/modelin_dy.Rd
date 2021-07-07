@@ -10,6 +10,7 @@ modelin_dy(
   vegp,
   soilc,
   dtm,
+  windhgt = 2,
   merid = 0,
   dst = 0,
   runchecks = TRUE

@@ -446,10 +446,10 @@ modelina<-function(climarray,rainarray,tme,r,altcorrect = 0, vegp, soilc, dtm, m
 #'
 #' @import raster
 #' @export
-modelin_dy <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, runchecks = TRUE) {
+modelin_dy <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = TRUE) {
   climd<-.climtodaily(weather)
-  micro_mn<-modelin(climd$climn,rainfall,vegp,soilc,dtm,merid,dst,runchecks,daily=TRUE)
-  micro_mx<-modelin(climd$climx,rainfall,vegp,soilc,dtm,merid,dst,runchecks,daily=TRUE)
+  micro_mn<-modelin(climd$climn,rainfall,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
+  micro_mx<-modelin(climd$climx,rainfall,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
   out<-list(micro_mn=micro_mn,micro_mx=micro_mx,climdata=weather)
   class(out)<-"microindaily"
   return(out)
