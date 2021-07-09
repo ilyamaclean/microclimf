@@ -155,7 +155,7 @@ pSnow <- function(weather,precd,meltfact=6.54,snowem=0.99,zm=0.002,umin=0.5,astc
               snowalb=snowalb))
 
 }
-#' Derives snow melt coefficient form empirical data
+#' Derives snow melt coefficient from empirical data
 #'
 #' The function `fitsnow` estimates the snow melt coefficient from empirical data (or
 #' the outputs of a more complex model) and returns this along with

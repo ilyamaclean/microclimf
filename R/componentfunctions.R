@@ -717,7 +717,7 @@ PenMont <- function(tc,pk,ea,radabs,gHa,gs,g0,T0,es=NA,tdew=NA,surfwet=1,allout=
   delta<-.delta(tc,radabs)
   gv<-1/(1/gHa+1/gs)
   sb<-5.67*10^-8
-  gHr<-gHa+(4*0.97*sb*(tc+273.15)^4)/29.3
+  gHr<-gHa+(4*0.97*sb*(tc+273.15)^3)/29.3
   Rem<-0.97*sb*(tc+273.15)^4
   HG<-29.3*(gHr*tc+g0*T0)
   m<-44526*(gv/pk)
