@@ -11,8 +11,7 @@ PenMont(
   radabs,
   gHa,
   gs,
-  g0,
-  T0,
+  G,
   es = NA,
   tdew = NA,
   surfwet = 1,
@@ -32,9 +31,7 @@ PenMont(
 
 \item{gs}{stomatal conductance (mol/m^2/s)}
 
-\item{g0}{conductance to ground}
-
-\item{T0}{ground surface temperature (deg C)}
+\item{G}{rate of ground heat storage (W/m2)}
 
 \item{es}{saturated vapour pressure (kPa) at temperature tc (calculated if NA)}
 

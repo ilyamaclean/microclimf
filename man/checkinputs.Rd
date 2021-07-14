@@ -52,20 +52,20 @@ metres and the coordinate reference system must be defined.
 \examples{
 # No warnings or errors given:
 checks<-checkinputs(climdata, rainfall, vegp, soilc, dtmcaerth)
-# Warning given
-weather<-climdata
-weather$relhum[1]<-101
-checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
-# Error given
-weather<-climdata
-weather$pres<-weather$pres*1000
-checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
-# Error given for vegp
-vegp2<-vegp
-vegp2$clump<-1
-checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
-# Warning given for vegp
-vegp2<-vegp
-vegp2$pai<-vegp$pai*10
-checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
+# Warning given (not run)
+# weather<-climdata
+# weather$relhum[1]<-101
+# checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
+# Error given (NB not run)
+# weather<-climdata
+# weather$pres<-weather$pres*1000
+# checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
+# Error given for vegp (not run)
+# vegp2<-vegp
+# vegp2$clump<-1
+# checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
+# Warning given for vegp (not run)
+# vegp2<-vegp
+# vegp2$pai<-vegp$pai*10
+# checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
 }

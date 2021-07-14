@@ -130,9 +130,39 @@ plot(vegp$leafd, main = "Mean leaf diameter") # set to 0.05
     * `clump` - a Rasterlayer object of values between 0 and 1 indicating the degree of canopy clumpiness (0 - even, 1 = highly clumped)
     * `leafd` - a Rasterlayer object of leaf diameters (m)
     
-If users do know values of these vegetation parameters across their study area, they can be approximated from habitat type using the `habitatvars` in the microctools package. Note however, that be doing so, all values for a habitat type will be identical, when in reality this is unlikely to be the case. However, if one is unable to quantify the main determinants of microclimatic variation then there is little prospect of being able to model microclimatic conditions accurately. 
+If users do know values of these vegetation parameters across their study area, they can be approximated from habitat type using the `vegpfromhab` function. This function takes as an input, a raster of habitat types numerically coded as follows:
 
-The model is most sensitive to `pai`. The plant area index is essentially the total one sided area of both leaves and woody and dead vegetation per unit ground area. It is needed primarily so that canopy cover can be estimated, but even for temperatures above canopy, `pai` partially determines the temperature profile. The first two dimensions of the array must correspond with the various RasterLayers (as well as the resolution and extent of the input raster elevation dataset). The third dimension is included to account for potential seasonal variation in `pai`. All other vegetation variables are assumed time-invariant. Any number of replicate `pai` values can be provided up to the number of climate observations. If fewer are provided than the number of climate observation are provided, then data are interpolated. In `vegp` 12 replicates are provided - representing approximately monthly values across the year. The model is also quite sensitive to `hgt`, primarily as this dictates whether the temperature at a given height is above or below canopy, but it also has an important bearing on temperature profiles above canopy. 
+(1) for Evergreen needleleaf forest,
+(2) for Evergreen broadleaf forest,
+(3) for Deciduous needleleaf forest,
+(4) for Deciduous broadleaf forest,
+(5) for Mixed forest,
+(6) for Closed shrubland,
+(7) for Open shrubland,
+(8) for Woody savanna,
+(9) for Savanna,
+(10) for Short grassland,
+(11) for Tall grassland,
+(12) for Permanent wetland,
+(13) for Cropland,
+(14) for Urban and built-up,
+(15) for Cropland / Natural vegetation mosaic and
+(16) for Barren or sparsely vegetated
+
+
+It returns an object of class vegparams as required by the model.Here this is illustrated using he inbuilt habitat raster layer 
+
+```{r, fig.show='hold'}
+plot(habitats, main = "Habitat types") # inbuilt habitat raster layer
+tme<-as.POSIXlt(c(0:8783)*3600,origin="2000-01-01 00:00", tz = "GMT")
+# Create an object of class vegparams:
+veg<-vegpfromhab(habitats,lat=50,long=-5,tme=tme)
+```
+
+
+Note however, that be doing so, all values for a habitat type will be identical, when in reality this is unlikely to be the case. However, if one is unable to quantify the main determinants of microclimatic variation then there is little prospect of being able to model microclimatic conditions accurately. 
+
+The model is most sensitive to `pai`. The plant area index is essentially the total one sided area of both leaves and woody and dead vegetation per unit ground area. It is needed primarily so that canopy cover can be estimated, but even for temperatures above canopy, `pai` partially determines the temperature profile. The first two dimensions of the array must correspond with the various RasterLayers (as well as the resolution and extent of the input raster elevation dataset). The third dimension is included to account for potential seasonal variation in `pai`. All other vegetation variables are assumed time-invariant. Any number of replicate `pai` values can be provided up to the number of climate observations. If fewer are provided than the number of climate observation are provided, then data are interpolated. In `vegp` 12 replicates are provided - representing approximately monthly values across the year. The model is also sensitive to `hgt`, primarily as this dictates whether the temperature at a given height is above or below canopy, but it also has an important bearing on temperature profiles above canopy. 
 
 The model is less sensitive to other parameters. The parameter `x` represents how vertically or horizontally the leaves of the canopy are orientated and controls how much direct radiation is transmitted through the canopy at a given solar angle (when the sun is low above the horizon, less radiation is transmitted through vertically orientated leaves). Users may refer to Campbell (1986) Agric For Meteorol, 36: 317-321 for a detailed explanation. Values for deciduous woodland are typically around 1, but for grassland may be closer to 0.2. The parameter ‘gsmax’ is the maximum stomatal conductance (mol / m^2 / s) of leaves and is needed for evapotranspiration calculations. Values typically range from 0.23 for deciduous broadleaf forest to 0.55 for wetland vegetation. Körner (1995) https://link.springer.com/chapter/10.1007/978-3-642-79354-7_22 gives values for major vegetation types of the world. The parameter ‘leafr’ is the leaf reflectance to shortwave radiation, typically around 0.23. The parameter ‘clump’ dictates how much radiation passes through gaps in the canopy, sand therefore represents the sub-pixel canopy clumpiness, with values ranging from 0 (uniform) to 1 (highly clumped). The parameter ‘leafw’ is the mean diameter of leaves (m, in the direction of wind-flow).
 
@@ -141,7 +171,7 @@ The inbuilt dataset `soilc` gives an example of the soil parameters needed to ru
 
 ```{r, fig.show='hold'}
 attributes(soilc)
-summary(soilc$soiltype)
+plot(soilc$soiltype, main = "Soiltype") # Clay loam throughout
 plot(soilc$groundr, col=gray(0:255/255), main = "Soil reflectivity")
 ```
 
@@ -169,7 +199,7 @@ In the example below, the `microclimc` wrapper for `NicheMapR` package is used t
 require(NicheMapR) # - see https://github.com/mrke/NicheMapR
 require(microclimc) # - see https://github.com/ilyamaclean/microclimc
 # Run NicheMapR complex multilayer soil model
-microout<-runNMR(climdata, rainfall, 50.2178, -5.32656, 0.05, 0.01, PAI = 0, soiltype="Clay loam")
+microout<-runNMR(climdata, rainfall, 50.2178, -5.32656, 0.05, 0.01, PAI = 0.001, soiltype="Clay loam")
 # Extract surface soil moisture and covert to daily
 sm<-microout$soilmoist
 soilm<-sm[,3]
@@ -288,22 +318,27 @@ plot(raster(micro$T0[,,4094]),col=mypal)
 ```
 ![](images/plot4.png)\
 
-The equivelent function when the model is run is daily time-steps is `soiltemp_dy`.
+One can see that the model predicts that ground surface temperatures can get much hotter than air temperatures. This is as expected. It is not particularly unusual for dark surfaces such as asphalt to attain temperatures in excess of 60 degrees C on sunny days with low wind speed. However, places with significant tall vegetation cover are much cooler.
+
+The equivelent function when the model is run is daily time-steps is `soiltemp_dy`. The daily model doesn't capture the extremes as well, as the hour in which ground temperatures are maximised may not correspond to the hour with hottest air temperatures. However, it nontheless provides a reasonable approximation.
 
 ### Sensible heat flux and wind
 Sensible heat is the form of heat exchanged between the ground surface or the canopy and the air above it. Sensible heat fluxes can be derived from Fourier’s law of heat transport in which the flux is determined by temperature gradient multiplied by the degree of thermal conductance between the surface and the air. In everyday language, the term conductance is usually used to describe the heat exchanged between objects that are in direct physical contact, but the same principles can be extended to describe the process of conduction by convective currents in the air. 
 
-In still air, such as within the stomatal cavities of leaves, heat is transferred by a process of molecular diffusion. Immediately adjacent to the object, at the so-called boundary layer, surface drag results in slow and smooth layered movement of fluid particles in which layers slide past one another rather like playing cards. In this so called ‘laminar’ flow, conduction between the surface and the air is simultaneously accompanied by heat transfer across streamlines in the air by molecular diffusion. The orderly nature of these laminar flows depends on the length of surface in the direction of flow. Thus convective conductance between the leaves of a canopy the air surrounding the leaf typically diminishes as leaf size increases. As one moves further away from the object, the orderly layered movement breaks down and flow regimes are characterized by turbulent movements, and rapidly fluctuating eddies. These small whirlpools or vortices transport heat efficiently across the fluid in proportion to the size of the eddies. Higher wind speeds result in larger eddies. However, vegetation can itself affect wind speeds – immediately adjacent to the surface, wind speeds are lower. Below canopy, the wind profile is assumed in ‘microclimf’ to be affected the mean spacing between leaves (itself determined from leaf area). Above canopy, the wind profile is assumed to be governed as the roughness of the surface, in turn dependent on vegetation height and leaf area. 
+In still air, such as within the stomatal cavities of leaves, heat is transferred by a process of molecular diffusion. Immediately adjacent to the object, at the so-called boundary layer, surface drag results in slow and smooth layered movement of fluid particles in which layers slide past one another rather like playing cards. In this so called ‘laminar’ flow, conduction between the surface and the air is simultaneously accompanied by heat transfer across streamlines in the air by molecular diffusion. The orderly nature of these laminar flows depends on the length of surface in the direction of flow. Thus convective conductance between the leaves of a canopy the air surrounding the leaf typically diminishes as leaf size increases. As one moves further away from the object, the orderly layered movement breaks down and flow regimes are characterized by turbulent movements, and rapidly fluctuating eddies. These small whirlpools or vortices transport heat efficiently across the fluid in proportion to the size of the eddies. Higher wind speeds result in larger eddies. However, vegetation can itself affect wind speeds – immediately adjacent to the surface, wind speeds are lower. Below canopy, the wind profile is assumed in ‘microclimf’ to be affected foliage density (determined from plant area and vegetation height). Above canopy, the wind profile is assumed to be governed as the roughness of the surface, in turn dependent on vegetation height and leaf area. 
 
 The key step in computing the sensible heat flux is thus computing wind speeds. In `microclimf`, the effects of terrain on wind speed is also accounted for by applying a topographic shelter coefficient. Wind calculations are performed using function `wind`. Since the wind profile at any given location is not just dependent on the surface roughness at a point location, but also on surface upwind, the function contains an optional input parameter `xyf` controlling the number of pixels, and hence the distance over which surface roughness is averaged. 
 
 In the example below wind speed is calculated for 5 cm above ground. The default degree of smoothing is assumed, so `xyf` is not specified.
 
 ```{r eval=FALSE}
+micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
 micro<-wind(micro, reqhgt = 0.05)
 plot(raster(micro$uz[,,1]),col=mypal)
 ```
 ![](images/plot5.png)\
+
+The calculation of wind profiles within and above canopies, assumes that the height at which wind is measured is higher than the height at which wind is modelled. Typically standard meteorological datasets assume that provide data for 2 m above ground, the default assumption in in the `modelin` function where `windhgt` is set to 2. In `microclimf' this issue is handled automatically by adjusting the wind speed to derive values for 2 m above the tallest vegetation in the study area. This is achieved by assuming the wind measurement is obtained, in accordance with standard WMO guidelines, over a short grass surface not subject to topographic sheltering. It is therefore height-adjusted assuming a  surface roughness equivelent to that of a short grass surface.  
 
 ### Latent heat
 Latent heat is the form of heat energy released or absorbed by a surface as a result of evaporation, transpiration, condensation or sublimation or deposition. Latent heat exchange can be quantified using an equation analogous to Fourier’s law of heat transport, except that instead of being determined by a temperature gradient, latent heat is controlled by a water vapour concentration gradient. As water evaporates from a wet surface, the concentration of water molecules in the gas increases until an equilibrium is reached such that the number of molecules escaping equals the number being recaptured. When the temperature of the surface increases, the random kinetic energy of the molecules increases and more water escapes. The equilibrium reached in a closed system is known as the saturated vapour pressure and follows a predictable relationship with temperature. The water potential of leaves and the soil surface, except under strong drought conditions, is generally such that they can be treated as wet surfaces, and the vapour concentration at the evaporating surface is thus equal to the saturated vapour concentration at surface temperature. The air, however, is not necessarily saturated, and the term ‘relative humidity’ is used to describe the vapour pressure of the air relative to saturated.
@@ -329,6 +364,7 @@ plot(raster(micro$Tz[,,4094]),col=mypal)
 
 ![](images/plot7.png)\
 
+It can be seen that temperatures close the ground, get pretty hot, sometimes hotter than the ground surface itself. This is particularly the case for heights close to the top of  short vegetation, where the influenced by high heat exchange with surface of the vegetation where much of the radiation is absorbed.   
 
 ### Below ground temperature
 The amount of heat stored in the air is small compared to amount of heat transferred though it, but this is not the case with soil. Here, heat storage must be considered. The assumption in `microclimf` is that fluctuations in surface temperature are increasing dampened at greater depths, but that there is also a phase shift in temperature fluctuations, with heat storage resulting in time-delays in timing of maximal temperatures, as follows. 

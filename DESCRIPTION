@@ -22,16 +22,19 @@ RoxygenNote: 7.1.1
 Imports: ncdf4,
     sp,
     raster,
+    sf,
     rgdal,
     stats,
     abind,
-    zoo
-Suggests: knitr,
+    zoo,
+    stats
+Suggests: 
+    knitr,
     rmarkdown,
-    plotly,
-	  testthat,
+    plotly
 VignetteBuilder: knitr
 URL: https://github.com/ilyamaclean/microclimf
 BugReports: http://github.com/microclimf/issues
 Depends: 
     R (>= 2.10)
+Config/testthat/edition: 3

@@ -41,8 +41,9 @@
 #' @param rh a vector of relative humidities (percentage)
 #' @param pk a vector of atmospheric pressure (kPa)
 #' @param Rsw a vector of global shortwave radiation values (W/m^2)
+#' @param skyem sky emissivity (0-1)
 #' @param snowalb a vector of snow albedos (as returned by [pSnow()])
-#' @param snowem optionally, numeric value of snow emissivity
+#' @param snowem optionally, numeric value of snow emissivity (~>0.95)
 #' @param zm optionally, numeric value of roughness length for momentum transfer of snow surface (m)
 #' @param umin optionally, numeric value indicating minimum wind speed used in conductivity calculations (m/s)
 #' @return a vector of snow temperatures (deg C)

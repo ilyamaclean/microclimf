@@ -16,7 +16,7 @@ globalVariables("globclim")
     x<-x[sel]
     y<-y[sel]
     tme <- as.POSIXct((x * 24 * 3600), origin = paste0(yr - 1,"-12-31 12:00"), tz = "GMT")
-    xy <- spline(tme, y, n = diy * 24 + 241)
+    xy <- stats::spline(tme, y, n = diy * 24 + 241)
     tme2 <- as.POSIXlt(xy$x, origin = "1970-01-01 00:00", tz = "GMT")
     sel <- which(tme2$year + 1900 == yr)
     y <- xy$y[sel]

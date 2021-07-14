@@ -13,6 +13,7 @@
 #' @return a list of the following:
 #' @return `soilm1` soil moisture fraction in surface layer
 #' @return `soilm2` soil moisture fraction in sub-surface layer
+#' @importFrom graphics par
 #' @export
 #' @examples
 #' # Calculate net radiation from inbuilt climate dataset
@@ -221,7 +222,7 @@ canopyrad <- function(micro, slr = NA, apr = NA, hor = NA) {
   radm<-micro$k*si
   swabs<-(1-micro$lref)*
     ((1-micro$trdi)*radm*micro$dirr+
-       (1-micro$trdf)*micro$svfa*micro$difr)
+    (1-micro$trdf)*micro$svfa*micro$difr)
   lwabs<-0.97*(1-micro$trdf)*micro$svfa*micro$lwsky
   micro$swabs<-swabs
   micro$lwabs<-lwabs
@@ -478,11 +479,20 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(N
   om<-(2*pi)/(24*3600)
   ka<-k/pcs
   DD<-sqrt((2*ka)/om)
+  # Calculate G
+  A0<-aperm(apply(T0,c(1,2),.A0f),c(2,3,1))
+  r<-raster(A0[,,1])
+  cda<-micro$climdata
+  t0<-.vta(.t0f(cda$temp),r)
+  tt<-(c(1:length(cda$temp))-1)%%24
+  tt<-.vta(tt*3600,r)
+  G<-(sqrt(2)*A0*.rta(raster(k),hiy)*sin(om*(tt-t0)+(pi/4)))/.rta(raster(DD),hiy)
   # Save elements to micro
   micro$T0<-T0
   micro$theta<-theta
   micro$ka<-ka
   micro$DD<-DD
+  micro$G<-G
   # Clean micro
   micro$prec<-NULL
   micro$rho<-NULL
@@ -490,8 +500,6 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(N
   micro$Vq<-NULL
   micro$Mc<-NULL
   micro$soilc<-NULL
-  micro$radGsw<-NULL
-  micro$radGlw<-NULL
   micro$lwout<-NULL
   micro$trdf<-NULL
   return(micro)
@@ -575,7 +583,7 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
     rnet2<-rnet*mn
     sm<-soilmpredict(micro_mn$prec,rnet1,"Loam",soilinit,soilmcoefs)
     thetamx<-soilmdistribute(sm$soilm1,micro_mn$dtm)
-    sm<-soilmpredict(micro$prec,rnet2,"Loam",soilinit,soilmcoefs)
+    sm<-soilmpredict(micro_mn$prec,rnet2,"Loam",soilinit,soilmcoefs)
     thetamn<-soilmdistribute(sm$soilm1,micro_mn$dtm)
   }
   # Adjust soil moisture
@@ -644,15 +652,28 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
   om<-(2*pi)/(24*3600)
   ka<-k/pcs
   DD<-sqrt((2*ka)/om)
+  # Calculate G
+  A0<-(T0mx-T0mn)/2
+  r<-raster(A0[,,1])
+  cda<-micro$climdata
+  t0<-.vta(.t0fd(cda$temp),r)
+  tme_mn<-micro_mn$tme
+  tme_mx<-micro_mx$tme
+  tt_mn<-.vta(tme_mn$hour*3600,r)
+  tt_mx<-.vta(tme_mx$hour*3600,r)
+  G_mn<-(sqrt(2)*A0*.rta(raster(k),diy)*sin(om*(tt_mn-t0)+(pi/4)))/.rta(raster(DD),diy)
+  G_mx<-(sqrt(2)*A0*.rta(raster(k),diy)*sin(om*(tt_mx-t0)+(pi/4)))/.rta(raster(DD),diy)
   # Save elements to micro
   micro_mn$T0<-T0mn
   micro_mn$theta<-theta
   micro_mn$ka<-ka
   micro_mn$DD<-DD
+  micro_mn$G<-G_mn
   micro_mx$T0<-T0mx
   micro_mx$theta<-theta
   micro_mx$ka<-ka
   micro_mx$DD<-DD
+  micro_mx$G<-G_mx
   # Clean micro
   micro_mn$prec<-NULL
   micro_mn$rho<-NULL
@@ -660,8 +681,6 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
   micro_mn$Vq<-NULL
   micro_mn$Mc<-NULL
   micro_mn$soilc<-NULL
-  micro_mn$radGsw<-NULL
-  micro_mn$radGlw<-NULL
   micro_mn$lwout<-NULL
   micro_mn$trdf<-NULL
   micro_mx$prec<-NULL
@@ -670,8 +689,6 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
   micro_mx$Vq<-NULL
   micro_mx$Mc<-NULL
   micro_mx$soilc<-NULL
-  micro_mx$radGsw<-NULL
-  micro_mx$radGlw<-NULL
   micro_mx$lwout<-NULL
   micro_mx$trdf<-NULL
   out<-list(micro_mn=micro_mn,micro_mx=micro_mx,climdata=microd$climdata)
@@ -688,8 +705,7 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
 #' @param radabs absorbed long and shortwave radiation (W/m2)
 #' @param gHa boundary layer conductances for heat (mol/m^2/s)
 #' @param gs stomatal conductance (mol/m^2/s)
-#' @param g0 conductance to ground
-#' @param T0 ground surface temperature (deg C)
+#' @param G rate of ground heat storage (W/m2)
 #' @param es saturated vapour pressure (kPa) at temperature tc (calculated if NA)
 #' @param tdew dewpoint temperature (deg C) (calculated if NA, see details)
 #' @param surfwet proportion of leaf or canopy acting as wet surface
@@ -711,7 +727,7 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
 #' wet surface. However, except when extremely droughted, the matric potential of
 #' leaves is such that `surfwet` ~ 1.
 #' @export
-PenMont <- function(tc,pk,ea,radabs,gHa,gs,g0,T0,es=NA,tdew=NA,surfwet=1,allout=FALSE) {
+PenMont <- function(tc,pk,ea,radabs,gHa,gs,G,es=NA,tdew=NA,surfwet=1,allout=FALSE) {
   if (is.na(es[1])) es<-.satvap(tc)
   if (is.na(tdew[1])) tdew<-.dewpoint(ea,tc)
   delta<-.delta(tc,radabs)
@@ -719,17 +735,15 @@ PenMont <- function(tc,pk,ea,radabs,gHa,gs,g0,T0,es=NA,tdew=NA,surfwet=1,allout=
   sb<-5.67*10^-8
   gHr<-gHa+(4*0.97*sb*(tc+273.15)^3)/29.3
   Rem<-0.97*sb*(tc+273.15)^4
-  HG<-29.3*(gHr*tc+g0*T0)
   m<-44526*(gv/pk)
-  L<-m*(delta*tc-es+ea)
-  tcan<-(radabs-Rem+HG+L)/(29.3*(gHr+g0)+m*delta)
+  L<-m*(es-ea)
+  tcan<-(radabs-Rem-L-G)/(29.3*gHr+m*delta)+tc
   tcan<-.lim(tcan,tdew)
   H<-29.3*gHa*(tcan-tc)
   if (allout) {
     estl<-.satvap(tcan)*surfwet
     L<-m*(estl-ea)
     L<-.lim(L,0)
-    G<-29.3*g0*(T0-tcan)
     out<-list(tcan=tcan,H=H,L=L,G=G)
   } else out<-list(tcan=tcan,H=H)
   return(out)
@@ -749,7 +763,7 @@ PenMont <- function(tc,pk,ea,radabs,gHa,gs,g0,T0,es=NA,tdew=NA,surfwet=1,allout=
 #' @details a broadly realistic estimate of foliage density is generated
 #' using a mirrored gamma distribution (i.e. right (top) rather than left-skewed).
 #' in applying the gamma distribution `z / hgt` is re-scaled to the range 0-10.
-#'
+#' @importFrom stats dgamma pgamma
 #' @export
 #' @return a list of leaf densities and plant area index values
 #'
@@ -835,9 +849,17 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
   gs<-.layercond(.vta(climdata$swrad,micro$dtm),micro$gsmax,100)
   gBs<-lais*gs
   # Calculate Latent heat flux
-  radabs<-micro$swabs+micro$lwabs
+  radabs<-micro$swabs+micro$lwabs+micro$radGsw+micro$radGlw
   TH<-PenMont(micro$tc,micro$pk,micro$ea,radabs,micro$gHa,
-              gBs,micro$g0,micro$T0,micro$estl,micro$tdew,surfwet)
+              gBs,micro$G,micro$estl,micro$tdew,surfwet)
+  # Set limits in TH
+  Tu<-0.73673*(0.015*TH$H^4)^0.2
+  Tu<-0.73673*(0.01775*TH$H^4)^0.2
+  Tu[Tu<0]<-0
+  TH$tcan<-.lim(TH$tcan,(micro$tc+Tu),up=TRUE)
+  TH$tcan<-.lim(TH$tcan,(micro$tc+40),up=TRUE)
+  TH$tcan<-.lim(TH$tcan,80,up=TRUE)
+  # Set maximum temperature
   # Select below and above canopy
   selA<-which(micro$vha<=reqhgt)
   selB<-which(micro$vha>reqhgt)
@@ -847,7 +869,9 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
   r1<-suppressWarnings(log((reqhgt-micro$d)/zh)/
                          log((micro$maxhgt-micro$d)/zh))
   ln<-suppressWarnings(log((reqhgt-micro$d)/zh)+r1*dbm$psi_h)
-  ln[ln<0]<-0
+  ln[ln<0.1]<-0.1
+  ln[is.na(ln)]<-0.1
+  xx<-(TH$H/(503.96*micro$uf)/ln)
   Tz<-TH$tcan-(TH$H/(503.96*micro$uf)/ln)
   sel<-which(is.na(Tz) | is.infinite(Tz))
   Tz[sel]<-TH$tcan[sel]
@@ -872,9 +896,14 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
   radzabs<-radz$radzsw+radz$radzlw
   # Calculate conductivities
   le<-length(tme)
-  gtt<-.gcanopy(micro$l_m,micro$a,micro$vha,micro$tc,micro$uh,micro$vha,reqhgt)
-  gt0<-.gcanopy(micro$l_m,micro$a,micro$vha,micro$tc,micro$uh,reqhgt,0)
+  gtt<-.gcanopy(micro$l_m,micro$a,micro$vha,micro$uh,micro$vha,reqhgt,micro$gmin)
+  gt0<-.gcanopy(micro$l_m,micro$a,micro$vha,micro$uh,reqhgt,0,micro$gmin)
   gHa<-suppressWarnings(1.89*sqrt(micro$uz/(0.71*.rta(micro$leafd,le))))
+  pai<-micro$pai
+  pai[pai<1]<-1
+  gmn<-micro$gmin/(2*pai)
+  sel<-which(gHa<gmn)
+  gHa[sel]<-gmn[sel]
   gC<-.layercond(radz$radzsw,micro$gsmax)
   gv<-1/(1/gHa+1/gC)
   gtz<-43*micro$uz
@@ -892,13 +921,12 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
   Th<-TH$tcan-(TH$H/(503.96*micro$uf)/ln)
   sel<-which(is.na(Th) | is.infinite(Th))
   Th[sel]<-TH$tcan[sel]
-
   tln<-suppressWarnings(.tleaf(Th,micro$T0,micro$estl,micro$ea,micro$pk,gtt,gt0,gHa,gv,gL,
                                radzabs,leafdens,surfwet,soilrh))
   Tz[selB]<-tln$tn[selB]
   # Calculate conductivity from reqhgt to maxhgt
-  gTr<-.gturb(micro$uf,micro$d,micro$zm,micro$maxhgt,reqhgt,dbm$psi_h)
-  gTh<-suppressWarnings(.gturb(micro$uf,micro$d,micro$zm,reqhgt,micro$vha,dbm$psi_h))
+  gTr<-.gturb(micro$uf,micro$d,micro$zm,micro$maxhgt,reqhgt,dbm$psi_h,micro$gmin)
+  gTh<-suppressWarnings(.gturb(micro$uf,micro$d,micro$zm,reqhgt,micro$vha,dbm$psi_h,micro$gmin))
   eh<-.satvap(TH$tcan)*surfwet
   er<-(gTr*micro$ea+gTh*eh)/(gTr+gTh)
   # Calculate relative humidity
@@ -910,6 +938,8 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
   tmn<-.dewpoint(er,Tz)
   Tz<-.lim(Tz,tmn)
   Tz<-.lim(Tz,(micro$tc-5))
+  # Set maximum temperature
+  Tz<-.lim(Tz,(micro$tc+Tu),up=TRUE)
   Tz<-.lim(Tz,(micro$tc+40),up=TRUE)
   Tz<-.lim(Tz,80,up=TRUE)
   # Replace tleaf with NA, where tleaf is < reqhgt
@@ -953,6 +983,7 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
 #' @seealso [temphumE()] for running the above ground component of the microclimate model
 #'
 #' @import raster zoo abind
+#' @importFrom stats filter
 #' @export
 below_hr<-function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact =1.5,
                    slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
@@ -979,7 +1010,7 @@ below_hr<-function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact
 #' @description The function `below_dy` runs the below ground component of
 #' the microclimate model in daily time increments.
 #'
-#' @param micro object of class microin as returned by [modelin()]
+#' @param microd object of class microin as returned by [modelin()]
 #' @param reqhgt height above ground at which model outputs are needed (m). Must be negative.
 #' @param expand optional logical indicating whethet to expand daily values to hourly
 #' @param xyf optional input for called function [wind()]
@@ -1003,6 +1034,7 @@ below_hr<-function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact
 #' @seealso [below_hr()] for running the below ground component of the microclimate model in hourly timesteps
 #'
 #' @import raster zoo abind
+#' @importFrom stats filter
 #' @export
 below_dy<-function(microd, reqhgt, expand = TRUE, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
                    slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {

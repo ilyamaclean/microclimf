@@ -28,22 +28,22 @@
 #' @examples
 #' # No warnings or errors given:
 #' checks<-checkinputs(climdata, rainfall, vegp, soilc, dtmcaerth)
-#' # Warning given
-#' weather<-climdata
-#' weather$relhum[1]<-101
-#' checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
-#' # Error given
-#' weather<-climdata
-#' weather$pres<-weather$pres*1000
-#' checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
-#' # Error given for vegp
-#' vegp2<-vegp
-#' vegp2$clump<-1
-#' checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
-#' # Warning given for vegp
-#' vegp2<-vegp
-#' vegp2$pai<-vegp$pai*10
-#' checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
+#' # Warning given (not run)
+#' # weather<-climdata
+#' # weather$relhum[1]<-101
+#' # checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
+#' # Error given (NB not run)
+#' # weather<-climdata
+#' # weather$pres<-weather$pres*1000
+#' # checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
+#' # Error given for vegp (not run)
+#' # vegp2<-vegp
+#' # vegp2$clump<-1
+#' # checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
+#' # Warning given for vegp (not run)
+#' # vegp2<-vegp
+#' # vegp2$pai<-vegp$pai*10
+#' # checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
 checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, daily = FALSE) {
   check.names<-function(nms,char) {
     sel<-which(nms==char)
@@ -498,7 +498,7 @@ modelin_dy <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid =
 #' @export
 modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soilc, dtm, merid = 0, dst = 0, runchecks = FALSE) {
   climdata<-.catoweather(climarray)
-  climd<-.climtodaily(climarray,climdata)
+  climd<-.climtodaily(climdata)
   tme2<-tme[climd$smn]
   micro_mn<-modelina(climd$climn,rainarray,tme2,r,altcorrect,vegp,soilc,dtm,merid,dst,runchecks,daily=TRUE)
   tme2<-tme[climd$smx]

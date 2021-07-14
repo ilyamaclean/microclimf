@@ -233,6 +233,7 @@
 #' @return `a` constant controlling sub-surface and surface water exchange.
 #' @return `pwr` exponent controlling sub-surface and surface water exchange.
 #' @return `rms` RMS Error of model fit.
+#' @importFrom graphics par
 #' @export
 #'
 #' @details The format and and units of `weather` must follow that in the example
@@ -318,6 +319,9 @@ fitsoilm <- function(weather, rainfall, soilm, soiltype, plotout = 2, max.iter=2
 #' dataset `climdata`. If `soilmcoefs` is not supplied, the inbuilt parameters in
 #' [soilparameters()] are used to derive soil moisture.
 #'
+#' @importFrom grDevices rgb
+#' @importFrom graphics par
+#' @importFrom stats lm
 #' @export
 #' @examples
 #' require(NicheMapR) # - see https://github.com/mrke/NicheMapR
@@ -367,7 +371,3 @@ fitsoilt <- function(weather, rainfall, soiltemp, soiltype, theta = NA, plotout 
               t4=m1$coef[5,1],t5=m1$coef[6,1],t6=m1$coef[7,1],t7=m1$coef[8,1],
               rms=rms))
 }
-
-
-
-
