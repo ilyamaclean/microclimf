@@ -21,6 +21,8 @@ below_dy(
 )
 }
 \arguments{
+\item{microd}{object of class microin as returned by [modelin()]}
+
 \item{reqhgt}{height above ground at which model outputs are needed (m). Must be negative.}
 
 \item{expand}{optional logical indicating whethet to expand daily values to hourly}
@@ -51,8 +53,6 @@ from height of tallest vegetation or as 2 m, whichever is greater, if not suppli
 
 \item{twi}{optional raster of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
-
-\item{micro}{object of class microin as returned by [modelin()]}
 }
 \value{
 `Tz` Array of air temperatures at height `reqhgt` below ground (deg C)

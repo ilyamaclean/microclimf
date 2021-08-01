@@ -265,18 +265,15 @@
 }
 #' Calculate zero plane displacement
 .zeroplanedis <- function(hgt, pai) {
-  pai[pai < 0.1] <- 0.1
-  pai[pai > 20] <- 20
-  m<-0.0609*log(pai)+0.5894
-  d<-m*hgt
+  d<-(1-(1-exp(-sqrt(7.5*pai)))/sqrt(7.5*pai))*hgt
   d
 }
 #' Calculate roughness length governing momentum transfer
-.roughlength <- function(hgt, pai, zm0 = 0.004) {
-  pai[pai < 0.1] <- 0.1
-  pai[pai > 20] <- 20
-  m <- 0.1*pai+0.08+(pai>0.6)*(-0.0239*log(pai)+0.1275)
-  zm<-m*hgt
+.roughlength <- function(hgt, pai, zm0 = 0.003) {
+  d<-.zeroplanedis(hgt,pai)
+  ur<-sqrt(zm0+(0.3*pai)/2)
+  ur[ur>0.3]<-0.3
+  zm<-(hgt-d)*exp(-0.4*ur-0.193)
   zm[zm<zm0]<-zm0
   zm
 }
@@ -360,17 +357,14 @@
   return(list(psi_h=psi_h,psi_m=psi_m))
 }
 # Calculates below canopy mixing length
-.mixinglength <- function(hgt, PAI, x) {
-  Ld<-PAI/hgt
-  lmg<-(0.2/(pi*Ld))^0.5
-  lms <- (0.015*hgt/(pi*PAI))^(1/3)
-  wgt<-x/2
-  sel<-which(x>1)
-  wgt[sel]<-1-(0.5/x[sel])
-  l_m<-wgt*lms+(1-wgt)*lmg
+.mixinglength <- function(hgt, pai, zm0 = 0.003, mnlm = 0.04) {
+  d<-.zeroplanedis(hgt,pai)
+  zm<-.roughlength(hgt,pai,zm0)
+  l_m<-(0.32*(hgt-d))/log((hgt-d)/zm)
+  l_m[l_m<mnlm]<-mnlm
   l_m
 }
-# Ensures uz above canopy cannot drop below frictisan velocity
+# Ensures uz above canopy cannot drop below friction velocity
 .minwind <- function(uz, uf) {
   sel<-which(uz<uf)
   uz[sel]<-uf[sel]
@@ -378,8 +372,20 @@
   uz[sel]<-uf[sel]
   uz
 }
+# Calculate forced convection (used for calculating minimum conductivity)
+.gforced<-function(leafd,H) {
+  d<-0.71*leafd
+  dT<-0.73673*(d*H^4)^0.2
+  dT2<-0.80936*(d*H^4)^0.2
+  gha<-0.05*(dT/d)^0.25
+  gha2<-0.025*(dT2/d)^0.25
+  sel<-which(H<0)
+  gha[sel]<-gha2[sel]
+  gha[gha<0.1]<-0.1
+  gha
+}
 #' Calculates turbulent molar conductivity above canopy
-.gturb<-function(uf,d,zm,z1,z0=NA,psi_h=0) {
+.gturb<-function(uf,d,zm,z1,z0=NA,psi_h=0,gmin) {
   zh<-0.2*zm
   if (is.na(z0)[1]) {
     z0<-d+zh
@@ -390,21 +396,18 @@
   lnr<-ln*log((z1-d)/zh)
   psx<-lnr*psi_h
   g<-(0.4*43*uf)/(ln+psx)
-  gmin<-(43*2.026628e-05)/2
-  g[g<gmin]<-gmin
+  sel<-which(g<gmin)
+  g[sel]<-gmin[sel]
   sel<-which(g>1e10)
   g[sel]<-1e10
   g
 }
 #' Calculates turbulent molar conductivity within canopy
-.gcanopy <- function(l_m,a,hgt,tc,uh,z1,z0) {
+.gcanopy <- function(l_m,a,hgt,uh,z1,z0,gmin) {
   e0<-exp(-a*(z0/hgt-1))
   e1<-exp(-a*(z1/hgt-1))
   g<-(l_m*21.5*uh*a)/(e0-e1)
   # Set minimum
-  dTdz<-abs(1/abs(z1-z0))
-  Kmin<-(1.5*l_m^2/0.74)^(2/3)*((4.6*dTdz)/(tc+273.15))^0.5
-  gmin<-(43*Kmin)/abs(z1-z0)
   sel<-which(g<gmin)
   g[sel]<-gmin[sel]
   g[is.na(g)]<-1/mean(1/gmin)
@@ -542,13 +545,18 @@
   # Calculate approximate diabatic correction
   dbm<-.diabatic(micro$tc,micro$uf,micro$d,micro$zm,micro$maxhgt,Hest)
   # Calculate boundary layer conductivity
-  gHa<-.gturb(micro$uf,micro$d,micro$zm,micro$maxhgt,psi_h=dbm$psi_h)
+  pai<-micro$pai
+  pai[pai<1]<-1
+  lwi<-.rta(micro$leafd,dim(pai)[3])
+  gmin<-.gforced(lwi,Hest)*2*pai
+  gHa<-.gturb(micro$uf,micro$d,micro$zm,micro$maxhgt,psi_h=dbm$psi_h,gmin=gmin)
   # Calculate g0
   micro<-wind(micro,xyf,zf,dbm$psi_m,reqhgt,slr=slr,apr=apr,hor=hor,wsa=wsa,maxhgt=maxhgt)
   hes<-micro$d+0.2*micro$zm
-  g0<-.gcanopy(micro$l_m,micro$a,micro$vha,micro$tc,micro$uh,hes,0)
+  g0<-.gcanopy(micro$l_m,micro$a,micro$vha,micro$uh,hes,0,gmin)
   micro$gHa<-gHa
   micro$g0<-g0
+  micro$gmin<-gmin
   micro$dbm<-dbm
   # Clean micro
   micro$vegx<-NULL
@@ -743,7 +751,7 @@
              merid=merid,dst=dst)
   mout
 }
-# Expandsion of clim data to hourly ignoring T0 and soilm
+# Expansion of climate data to hourly ignoring T0 and soilm
 .expandclim2<-function(mout_mn,mout_mx,climdata) {
   climd<-.climtodaily(climdata)
   # Expand Tz
@@ -996,4 +1004,35 @@
                       windspeed=ws,
                       winddir=wd)
   weather
+}
+#' Corrects wind profile
+.windcorrect <- function(uz, windhgt, maxhgt) {
+  d<-0.08
+  zm<-0.01476
+  zh<-0.1*zm
+  uf<-(0.4*uz)/log((windhgt-d)/zm)
+  uo<-(uf/0.4)*log((maxhgt+2-d)/zm)
+  uo
+}
+# Calculates diurnal temperature fluctuation
+.A0f<-function(tc) {
+  tc<-matrix(tc,ncol=24,byrow=T)
+  mn<-apply(tc,1,min)
+  mx<-apply(tc,1,max)
+  A0<-(mx-mn)/2
+  rep(A0,each=24)
+}
+# Calculates reference time for phase of diurnal temperature fluctuation
+.t0f<-function(tc) {
+  tc<-matrix(tc,ncol=24,byrow=T)
+  tmx<-apply(tc,1,which.max)-1
+  t0<-(tmx-6)%%24
+  rep(t0*3600,each=24)
+}
+# Calculates reference time for phase of diurnal temperature fluctuation (daily)
+.t0fd<-function(tc) {
+  tc<-matrix(tc,ncol=24,byrow=T)
+  tmx<-apply(tc,1,which.max)-1
+  t0<-(tmx-6)%%24
+  t0
 }

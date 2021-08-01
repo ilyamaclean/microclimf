@@ -28,22 +28,22 @@
 #' @examples
 #' # No warnings or errors given:
 #' checks<-checkinputs(climdata, rainfall, vegp, soilc, dtmcaerth)
-#' # Warning given
-#' weather<-climdata
-#' weather$relhum[1]<-101
-#' checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
-#' # Error given
-#' weather<-climdata
-#' weather$pres<-weather$pres*1000
-#' checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
-#' # Error given for vegp
-#' vegp2<-vegp
-#' vegp2$clump<-1
-#' checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
-#' # Warning given for vegp
-#' vegp2<-vegp
-#' vegp2$pai<-vegp$pai*10
-#' checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
+#' # Warning given (not run)
+#' # weather<-climdata
+#' # weather$relhum[1]<-101
+#' # checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
+#' # Error given (NB not run)
+#' # weather<-climdata
+#' # weather$pres<-weather$pres*1000
+#' # checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
+#' # Error given for vegp (not run)
+#' # vegp2<-vegp
+#' # vegp2$clump<-1
+#' # checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
+#' # Warning given for vegp (not run)
+#' # vegp2<-vegp
+#' # vegp2$pai<-vegp$pai*10
+#' # checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
 checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, daily = FALSE) {
   check.names<-function(nms,char) {
     sel<-which(nms==char)
@@ -223,7 +223,8 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
 #' @param rainfall a vector of daily rainfall
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
-#' @param dtm a RasterLayer onject of elevations (see details)
+#' @param dtm a RasterLayer object of elevations (see details)
+#' @param windhgt height of wind speed measurement (m) in weather dataset (see details).
 #' @param merid optionally, longitude of local time zone meridian (decimal degrees)
 #' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
 #' @param runchecks optional logical indicating whteher to call [checkinputs()] to run
@@ -236,13 +237,18 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
 #' time increment of `weather`. Other vegetation paramaters, including vegetation
 #' height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
 #' the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
-#' metres and the coordinate reference system must be defined.
+#' metres and the coordinate reference system must be defined. As not all wind
+#' measurements are at reference height, the height of the wind speed measurement
+#' must be specified if not 2 m. To enable calculation of below-canopy wind profiles
+#' in tall canopy, the wind speed is adjusted to give values for a height 2 m above
+#' the maximum vegetation height, using the wind-height profile for a reference grass
+#' surface.
 #'
 #' @seealso [checkinputs()], [modelin_dy()], [modelina()]
 #'
 #' @import raster sp
 #' @export
-modelin <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, runchecks = TRUE,daily = FALSE) {
+modelin <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = TRUE,daily = FALSE) {
   if (runchecks) {
     rc<-checkinputs(weather,rainfall,vegp,soilc,dtm,merid,dst,daily)
     weather<-rc$weather
@@ -250,6 +256,9 @@ modelin <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, run
     vegp<-rc$vegp
     soilc<-rc$soilc
   }
+  # correct wind height
+  mxhgt<-max(.is(vegp$hgt),na.rm=T)
+  weather$windspeed<-.windcorrect(weather$windspeed,windhgt,mxhgt)
   r<-dtm
   ll<-.latlongfromraster(r)
   tme<-as.POSIXlt(weather$obs_time,tz="UTC")
@@ -437,10 +446,10 @@ modelina<-function(climarray,rainarray,tme,r,altcorrect = 0, vegp, soilc, dtm, m
 #'
 #' @import raster
 #' @export
-modelin_dy <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, runchecks = TRUE) {
+modelin_dy <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = TRUE) {
   climd<-.climtodaily(weather)
-  micro_mn<-modelin(climd$climn,rainfall,vegp,soilc,dtm,merid,dst,runchecks,daily=TRUE)
-  micro_mx<-modelin(climd$climx,rainfall,vegp,soilc,dtm,merid,dst,runchecks,daily=TRUE)
+  micro_mn<-modelin(climd$climn,rainfall,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
+  micro_mx<-modelin(climd$climx,rainfall,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
   out<-list(micro_mn=micro_mn,micro_mx=micro_mx,climdata=weather)
   class(out)<-"microindaily"
   return(out)
@@ -489,7 +498,7 @@ modelin_dy <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, 
 #' @export
 modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soilc, dtm, merid = 0, dst = 0, runchecks = FALSE) {
   climdata<-.catoweather(climarray)
-  climd<-.climtodaily(climarray,climdata)
+  climd<-.climtodaily(climdata)
   tme2<-tme[climd$smn]
   micro_mn<-modelina(climd$climn,rainarray,tme2,r,altcorrect,vegp,soilc,dtm,merid,dst,runchecks,daily=TRUE)
   tme2<-tme[climd$smx]

@@ -28,9 +28,11 @@ SnowTemp(
 
 \item{Rsw}{a vector of global shortwave radiation values (W/m^2)}
 
+\item{skyem}{sky emissivity (0-1)}
+
 \item{snowalb}{a vector of snow albedos (as returned by [pSnow()])}
 
-\item{snowem}{optionally, numeric value of snow emissivity}
+\item{snowem}{optionally, numeric value of snow emissivity (~>0.95)}
 
 \item{zm}{optionally, numeric value of roughness length for momentum transfer of snow surface (m)}
 

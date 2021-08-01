@@ -2,7 +2,7 @@
 % Please edit documentation in R/snowmodel.R
 \name{fitsnow}
 \alias{fitsnow}
-\title{Derives snow melt coefficient form empirical data}
+\title{Derives snow melt coefficient from empirical data}
 \usage{
 fitsnow(
   weather,
