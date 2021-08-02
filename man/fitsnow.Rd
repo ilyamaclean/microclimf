@@ -30,7 +30,7 @@ fitsnow(
 
 \item{astc}{optionally, numeric value indicating the temperature at which precipitation falls as snow (deg C)}
 
-\item{vector}{of empirically-derived hourly snow depths (cm)}
+\item{snowdepth}{vector of empirically-derived hourly snow depths (cm)}
 }
 \value{
 a list of the following:
