@@ -281,8 +281,14 @@ wind <- function(micro, xyf = NA, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr
     micro<-canopyrad(micro,slr,apr,hor)
   }
   # calculate xyf and z factor
+  mdm<-trunc(min(dim(micro$dtm)[1:2])/2)
   if (is.na(xyf)) {
     xyf<-trunc(pmax(10/res(micro$dtm)[1],10))
+    xyf<-ifelse(xyf>mdm,mdm,xyf)
+  }
+  if (xyf > mdm) {
+    warning(paste0("xyf too large. Setting to ",mdm))
+    xyf<-mdm
   }
   if (is.na(zf)) {
     if(ti==1) {
@@ -291,7 +297,9 @@ wind <- function(micro, xyf = NA, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr
   }
   # Calculate roughness lengths
   if (is.null(micro$uf)[1]) {
-    hgt<-.smr(micro$veghgt,xyf)
+    if (xyf > 1) {
+      hgt<-.smr(micro$veghgt,xyf)
+    } else hgt<-micro$veghgt
     hgt[hgt<0.004*10]<-0.004*10
     pai2<-.sma(micro$pai,xyf,zf)
     pai2[pai2<0.001]<-0.001
@@ -655,7 +663,7 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
   # Calculate G
   A0<-(T0mx-T0mn)/2
   r<-raster(A0[,,1])
-  cda<-micro$climdata
+  cda<-microd$climdata
   t0<-.vta(.t0fd(cda$temp),r)
   tme_mn<-micro_mn$tme
   tme_mx<-micro_mx$tme

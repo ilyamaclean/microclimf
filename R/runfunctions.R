@@ -7,7 +7,7 @@
 #' @param rainfall a vector of daily rainfall
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
-#' @param dtm a RasterLayer onject of elevations (see details)
+#' @param dtm a RasterLayer object of elevations (see details)
 #' @param merid optionally, longitude of local time zone meridian (decimal degrees)
 #' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
 #' @param daily optional logical indicating whether input weather data are daily
