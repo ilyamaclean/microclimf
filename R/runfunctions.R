@@ -116,7 +116,7 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
   sel<-which(dirr<0)
   if (length(sel)>0) {
     weather$difrad[sel]<-weather$swrad[sel]
-    warning("Diffuse radiation values higher than shortwave radiation set to shortwave radiation values")
+    warning("Diffuse radiation values higher than shortwave radiation, and so was set to shortwave radiation values")
   }
   dni<-dirr/si
   dni[is.na(dni)]<-0
