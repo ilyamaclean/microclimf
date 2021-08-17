@@ -24,7 +24,7 @@ checkinputs(
 
 \item{soilc}{an object of class soilcharac as returned by [soilcfromtype()]}
 
-\item{dtm}{a RasterLayer onject of elevations (see details)}
+\item{dtm}{a RasterLayer object of elevations (see details)}
 
 \item{merid}{optionally, longitude of local time zone meridian (decimal degrees)}
 
