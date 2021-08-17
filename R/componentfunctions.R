@@ -987,7 +987,7 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
 #' @export
 below_hr<-function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact =1.5,
                    slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
-  xx <- function(x,y) as.numeric(filter(c(x,x),rep(1/y,y), sides = 2))
+  xx <- function(x,y) as.numeric(stats::filter(c(x,x),rep(1/y,y), sides = 2))
   if (is.null(micro$T0[1])) {
     micro<-soiltemp_hr(micro,reqhgt,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
   }
@@ -1038,7 +1038,7 @@ below_hr<-function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact
 #' @export
 below_dy<-function(microd, reqhgt, expand = TRUE, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
                    slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
-  xx <- function(x,y) as.numeric(filter(c(x,x),rep(1/y,y), sides = 2))
+  xx <- function(x,y) as.numeric(stats::filter(c(x,x),rep(1/y,y), sides = 2))
   micro_mn<-microd$micro_mn
   micro_mx<-microd$micro_mx
   if (is.null(micro_mn$T0[1])) {
