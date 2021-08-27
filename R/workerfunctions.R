@@ -812,7 +812,7 @@
 #' Lats and longs form raster, including reprojection
 .latslonsfromr <- function(r) {
   lats<-.latsfromr(r)
-  lons<-.latsfromr(r)
+  lons<-.lonsfromr(r)
   xy<-data.frame(x=as.vector(lons),y=as.vector(lats))
   xy <- sf::st_as_sf(xy, coords = c('x', 'y'), crs = sf::st_crs(r)$wkt)
   ll <- sf::st_transform(xy, 4326)
