@@ -497,8 +497,8 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme) {
   uh<-unique(as.vector(m))
   uh<-uh[is.na(uh)==F]
   # pai test
-  pte<-mean(pai,na.rm=T)
-  hte<-mean(hgts,na.rm=T)
+  pte<-base::mean(pai,na.rm=T)
+  hte<-raster::cellStats(hgts, "mean", na.rm = T)
   # Create blank array for pai
   if (is.na(pte)) {
     paii<-.paifromhabitat(1, lat, long, tme)
