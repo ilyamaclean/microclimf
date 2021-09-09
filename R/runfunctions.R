@@ -121,6 +121,7 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
   dni<-dirr/si
   dni[is.na(dni)]<-0
   dni2<-ifelse(dni>1352,1352,dni)
+  dni2<-ifelse(dni2<0,0,dni2)
   dirr2<-dni2*si
   dif<-dirr-dirr2
   if (max(dif) > 0.01) {

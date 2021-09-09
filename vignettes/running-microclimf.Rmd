@@ -83,7 +83,7 @@ mout<-runmicro_dy(microd, 0.05)
 plot(raster(mout$Tz[,,4094]))
 # Plot mean air temperatures
 mairt<-apply(mout$Tz,c(1,2),mean)
-plot(raster(mairt))
+plot(raster(mairt),col=gray)
 ```
 
 ## Model inputs
@@ -385,7 +385,7 @@ plot(raster(T10cm[,,4094]),col=mypal)
 ![](images/plot8.png)\
 
 ### Running the whole model
-Using functions `runmicro_hr` or `runmicro_dy`, there is no need run the model for each component seperately. The entire workflow is evoked as in the following example:
+Using functions `runmicro_hr` or `runmicro_dy`, there is no need run the model for each component separately. The entire workflow is evoked as in the following example:
 
 ```{r eval=FALSE}
 # Run model 5 cm above ground

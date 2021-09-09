@@ -52,6 +52,8 @@
   }
   x
 }
+#' Calculates latitude and longitude from raster
+#' @import raster
 .latlongfromraster<-function (r) {
   e <- extent(r)
   xy <- data.frame(x = (e@xmin + e@xmax)/2, y = (e@ymin + e@ymax)/2)
