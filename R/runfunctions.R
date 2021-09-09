@@ -411,6 +411,7 @@ modelina<-function(climarray,rainarray,tme,r,altcorrect = 0, vegp, soilc, dtm, m
     tcdif<-.rta(elevd,n)*lr
     tc<-tcdif+tc
   }
+  ll<-.latlongfromraster(dtm)
   out<-list(tme=tme,tc=tc,difr=difr,dirr=dirr,dp=dp,skyem=skyem,
             estl=estl,ea=ea,tdew=tdew,pk=pk,pai=pai,vegx=vegx,lref=lref,veghgt=vegp$hgt,
             gsmax=vegp$gsmax,clump=clump,gref=gref,rho=soilp$rho,Vm=soilp$Vm,leafd=vegp$leafd,
