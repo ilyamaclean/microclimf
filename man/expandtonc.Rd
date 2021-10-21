@@ -2,7 +2,7 @@
 % Please edit documentation in R/runfunctions.R
 \name{expandtonc}
 \alias{expandtonc}
-\title{expand runmicro_big daily output to hourly and write as ncff4 file}
+\title{expand runmicro_big daily output to hourly and write as ncdf4 file}
 \usage{
 expandtonc(filein, fileout)
 }

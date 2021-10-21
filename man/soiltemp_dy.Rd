@@ -7,7 +7,7 @@
 soiltemp_dy(
   microd,
   reqhgt = 0.05,
-  xyf = NA,
+  xyf = 1,
   zf = NA,
   soilinit = c(NA, NA),
   tfact = 1.5,

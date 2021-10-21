@@ -6,7 +6,7 @@
 \usage{
 wind(
   micro,
-  xyf = NA,
+  xyf = 1,
   zf = NA,
   psi_m = 0,
   reqhgt = NA,

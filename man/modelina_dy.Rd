@@ -13,6 +13,7 @@ modelina_dy(
   vegp,
   soilc,
   dtm,
+  windhgt = 2,
   merid = 0,
   dst = 0,
   runchecks = FALSE
@@ -34,6 +35,8 @@ modelina_dy(
 \item{soilc}{an object of class soilcharac as returned by [soilcfromtype()]}
 
 \item{dtm}{a RasterLayer onject of elevations (see details)}
+
+\item{windhgt}{height above ground of wind speed measurement (m) in climate array dataset}
 
 \item{merid}{optionally, longitude of local time zone meridian (decimal degrees)}
 

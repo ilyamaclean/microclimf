@@ -113,3 +113,4 @@
 #'   \item{leafd}{a Rasterlayer object of leaf diameters (m)}
 #'}
 "vegp"
+

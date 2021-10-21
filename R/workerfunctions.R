@@ -275,7 +275,7 @@
   d<-.zeroplanedis(hgt,pai)
   ur<-sqrt(zm0+(0.3*pai)/2)
   ur[ur>0.3]<-0.3
-  zm<-(hgt-d)*exp(-0.4*ur-0.193)
+  zm<-(hgt-d)*exp(-0.4*(1/ur)-0.193)
   zm[zm<zm0]<-zm0
   zm
 }
@@ -309,7 +309,9 @@
   a<-array(NA,dim=c(dim(dsm)[1:2],dct2))
   for (i in 1:dct2) {
     r<-.windcoef(dsm,drs[i],whgt,res(dsm)[1])
-    a[,,i]<-.is(.smr(raster(r),xyf))
+    if (xyf > 1) {
+      a[,,i]<-.is(.smr(raster(r),xyf))
+    } else a[,,i]<-r
   }
   if (hs) {
     a2<-array(NA,dim=c(dim(dsm)[1:2],wdct))
@@ -375,14 +377,10 @@
   uz
 }
 # Calculate forced convection (used for calculating minimum conductivity)
-.gforced<-function(leafd,H) {
+.gfree<-function(leafd,H) {
   d<-0.71*leafd
-  dT<-0.73673*(d*H^4)^0.2
-  dT2<-0.80936*(d*H^4)^0.2
-  gha<-0.05*(dT/d)^0.25
-  gha2<-0.025*(dT2/d)^0.25
-  sel<-which(H<0)
-  gha[sel]<-gha2[sel]
+  dT<-0.7045388*(d*H^4)^(1/5)
+  gha<-0.0375*(dT/d)^0.25
   gha[gha<0.1]<-0.1
   gha
 }
@@ -404,18 +402,17 @@
   g[sel]<-1e10
   g
 }
-#' Calculates turbulent molar conductivity within canopy
-.gcanopy <- function(l_m,a,hgt,uh,z1,z0,gmin) {
-  e0<-exp(-a*(z0/hgt-1))
-  e1<-exp(-a*(z1/hgt-1))
-  g<-(l_m*21.5*uh*a)/(e0-e1)
-  # Set minimum
-  sel<-which(g<gmin)
-  g[sel]<-gmin[sel]
-  g[is.na(g)]<-1/mean(1/gmin)
-  sel<-which(g>1e10)
-  g[sel]<-1e10
-  g
+#' Calculates temperature and vapour above canopy
+.TVabove<-function(TH,micro,z) {
+  # Temperature
+  lnr<-suppressWarnings(log((micro$maxhgt-micro$d)/(z-micro$d)))
+  sel<-which(is.na(lnr))
+  Ta<-micro$tc+(TH$H/(0.4*43*29.3))*lnr
+  Ta[sel]<-TH$tcan[sel]
+  # Vapour pressure
+  ez<-micro$ea+((TH$L*micro$pk)/(765847.2*micro$uf))*lnr
+  ez[sel]<-.satvap(TH$tcan[sel])
+  return(list(Tz=Ta,ez=ez))
 }
 #' Calculate temperature profile below canopy
 .tleaf <- function(tair,tground,es,eref,pk,gtt,gt0,gHa,gv,gL,Rabsl,leafdens,surfwet,soilrh=1) {
@@ -532,7 +529,7 @@
   smout
 }
 #' Calculates canopy boundary layer conductivity and conductivity to ground
-.conductivityE<-function(micro,reqhgt,xyf=NA,zf=NA,slr=NA,apr=NA,hor=NA,wsa=NA,maxhgt=NA) {
+.conductivityE<-function(micro,reqhgt,xyf=1,zf=NA,slr=NA,apr=NA,hor=NA,wsa=NA,maxhgt=NA) {
   if (is.null(micro$swabs[1])) {
     micro<-canopyrad(micro,slr,apr,hor)
   }
@@ -542,7 +539,7 @@
   # Calculate approximate H
   ref<-(1-micro$trdf)*micro$lref+micro$trdf*micro$gref
   Rsw<-(micro$si*micro$dirr+micro$difr*micro$svfa)*(1-ref)*0.5
-  Rlw<-0.97*(micro$lwsky/micro$skyem)-micro$skyem
+  Rlw<-0.97*(micro$lwsky/micro$skyem)-micro$lwsky
   Hest<-0.5*(Rsw-Rlw)
   # Calculate approximate diabatic correction
   dbm<-.diabatic(micro$tc,micro$uf,micro$d,micro$zm,micro$maxhgt,Hest)
@@ -550,20 +547,15 @@
   pai<-micro$pai
   pai[pai<1]<-1
   lwi<-.rta(micro$leafd,dim(pai)[3])
-  gmin<-.gforced(lwi,Hest)*2*pai
+  gmin<-.gfree(lwi,Hest)*2*pai
   gHa<-.gturb(micro$uf,micro$d,micro$zm,micro$maxhgt,psi_h=dbm$psi_h,gmin=gmin)
   # Calculate g0
   micro<-wind(micro,xyf,zf,dbm$psi_m,reqhgt,slr=slr,apr=apr,hor=hor,wsa=wsa,maxhgt=maxhgt)
-  hes<-micro$d+0.2*micro$zm
-  g0<-.gcanopy(micro$l_m,micro$a,micro$vha,micro$uh,hes,0,gmin)
   micro$gHa<-gHa
-  micro$g0<-g0
-  micro$gmin<-gmin
   micro$dbm<-dbm
   # Clean micro
   micro$vegx<-NULL
   micro$veghgt<-NULL
-  micro$hgt<-NULL
   micro$gref<-NULL
   micro$si<-NULL
   return(micro)
@@ -1016,7 +1008,7 @@
   uo<-(uf/0.4)*log((maxhgt+2-d)/zm)
   uo
 }
-# Calculates diurnal temperature fluctuation
+#' Calculates diurnal temperature fluctuation
 .A0f<-function(tc) {
   tc<-matrix(tc,ncol=24,byrow=T)
   mn<-apply(tc,1,min)
@@ -1024,17 +1016,30 @@
   A0<-(mx-mn)/2
   rep(A0,each=24)
 }
-# Calculates reference time for phase of diurnal temperature fluctuation
+#' Calculates reference time for phase of diurnal temperature fluctuation
 .t0f<-function(tc) {
   tc<-matrix(tc,ncol=24,byrow=T)
   tmx<-apply(tc,1,which.max)-1
   t0<-(tmx-6)%%24
   rep(t0*3600,each=24)
 }
-# Calculates reference time for phase of diurnal temperature fluctuation (daily)
+#' Calculates reference time for phase of diurnal temperature fluctuation (daily)
 .t0fd<-function(tc) {
   tc<-matrix(tc,ncol=24,byrow=T)
   tmx<-apply(tc,1,which.max)-1
   t0<-(tmx-6)%%24
+  t0<-t0*3600
   t0
+}
+#' Selects relevent daily min (or max) data from hourly climate arrays
+.climds<-function(climarray,sel) {
+  climo<-list(temp=climarray$temp[,,sel],
+              relhum=climarray$relhum[,,sel],
+              pres=climarray$pres[,,sel],
+              swrad=climarray$swrad[,,sel],
+              difrad=climarray$difrad[,,sel],
+              skyem=climarray$skyem[,,sel],
+              windspeed=climarray$windspeed[,,sel],
+              winddir=climarray$winddir[,,sel])
+  climo
 }

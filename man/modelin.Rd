@@ -28,7 +28,7 @@ modelin(
 
 \item{dtm}{a RasterLayer object of elevations (see details)}
 
-\item{windhgt}{height of wind speed measurement (m) in weather dataset (see details).}
+\item{windhgt}{height above ground of wind speed measurement (m) in weather dataset (see details).}
 
 \item{merid}{optionally, longitude of local time zone meridian (decimal degrees)}
 

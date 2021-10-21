@@ -7,7 +7,7 @@
 .conductivityE(
   micro,
   reqhgt,
-  xyf = NA,
+  xyf = 1,
   zf = NA,
   slr = NA,
   apr = NA,

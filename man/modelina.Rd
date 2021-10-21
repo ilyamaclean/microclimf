@@ -13,6 +13,7 @@ modelina(
   vegp,
   soilc,
   dtm,
+  windhgt = 2,
   merid = 0,
   dst = 0,
   runchecks = FALSE,
@@ -26,7 +27,7 @@ modelina(
 
 \item{tme}{an object of class POSIXlt giving the dates and times for each weather variable stroed in the array}
 
-\item{r}{a raster object giving with the resolution, spatial extent, and projection of the weather data (see details)}
+\item{r}{a raster object giving the resolution, spatial extent, and projection of the weather data (see details)}
 
 \item{altcorrect}{a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)}
 
@@ -35,6 +36,8 @@ modelina(
 \item{soilc}{an object of class soilcharac as returned by [soilcfromtype()]}
 
 \item{dtm}{a RasterLayer onject of elevations (see details)}
+
+\item{windhgt}{height above ground of wind speed measurement (m) in climate array dataset.}
 
 \item{merid}{optionally, longitude of local time zone meridian (decimal degrees)}
 

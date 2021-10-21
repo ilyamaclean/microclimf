@@ -8,7 +8,7 @@ runmicro_hr(
   micro,
   reqhgt,
   pai_a = NA,
-  xyf = NA,
+  xyf = 1,
   zf = NA,
   soilinit = c(NA, NA),
   tfact = 1.5,

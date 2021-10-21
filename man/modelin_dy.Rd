@@ -27,9 +27,13 @@ modelin_dy(
 
 \item{dtm}{a RasterLayer onject of elevations (see details)}
 
+\item{windhgt}{height above ground of wind speed measurement (m) in weather dataset}
+
 \item{merid}{optionally, longitude of local time zone meridian (decimal degrees)}
 
 \item{dst}{optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).}
+
+\item{runchecks}{optional logical indicating whether to call [checkinputs()] to run}
 }
 \description{
 The function `modelin` creates an object of class microindaily

@@ -18,12 +18,18 @@ foliageden(z, hgt, pai, shape = 1.5, rate = shape/7)
 \item{rate}{optional rate parameter for gamm distribution (see details)}
 }
 \value{
+a list with the following components:
+
+`leafden` the foliage density (one sided leaf area per m^3) at height z
+
+`paia` the plant area index above `z`
+
 a list of leaf densities and plant area index values
 }
 \description{
 The function `foliageden` applies a mirrored gamma distribution
-to estimate, for a given height `z` below canopy, the foliage density and
-the plant area index above `z`
+to estimate, for a given height `z` below canopy, the foliage density at
+height z and the plant area index above `z`
 }
 \details{
 a broadly realistic estimate of foliage density is generated

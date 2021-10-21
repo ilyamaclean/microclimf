@@ -23,13 +23,11 @@ an object of class microin with the following components added:
 
 `swabs` shortwave radiation absorbed by the canopy per unit leaf area (W/m^2)
 
-`lwabs` shortwave radiation absorbed by the canopy per unit leaf area (W/m^2)
-
 `radm` coefficient indicating the fraction of radiation intercepted by
 the canopy surface relative to horizontal
 }
 \description{
-The function `canopyrad` calculates mean shortwave and longwave
+The function `canopyrad` calculates mean shortwave
 radiation absorbed by the canopy per unit plant area
 }
 \details{

@@ -164,9 +164,10 @@ groundrad<-function(micro, slr = NA, apr = NA, hor = NA) {
   svfa<-.rta(raster(svf),length(tme))
   radGsw<-(trdi*micro$dirr*si+trdf*micro$difr*svfa)*(1-micro$gref)   # Shortwave radiation absorbed by ground
   sb<-5.67*10^-8
-  lwout<-0.97*sb*(micro$tc+273.15)^4 # Lonwave emitted
+  lwout<-0.97*sb*(micro$tc+273.15)^4 # Longwave emitted
   lwsky<-micro$skyem*lwout # Longwave radiation down from sky
-  radGlw<-0.97*trlw*svfa*lwsky # Longwave absobed by ground
+  lwcan<-(1-trlw)*lwout# Longwave radiation down from canopy
+  radGlw<-0.97*trlw*svfa*lwsky+lwcan # Longwave absorbed by ground
   micro$radGsw<-radGsw
   micro$radGlw<-radGlw
   micro$lwout<-lwout
@@ -187,7 +188,7 @@ groundrad<-function(micro, slr = NA, apr = NA, hor = NA) {
 }
 #' Calculates radiation absorbed by canopy
 #'
-#' @description The function `canopyrad` calculates mean shortwave and longwave
+#' @description The function `canopyrad` calculates mean shortwave
 #' radiation absorbed by the canopy per unit plant area
 #'
 #' @param micro an object of class `micro` as returned by [modelin()]
@@ -199,7 +200,6 @@ groundrad<-function(micro, slr = NA, apr = NA, hor = NA) {
 #' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
 #' @return an object of class microin with the following components added:
 #' @return `swabs` shortwave radiation absorbed by the canopy per unit leaf area (W/m^2)
-#' @return `lwabs` shortwave radiation absorbed by the canopy per unit leaf area (W/m^2)
 #' @return `radm` coefficient indicating the fraction of radiation intercepted by
 #' the canopy surface relative to horizontal
 #' @import raster
@@ -222,10 +222,8 @@ canopyrad <- function(micro, slr = NA, apr = NA, hor = NA) {
   radm<-micro$k*si
   swabs<-(1-micro$lref)*
     ((1-micro$trdi)*radm*micro$dirr+
-    (1-micro$trdf)*micro$svfa*micro$difr)
-  lwabs<-0.97*(1-micro$trdf)*micro$svfa*micro$lwsky
+       (1-micro$trdf)*micro$svfa*micro$difr)
   micro$swabs<-swabs
-  micro$lwabs<-lwabs
   micro$radm<-radm
   return(micro)
 }
@@ -274,7 +272,7 @@ canopyrad <- function(micro, slr = NA, apr = NA, hor = NA) {
 #' prior to adjusting for the effects of local vegetation and terrain on wind speed. Terrain effects
 #' are calaculated by applying the topographic shelter coefficient described in Maclean et al
 #' (2019) Methods in Ecology and Evolution, 10:280-290.
-wind <- function(micro, xyf = NA, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA) {
+wind <- function(micro, xyf = 1, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA) {
   tme<-micro$tme
   ti<-trunc((as.numeric(tme[2])-as.numeric(tme[1]))/3600)
   if (is.null(micro$swabs[1])) {
@@ -299,9 +297,12 @@ wind <- function(micro, xyf = NA, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr
   if (is.null(micro$uf)[1]) {
     if (xyf > 1) {
       hgt<-.smr(micro$veghgt,xyf)
-    } else hgt<-micro$veghgt
+      pai2<-.sma(micro$pai,xyf,zf)
+    } else {
+      hgt<-micro$veghgt
+      pai2<-micro$pai
+    }
     hgt[hgt<0.004*10]<-0.004*10
-    pai2<-.sma(micro$pai,xyf,zf)
     pai2[pai2<0.001]<-0.001
     le<-length(tme)
     d<-.zeroplanedis(.rta(hgt,le),pai2)
@@ -397,7 +398,7 @@ wind <- function(micro, xyf = NA, zf = NA, psi_m = 0, reqhgt = NA, slr = NA, apr
 #' @seealso [groundrad()], [soiltemp_dy()]
 #' @details if [groundrad()] has not been run to add additional elements to `micro`
 #' it is automatically called.
-soiltemp_hr  <- function(micro, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(NA, NA),
+soiltemp_hr  <- function(micro, reqhgt = 0.05, xyf = 1, zf = NA, soilinit = c(NA, NA),
                          tfact = 1.5, slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA,
                          twi = NA, soilmcoefs = NA, soiltcoefs = NA) {
   # run ground rad if not run
@@ -406,12 +407,9 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(N
     micro<-.conductivityE(micro,rhg,xyf,zf,slr,apr,hor,wsa,maxhgt)
   }
   # Calculate net radiation at ground
-  rat<-micro$g0/(micro$gHa+micro$g0)
-  swabs<-micro$radGsw+(1-micro$trdf)*rat*micro$swabs
-  lwabs<-micro$radGlw+(1-micro$trlw)*rat*micro$lwabs
-  rnet<-swabs+lwabs-micro$lwout
+  rnet<-micro$radGsw+micro$radGlw-micro$lwout
   # get summed radiation
-  rsu<-suppressWarnings(apply(swabs,c(1,2),sum,na.rm=T))
+  rsu<-suppressWarnings(apply(micro$radGsw,c(1,2),sum,na.rm=T))
   me<-mean(rsu,na.rm=T)
   rsu<-rsu/me
   mx<-max(rsu,na.rm=T)
@@ -546,7 +544,7 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(N
 #' @seealso [groundrad()], [soiltemp_dy()]
 #' @details if [groundrad()] has not been run to add additional elements to `micro`
 #' it is automatically called.
-soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
+soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
                          slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA,
                          soilmcoefs = NA, soiltcoefs = NA) {
   # run ground rad and conductivity if not run
@@ -558,16 +556,10 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
     micro_mx<-.conductivityE(micro_mx,rhg,xyf,zf,slr,apr,hor,wsa,maxhgt)
   }
   # Calculate net radiation at ground
-  rat1<-micro_mn$g0/(micro_mn$gHa+micro_mn$g0)
-  rat2<-micro_mx$g0/(micro_mx$gHa+micro_mx$g0)
-  swabs1<-micro_mn$radGsw+(1-micro_mn$trdf)*rat1*micro_mn$swabs
-  swabs2<-micro_mx$radGsw+(1-micro_mx$trdf)*rat2*micro_mx$swabs
-  lwabs1<-micro_mn$radGlw+(1-micro_mn$trlw)*rat1*micro_mn$lwabs
-  lwabs2<-micro_mx$radGlw+(1-micro_mx$trlw)*rat2*micro_mx$lwabs
-  rnet1<-swabs1+lwabs1-micro_mn$lwout
-  rnet2<-swabs2+lwabs2-micro_mx$lwout
+  rnet1<-micro_mn$radGsw+micro_mn$radGlw-micro_mn$lwout
+  rnet2<-micro_mx$radGsw+micro_mx$radGlw-micro_mx$lwout
   # get summed radiation
-  swabs<-swabs1+swabs2
+  swabs<-micro_mn$radGsw+micro_mx$radGsw
   rsu<-suppressWarnings(apply(swabs,c(1,2),sum,na.rm=T))
   me<-mean(rsu,na.rm=T)
   rsu<-rsu/me
@@ -722,6 +714,7 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
 #' @return a list with the following components:
 #' @return `tcan` the leaf or effective canopy temperature (deg C)
 #' @return `H` the sensible heat flux (w/m^2)
+#' @return `HR` hte fractional of net radiation that is sensible heat
 #' @return Optionally `L` The latent heat flux (W/m^2)
 #' @return Optionally `G` The ground heat flux (W/m^2)
 #' @details `Latent` can be used to calaculate either the latent heat of
@@ -735,7 +728,7 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, xyf = NA, zf = NA, soilinit = c(
 #' wet surface. However, except when extremely droughted, the matric potential of
 #' leaves is such that `surfwet` ~ 1.
 #' @export
-PenMont <- function(tc,pk,ea,radabs,gHa,gs,G,es=NA,tdew=NA,surfwet=1,allout=FALSE) {
+PenMont <- function(tc,pk,ea,radabs,gHa,gs,G,es=NA,tdew=NA,surfwet=1,allout=TRUE) {
   if (is.na(es[1])) es<-.satvap(tc)
   if (is.na(tdew[1])) tdew<-.dewpoint(ea,tc)
   delta<-.delta(tc,radabs)
@@ -748,26 +741,31 @@ PenMont <- function(tc,pk,ea,radabs,gHa,gs,G,es=NA,tdew=NA,surfwet=1,allout=FALS
   tcan<-(radabs-Rem-L-G)/(29.3*gHr+m*delta)+tc
   tcan<-.lim(tcan,tdew)
   H<-29.3*gHa*(tcan-tc)
+  HR<-H/(radabs-Rem)
+  HR[HR<0]<-0
+  HR[HR>1]<-1
   if (allout) {
     estl<-.satvap(tcan)*surfwet
     L<-m*(estl-ea)
     L<-.lim(L,0)
-    out<-list(tcan=tcan,H=H,L=L,G=G)
-  } else out<-list(tcan=tcan,H=H)
+    out<-list(tcan=tcan,H=H,L=L,G=G,HR=HR)
+  } else out<-list(tcan=tcan,H=H,HR=HR)
   return(out)
 }
 #' Estimate foliage density and plant area index above z
 #'
 #' @description The function `foliageden` applies a mirrored gamma distribution
-#' to estimate, for a given height `z` below canopy, the foliage density and
-#' the plant area index above `z`
+#' to estimate, for a given height `z` below canopy, the foliage density at
+#' height z and the plant area index above `z`
 #'
 #' @param z height above ground (m)
 #' @param hgt the height of the canopy (m)
 #' @param pai total plant area index of canopy
 #' @param shape optional shape parameter for gamma distribution (see details)
 #' @param rate optional rate parameter for gamm distribution (see details)
-#'
+#' @return a list with the following components:
+#' @return `leafden` the foliage density (one sided leaf area per m^3) at height z
+#' @return `paia` the plant area index above `z`
 #' @details a broadly realistic estimate of foliage density is generated
 #' using a mirrored gamma distribution (i.e. right (top) rather than left-skewed).
 #' in applying the gamma distribution `z / hgt` is re-scaled to the range 0-10.
@@ -838,7 +836,7 @@ foliageden<-function(z,hgt,pai,shape=1.5,rate=shape/7) {
 #'
 #' @import raster zoo
 #' @export
-temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA, NA),
+temphumE<-function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA, soilinit = c(NA, NA),
                    tfact = 1.5, surfwet = 1, slr = NA, apr = NA, hor = NA, wsa = NA,
                    maxhgt = NA, twi = NA) {
   tme<-micro$tme
@@ -857,108 +855,37 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
   gs<-.layercond(.vta(climdata$swrad,micro$dtm),micro$gsmax,100)
   gBs<-lais*gs
   # Calculate Latent heat flux
-  radabs<-micro$swabs+micro$lwabs+micro$radGsw+micro$radGlw
+  radabs<-micro$swabs+micro$radGsw+
+    micro$skyem*5.67*10^-8*0.97*(micro$tc+273.15)^4
   TH<-PenMont(micro$tc,micro$pk,micro$ea,radabs,micro$gHa,
               gBs,micro$G,micro$estl,micro$tdew,surfwet)
   # Set limits in TH
-  Tu<-0.73673*(0.015*TH$H^4)^0.2
-  Tu<-0.73673*(0.01775*TH$H^4)^0.2
-  Tu[Tu<0]<-0
-  TH$tcan<-.lim(TH$tcan,(micro$tc+Tu),up=TRUE)
   TH$tcan<-.lim(TH$tcan,(micro$tc+40),up=TRUE)
   TH$tcan<-.lim(TH$tcan,80,up=TRUE)
-  # Set maximum temperature
-  # Select below and above canopy
-  selA<-which(micro$vha<=reqhgt)
-  selB<-which(micro$vha>reqhgt)
-  # Calculate temperature at reqhgt above canopy
-  zh<-0.2*micro$zm
-  dbm<-micro$dbm
-  r1<-suppressWarnings(log((reqhgt-micro$d)/zh)/
-                         log((micro$maxhgt-micro$d)/zh))
-  ln<-suppressWarnings(log((reqhgt-micro$d)/zh)+r1*dbm$psi_h)
-  ln[ln<0.1]<-0.1
-  ln[is.na(ln)]<-0.1
-  xx<-(TH$H/(503.96*micro$uf)/ln)
-  Tz<-TH$tcan-(TH$H/(503.96*micro$uf)/ln)
-  sel<-which(is.na(Tz) | is.infinite(Tz))
-  Tz[sel]<-TH$tcan[sel]
-  # If not specified, calaculate pai above reqhgt and leaf density
-  if (class(pai_a)[1]=="logical") {
-    ldp<-foliageden(reqhgt,micro$vha,micro$pai)
-    pai_a<-ldp$pai_a
-    leafdens<-ldp$leafden
-    m<-(micro$vha-reqhgt)/micro$vha
-    m[m<0]<-0
-    pai_a<-m*micro$pai
-  } else {
-    leafdens<-pai_a/(micro$vha-reqhgt)
-  }
-  # Limit leaf density
-  sel<-which((micro$vha-reqhgt)<=0)
-  leafdens[sel]<-0
-  leafdens<-.lim(leafdens,3.5,up=TRUE)
-  leafdens[is.na(leafdens)]<-3.5
-  # Calculate absorbed short and longwave radiation
-  radz<-.radabs(micro,pai_a)
-  radzabs<-radz$radzsw+radz$radzlw
-  # Calculate conductivities
-  le<-length(tme)
-  gtt<-.gcanopy(micro$l_m,micro$a,micro$vha,micro$uh,micro$vha,reqhgt,micro$gmin)
-  gt0<-.gcanopy(micro$l_m,micro$a,micro$vha,micro$uh,reqhgt,0,micro$gmin)
-  gHa<-suppressWarnings(1.89*sqrt(micro$uz/(0.71*.rta(micro$leafd,le))))
-  pai<-micro$pai
-  pai[pai<1]<-1
-  gmn<-micro$gmin/(2*pai)
-  sel<-which(gHa<gmn)
-  gHa[sel]<-gmn[sel]
-  gC<-.layercond(radz$radzsw,micro$gsmax)
-  gv<-1/(1/gHa+1/gC)
-  gtz<-43*micro$uz
-  gL<-1/(1/gHa+1/gtz)
-  # Calculate soil relative humidity
-  b<-.rta(raster(micro$soilb),le)
-  Psie<-.rta(raster(micro$psi_e),le)
-  Smax<-.rta(raster(micro$Smax),le)
-  soilrh<-.soilrh(micro$theta,b,Psie,Smax,micro$T0)
-  # Calculate T at top of canopy
-  r2<-suppressWarnings(log((micro$vha-micro$d)/zh)/
-                         log((micro$maxhgt-micro$d)/zh))
-  ln<-suppressWarnings(log((micro$vha-micro$d)/zh)+r1*dbm$psi_h)
-  ln[ln<0]<-0
-  Th<-TH$tcan-(TH$H/(503.96*micro$uf)/ln)
-  sel<-which(is.na(Th) | is.infinite(Th))
-  Th[sel]<-TH$tcan[sel]
-  tln<-suppressWarnings(.tleaf(Th,micro$T0,micro$estl,micro$ea,micro$pk,gtt,gt0,gHa,gv,gL,
-                               radzabs,leafdens,surfwet,soilrh))
-  Tz[selB]<-tln$tn[selB]
-  # Calculate conductivity from reqhgt to maxhgt
-  gTr<-.gturb(micro$uf,micro$d,micro$zm,micro$maxhgt,reqhgt,dbm$psi_h,micro$gmin)
-  gTh<-suppressWarnings(.gturb(micro$uf,micro$d,micro$zm,reqhgt,micro$vha,dbm$psi_h,micro$gmin))
-  eh<-.satvap(TH$tcan)*surfwet
-  er<-(gTr*micro$ea+gTh*eh)/(gTr+gTh)
-  # Calculate relative humidity
-  rh<-100*er/.satvap(Tz)
-  rh[selB]<-tln$rh[selB]
-  rh[rh>100]<-100
-  rh[rh<20]<-20
-  # Set minimum temperature
-  tmn<-.dewpoint(er,Tz)
-  Tz<-.lim(Tz,tmn)
-  Tz<-.lim(Tz,(micro$tc-5))
-  # Set maximum temperature
-  Tz<-.lim(Tz,(micro$tc+Tu),up=TRUE)
-  Tz<-.lim(Tz,(micro$tc+40),up=TRUE)
-  Tz<-.lim(Tz,80,up=TRUE)
+  # Calculate temperature and vapour pressure above canopy, setting height to canopy top of reghgt < hgt
+  z<-micro$vha
+  sel<-which(micro$vha<reqhgt)
+  z[sel]<-reqhgt
+  Tzv<-.TVabove(TH,micro,z)
+  micro$Tz<-Tzv$Tz
+  ez<-Tzv$ez
+  # Computes below canopy temperatures (Tz set to above canopy if reqhgt>hgt)
+  Tzp<-.LangrangianSimT(reqhgt,micro,TH,pai_a,folden)
+  micro$Tz<-Tzp$To
+  pai_a<-Tzp$pai_a
+  folden<-Tzp$folden
+  # Compute leaf temperature
+  tlg<-.leaftemp(micro,pai_a,gs)
+  # Compute relative humidity
+  rh<-.LangrangianSimV(reqhgt,micro,folden,ez,tlg)
   # Replace tleaf with NA, where tleaf is < reqhgt
-  tleaf<-tln$tleaf
-  sel<-which(is.na(tleaf) | is.infinite(tleaf))
-  tleaf[sel]<-TH$tcan[sel]
-  tleaf[selA]<-NA
+  tleaf<-tlg$tleaf
+  sel<-which(micro$vha<reqhgt)
+  tleaf[sel]<-NA
+  radz<-tlg$rad
   # Return values needed
-  micro<-list(Tz=Tz,tleaf=tleaf,T0=micro$T0,soilm=micro$theta,relhum=rh,windspeed=micro$uz,
+  micro<-list(Tz=micro$Tz,tleaf=tleaf,T0=micro$T0,soilm=micro$theta,relhum=rh,windspeed=micro$uz,
               raddir=radz$rad_dir,raddif=radz$rad_dif,radlw=(1/0.97)*radz$radzlw,trdf=radz$trdf)
-  if (ti == 1) micro$trdf<-NULL
   class(micro)<-"microout"
   return(micro)
 }
@@ -993,7 +920,7 @@ temphumE<-function(micro, reqhgt, pai_a = NA, xyf = NA, zf = NA, soilinit = c(NA
 #' @import raster zoo abind
 #' @importFrom stats filter
 #' @export
-below_hr<-function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact =1.5,
+below_hr<-function(micro, reqhgt, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact =1.5,
                    slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
   xx <- function(x,y) as.numeric(stats::filter(c(x,x),rep(1/y,y), sides = 2))
   if (is.null(micro$T0[1])) {
@@ -1044,7 +971,7 @@ below_hr<-function(micro, reqhgt, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact
 #' @import raster zoo abind
 #' @importFrom stats filter
 #' @export
-below_dy<-function(microd, reqhgt, expand = TRUE, xyf = NA, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
+below_dy<-function(microd, reqhgt, expand = TRUE, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
                    slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
   xx <- function(x,y) as.numeric(stats::filter(c(x,x),rep(1/y,y), sides = 2))
   micro_mn<-microd$micro_mn

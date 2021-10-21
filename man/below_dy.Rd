@@ -8,7 +8,7 @@ below_dy(
   microd,
   reqhgt,
   expand = TRUE,
-  xyf = NA,
+  xyf = 1,
   zf = NA,
   soilinit = c(NA, NA),
   tfact = 1.5,

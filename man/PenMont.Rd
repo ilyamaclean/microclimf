@@ -15,7 +15,7 @@ PenMont(
   es = NA,
   tdew = NA,
   surfwet = 1,
-  allout = FALSE
+  allout = TRUE
 )
 }
 \arguments{
@@ -48,6 +48,8 @@ a list with the following components:
 `tcan` the leaf or effective canopy temperature (deg C)
 
 `H` the sensible heat flux (w/m^2)
+
+`HR` hte fractional of net radiation that is sensible heat
 
 Optionally `L` The latent heat flux (W/m^2)
 
