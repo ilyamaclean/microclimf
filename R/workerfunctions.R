@@ -783,11 +783,16 @@
   if (dim(varin)[1]!=dim(dtm)[1] | dim(varin)[2]!=dim(dtm)[2]) {
     b<-brick(varin)
     extent(b)<-extent(r)
+    crs(b) <- crs(r)
+    if (as.character(crs(b)) != as.character(crs(dtm))) {
+      b <- projectRaster(from = b, crs = crs(dtm), method = 'ngb')
+    }
     b<-resample(b,dtm)
     a<-as.array(b)
   } else a<-varin
   a
 }
+
 #' Latitudes from raster
 .latsfromr <- function(r) {
   e <- extent(r)
