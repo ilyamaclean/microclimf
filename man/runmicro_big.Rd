@@ -14,6 +14,7 @@ runmicro_big(
   pathout,
   hourly = FALSE,
   pai_a = NA,
+  folden = NA,
   xyf = 1,
   zf = NA,
   soilinit = c(NA, NA),

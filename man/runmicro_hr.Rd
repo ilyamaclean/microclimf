@@ -8,6 +8,7 @@ runmicro_hr(
   micro,
   reqhgt,
   pai_a = NA,
+  folden = NA,
   xyf = 1,
   zf = NA,
   soilinit = c(NA, NA),
@@ -27,6 +28,8 @@ runmicro_hr(
 \item{reqhgt}{height above ground at which model outputs are needed (m).}
 
 \item{pai_a}{an optional array of plant area index values above `reqhgt` (see details)}
+
+\item{folden}{an optional array of foliage densities at the height `reqhgt` (m^3/m^3)}
 
 \item{xyf}{optional input for called function [wind()]}
 

@@ -796,6 +796,7 @@ foliageden<-function(z,hgt,pai,shape=1.5,rate=shape/7) {
 #' @param micro object of class microin as returned by [modelin()]
 #' @param reqhgt height above ground at which model outputs are needed (m). Must be positive
 #' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
+#' @param folden an optional array of foliage densities at height `reqhgt` (m^3/m^3)
 #' @param surfwet an optional single numeric value of array of values specifying the proportion
 #' of the canopy surface that should be treated as wet surface (see details)
 #' @param xyf optional input for called function [wind()]

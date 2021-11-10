@@ -29,6 +29,8 @@ temphumE(
 
 \item{pai_a}{an optional array of plant area index values above `reqhgt` (see details)}
 
+\item{folden}{an optional array of foliage densities at height `reqhgt` (m^3/m^3)}
+
 \item{xyf}{optional input for called function [wind()]}
 
 \item{zf}{optional input for called function [wind()]}

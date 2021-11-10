@@ -537,6 +537,7 @@ modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soil
 #' @param micro object of class microin as returned by [modelin()]
 #' @param reqhgt height above ground at which model outputs are needed (m).
 #' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
+#' @param folden an optional array of foliage densities at the height `reqhgt` (m^3/m^3)
 #' @param xyf optional input for called function [wind()]
 #' @param zf optional input for called function [wind()]
 #' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
@@ -610,14 +611,14 @@ modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soil
 #' # Extract and plot mean soil temperatures
 #' msoilt<-apply(mout$Tz,c(1,2),mean)
 #' plot(raster(msoilt))
-runmicro_hr <- function(micro, reqhgt, pai_a = NA, xyf = 1, zf = NA, soilinit = c(NA, NA),
+runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA, soilinit = c(NA, NA),
                         tfact = 1.5, surfwet = 1, slr = NA, apr = NA, hor = NA, wsa = NA,
                         maxhgt = NA, twi = NA) {
   # Calculate soil surface temperature and soil moisture
   micro<-soiltemp_hr(micro,reqhgt,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
   # Run above ground
   if (reqhgt > 0) {
-    mout<-temphumE(micro,reqhgt,pai_a,xyf,zf,soilinit,tfact,surfwet,slr,apr,hor,wsa,maxhgt,twi)
+    mout<-temphumE(micro,reqhgt,pai_a,folden,xyf,zf,soilinit,tfact,surfwet,slr,apr,hor,wsa,maxhgt,twi)
   }
   # Run at ground level
   if (reqhgt == 0) {
@@ -643,6 +644,7 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, xyf = 1, zf = NA, soilinit = 
 #' @param reqhgt height above ground at which model outputs are needed (m).
 #' @param expand optional logical indicating whether to expand daily values to hourly (see details).
 #' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
+#' @param folden an optional array of foliage densities at the height `reqhgt` (m^3/m^3)
 #' @param xyf optional input for called function [wind()]
 #' @param zf optional input for called function [wind()]
 #' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
@@ -719,7 +721,7 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, xyf = 1, zf = NA, soilinit = 
 #' # Extract and plot mean soil temperatures
 #' msoilt<-apply(mout$Tz,c(1,2),mean)
 #' plot(raster(msoilt))
-runmicro_dy <- function(microd, reqhgt, expand = TRUE, pai_a = NA, xyf = 1, zf = NA,
+runmicro_dy <- function(microd, reqhgt, expand = TRUE, pai_a = NA, folden = NA, xyf = 1, zf = NA,
                         soilinit = c(NA, NA), tfact = 1.5, surfwet = 1, slr = NA,
                         apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
   # Calculate soil surface temperature and soil moisture
@@ -728,8 +730,8 @@ runmicro_dy <- function(microd, reqhgt, expand = TRUE, pai_a = NA, xyf = 1, zf =
   climd<-.climtodaily(climdata)
   # Run above ground
   if (reqhgt > 0) {
-    mout_mn<-temphumE(microd$micro_mn,reqhgt,pai_a,xyf,zf,soilinit,tfact,surfwet,slr,apr,hor,wsa,maxhgt,twi)
-    mout_mx<-temphumE(microd$micro_mx,reqhgt,pai_a,xyf,zf,soilinit,tfact,surfwet,slr,apr,hor,wsa,maxhgt,twi)
+    mout_mn<-temphumE(microd$micro_mn,reqhgt,pai_a,folden,xyf,zf,soilinit,tfact,surfwet,slr,apr,hor,wsa,maxhgt,twi)
+    mout_mx<-temphumE(microd$micro_mx,reqhgt,pai_a,folden,xyf,zf,soilinit,tfact,surfwet,slr,apr,hor,wsa,maxhgt,twi)
     if (expand) {
       mout<-.expandclim(mout_mn,mout_mx,climdata)
       class(mout)<-"microout"
@@ -916,7 +918,7 @@ writetonc <- function(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0) {
 #' latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
 #' is such that `surfwet` ~ 1.
 runmicro_big <- function(weather, rainfall, reqhgt, vegp, soilc, dtm, pathout, hourly = FALSE,
-                         pai_a = NA, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
+                         pai_a = NA, folden = NA, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
                          surfwet = 1, merid = 0, dst = 0, runchecks = TRUE) {
   # Calculate universal variables
   path2<-paste0(pathout,"microut/")
@@ -953,7 +955,7 @@ runmicro_big <- function(weather, rainfall, reqhgt, vegp, soilc, dtm, pathout, h
         if (hourly) {
           expand = TRUE
         } else expand = FALSE
-        mout<-runmicro_dy(microd,reqhgt,expand,NA,xyf,zf,soilinit,tfact,surfwet,
+        mout<-runmicro_dy(microd,reqhgt,expand,NA,NA,xyf,zf,soilinit,tfact,surfwet,
                           slri,apri,hori,wsai,maxhgt,twii)
         rwt<-ifelse(rw<10,paste0("0",rw),paste0("",rw))
         clt<-ifelse(cl<10,paste0("0",cl),paste0("",cl))
