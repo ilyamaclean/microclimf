@@ -1020,3 +1020,23 @@ below_dy<-function(microd, reqhgt, expand = TRUE, xyf = 1, zf = NA, soilinit = c
   }
   return(Tz)
 }
+#' Create an object of type `soilcharac`
+#' @description The function `soilcfromtype` creates an object of class `soilcharac`
+#' from a raster of soil types and specified ground reflectance
+#'
+#' @param a raster of soiltypes numbered numerically as integers as in `soilparameters`
+#' @param groundr a single numeric value, matrix or raster of soil reflectance (in range 0-1)
+#' @return an object of class `soilcharac`, a list of two raster layers of `soiltype` and
+#' `groundr` converted to a raster.
+#' @import raster
+#' @export
+soilcfromtype <- function(soiltype, groundr = 0.15) {
+  r<-soiltype
+  if (class(groundr)[1] != "RasterLayer") {
+    groundr<-.is(soiltype)*0+groundr
+    groundr<-raster(groundr,template=r)
+  }
+  soilc<-list(soiltype=soiltype,groundr=groundr)
+  class(soilc) <- "soilcharac"
+  return(soilc)
+}
