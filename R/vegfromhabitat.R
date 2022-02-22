@@ -424,7 +424,7 @@ globalVariables("globclim")
 #' The function `vegpfromhab` generates an object of class vegparams from
 #' a RasterLayer object of habitat types
 #'
-#' @param habitats a data.frame of weather variables (see details)
+#' @param habitats a raster layer of habitat types expressed as integers (see details)
 #' @param hgts an optional raster of vegetation heights. Estimated from habitat type if not provided.
 #' @param pai an optional array of plant area index values. Estimated at monthly intervals
 #' from habitat type, with seasonal variation dtermined form location and date if not provided.

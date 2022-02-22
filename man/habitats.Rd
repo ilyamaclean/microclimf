@@ -11,7 +11,7 @@ A RasterLayer object with 50 rows and 50 columns
 habitats
 }
 \description{
-A dataset of habitat types expressed as integers for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
+A raster layer of habitat types expressed as integers for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
 (xmin, xmax, ymin, ymax) using the Ordance Survey GB Grid Reference system (CRS: 27700). Integer values
 correspond to habitat types listed in [vegpfromhab()].
 }

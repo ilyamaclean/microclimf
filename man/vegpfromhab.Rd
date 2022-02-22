@@ -7,7 +7,7 @@
 vegpfromhab(habitats, hgts = NA, pai = NA, lat, long, tme)
 }
 \arguments{
-\item{habitats}{a data.frame of weather variables (see details)}
+\item{habitats}{a raster layer of habitat types expressed as integers (see details)}
 
 \item{hgts}{an optional raster of vegetation heights. Estimated from habitat type if not provided.}
 
