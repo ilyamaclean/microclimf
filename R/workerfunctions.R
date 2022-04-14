@@ -1,7 +1,8 @@
-#' Check if input is a raster and convert to matrix if it is
-#' @import raster
+#' Check if input is a SpatRaster or PackedSpatRaster and convert to matrix if it is
+#' @import terra
 .is <- function(r) {
-  getValues(r,format="matrix")
+  if (class(r)[1] == "PackedSpatRaster") r<-rast(r)
+  as.matrix(r,wide=TRUE)
 }
 #' Convert matrix to array
 .rta <- function(r,n) {
@@ -16,24 +17,68 @@
   a<-array(va,dim=c(dim(m),length(v)))
   a
 }
-#' Smooth raster
-.smr <- function(r,f) {
+#' convert radians to degrees
+.ad <-function(r) {
+  r*(180/pi)
+}
+#' convert degrees to radians
+.ar <- function(d) {
+  d*(pi/180)
+}
+#' Create SpatRaster object using a template
+#' @import terra
+.rast <- function(m,tem) {
+  r<-rast(m)
+  ext(r)<-ext(tem)
+  crs(r)<-crs(tem)
+  r
+}
+#' unpack model inputs
+.unpack<-function(dtm,vegp,soilc) {
+  if (class(dtm)[1] == "PackedSpatRaster") dtm<-rast(dtm)
+  if (class(vegp$hgt)[1] == "PackedSpatRaster") vegp$hgt<-rast(vegp$hgt)
+  if (class(vegp$x)[1] == "PackedSpatRaster") vegp$x<-rast(vegp$x)
+  if (class(vegp$gsmax)[1] == "PackedSpatRaster") vegp$gsmax<-rast(vegp$gsmax)
+  if (class(vegp$leafr)[1] == "PackedSpatRaster") vegp$leafr<-rast(vegp$leafr)
+  if (class(vegp$clump)[1] == "PackedSpatRaster") vegp$clump<-rast(vegp$clump)
+  if (class(vegp$leafd)[1] == "PackedSpatRaster") vegp$leafd<-rast(vegp$leafd)
+  if (class(soilc$soiltype)[1] == "PackedSpatRaster") soilc$soiltype<-rast(soilc$soiltype)
+  if (class(soilc$groundr)[1] == "PackedSpatRaster") soilc$groundr<-rast(soilc$groundr)
+  crs(vegp$hgt)<-crs(dtm)
+  crs(vegp$x)<-crs(dtm)
+  crs(vegp$gsmax)<-crs(dtm)
+  crs(vegp$leafr)<-crs(dtm)
+  crs(vegp$clump)<-crs(dtm)
+  crs(vegp$leafd)<-crs(dtm)
+  crs(soilc$soiltype)<-crs(dtm)
+  crs(soilc$groundr)<-crs(dtm)
+  return(list(dtm=dtm,vegp=vegp,soilc=soilc))
+}
+#' Smooth SpatRaster
+#' @import terra
+.smr <- function(r,f,cors=NA) {
   r2<-r
   r2[is.na(r2)]<-0
-  r3<-aggregate(r2,f)
+  r3<-aggregate(r2,fact=f)
+  if (class(cors)!="logical") {
+    crs(r3)<-cors
+    crs(r2)<-cors
+    crs(r)<-cors
+  }
   r3<-resample(r3,r2)
   r3<-mask(r3,r)
   r3
 }
 #' Smooth array
-.sma <- function(a,xyf,zf) {
+#' @import terra
+.sma <- function(a,xyf,zf,cors=NA) {
   a3<-a
   a[is.na(a)]<-0
   ns<-floor(c(1:(dim(a)[3]/zf)))*zf
   ns<-unique(c(1,ns,dim(a)[3]))
   a2<-array(NA,dim=dim(a))
   for (i in 1:length(ns)) {
-    a2[,,ns[i]]<-.is(.smr(raster(a[,,ns[i]]),xyf))
+    a2[,,ns[i]]<-.is(.smr(rast(a[,,ns[i]]),xyf,cors))
   }
   a2<-apply(a2,c(1,2),na.approx)
   a2<-aperm(a2,c(2,3,1))
@@ -52,16 +97,16 @@
   }
   x
 }
-#' Calculates latitude and longitude from raster
-#' @import raster
+#' Calculates latitude and longitude from SpatRaster object
+#' @import terra
 .latlongfromraster<-function (r) {
-  e <- extent(r)
-  xy <- data.frame(x = (e@xmin + e@xmax)/2, y = (e@ymin + e@ymax)/2)
-  coordinates(xy) = ~x + y
-  proj4string(xy) = crs(r)
-  ll <- as.data.frame(spTransform(xy, CRS("+init=epsg:4326")))
-  ll <- data.frame(lat = ll$y, long = ll$x)
-  ll
+  e <- ext(r)
+  xy <- data.frame(x = (e$xmin + e$xmax)/2, y = (e$ymin + e$ymax)/2)
+  xy <- sf::st_as_sf(xy, coords = c("x", "y"),
+                     crs = crs(r))
+  ll <- sf::st_transform(xy, 4326)
+  ll <- data.frame(lat = sf::st_coordinates(ll)[2], long = sf::st_coordinates(ll)[1])
+  return(ll)
 }
 .unpackpai <- function(pai,n) {
   i<-floor((12/n)*c(0:(n-1))+1)
@@ -146,10 +191,10 @@
   tt<-0.261799*(st-12)
   d<-(pi*23.5/180)*cos(2*pi*((jd-171)/365.25))
   sh<-sin(d)*sin(lat*pi/180)+cos(d)*cos(lat*pi/180)*cos(tt)
-  hh<-(atan(sh/sqrt(1-sh^2)))
+  hh<-0.5*pi-acos(sh)
   sazi<-cos(d)*sin(tt)/cos(hh)
-  cazi<-(sin(lat*pi/180)*cos(d)*cos(tt)-cos(pi*lat/180)*sin(d))/
-    sqrt((cos(d)*sin(tt))^2+(sin(pi*lat/180)*cos(d)*cos(tt)-cos(pi*lat/180)*sin(d))^2)
+  cazi<-(sin(.ar(lat))*cos(d)*cos(tt)-cos(.ar(lat))*sin(d))/
+    sqrt((cos(d)*sin(tt))^2+(sin(.ar(lat))*cos(d)*cos(tt)-cos(.ar(lat))*sin(d))^2)
   sqt <- 1-sazi^2
   sqt[sqt<0]<-0
   solz<-180+(180*atan(sazi/sqrt(sqt)))/pi
@@ -158,13 +203,14 @@
   solz
 }
 #' Calculates the solar coefficient
+#' @import terra
 .solarindex<- function(dtm,alt,azi,slr=NA,apr=NA) {
-  if (class(slr)[1]=="logical") slr<-terrain(dtm,opt="slope")
-  if (class(apr)[1]=="logical") apr<-terrain(dtm,opt="aspect")
+  if (class(slr)[1]=="logical") slr<-terrain(dtm,v="slope",unit="radians")
+  if (class(apr)[1]=="logical") apr<-terrain(dtm,v="aspect",unit="radians")
   sl<-.rta(slr,length(azi))
   ap<-.rta(apr,length(azi))
   zen<-pi/2-alt
-  sazi<-.vta(azi,dtm)*(pi/180)
+  sazi<-.ar(.vta(azi,dtm))
   i<-cos(zen)*cos(sl)+sin(zen)*sin(sl)*cos(sazi-ap)
   i[i<0]<-0
   i
@@ -175,7 +221,7 @@
   dtm<-.is(dtm)
   dtm[is.na(dtm)]<-0
   dtm<-dtm/reso
-  azi<-azimuth*(pi/180)
+  azi<-.ar(azimuth)
   horizon<-array(0,dim(dtm))
   dtm3<-array(0,dim(dtm)+200)
   x<-dim(dtm)[1]
@@ -188,26 +234,29 @@
   horizon
 }
 #' Calculates radiation extinction coefficient for canopy
-.cank <- function(x,sa) {
+.cank <- function(x,sa,si) {
+  # Raw k
   zen<-pi/2-sa
   k<-sqrt((x^2+(tan(zen)^2)))/(x+1.774*(x+1.182)^(-0.733))
-  k
+  # k dash
+  kd<-k*cos(zen)/si
+  sel<-which(si==0)
+  kd[sel]<-1
+  return(list(k=k,kd=kd))
 }
 #' Calculates direct radiation transmission through canopy
 .cantransdir <- function(l, k, ref = 0.23, clump = 0) {
   f<-1/(1-clump)
   s<-sqrt(1-ref)
   ks<-k*s
-  tr<-exp(-ks*l*f)
-  tr<-(1-clump)*tr+clump
+  tr<-(1-clump)*exp(-ks*l*f)+clump
   tr
 }
 #' Calculates diffuse radiation transmission through canopy
 .cantransdif <- function(l, ref = 0.23, clump = 0) {
   f<-1/(1-clump)
   s<-sqrt(1-ref)
-  tr<-exp(-s*l*f)
-  tr<-(1-clump)*tr+clump
+  tr<-(1-clump)*exp(-s*l*f)+clump
   tr
 }
 #' Calculates proportion of sunlight leaves in canopy
@@ -301,7 +350,7 @@
   index
 }
 #' Calculates array of wind shelter coefficients in wdct directions
-.windsheltera <- function(dsm, wdct = 8, whgt = 2, xyf = 10, hs = TRUE) {
+.windsheltera <- function(dsm, wdct = 8, whgt = 2, xyf = 10, hs = TRUE, cors=NA) {
   if (hs) {
     dct2<-2*wdct
   } else dct2<-wdct
@@ -310,7 +359,7 @@
   for (i in 1:dct2) {
     r<-.windcoef(dsm,drs[i],whgt,res(dsm)[1])
     if (xyf > 1) {
-      a[,,i]<-.is(.smr(raster(r),xyf))
+      a[,,i]<-.is(.smr(rast(r),xyf,cors))
     } else a[,,i]<-r
   }
   if (hs) {
@@ -325,9 +374,9 @@
   a2
 }
 #' Calculate wind speeds accounting for topographic sheltering
-.windshelter <- function(u2, wdir, dsm, whgt = 2, wdct = 8, xyf = 10, hs = TRUE, wsa = NA) {
+.windshelter <- function(u2, wdir, dsm, whgt = 2, wdct = 8, xyf = 10, hs = TRUE, wsa = NA, cors = NA) {
   # Create array of wind shelter coefficients
-  if (class(wsa)[1] == "logical") wsa<-.windsheltera(dsm,wdct,whgt,xyf,hs)
+  if (class(wsa)[1] == "logical") wsa<-.windsheltera(dsm,wdct,whgt,xyf,hs,cors)
   # Apply array of wind shelter coefficients
   i<-360/dim(wsa)[3]
   sel<-(round(wdir/i,0))+1
@@ -344,7 +393,7 @@
 #' Calculates diabatic correction factors
 .diabatic<-function(tc,uf,d,zm,maxhgt,H) {
   hes<-d+zm
-  r<-raster(H[,,1])
+  r<-rast(H[,,1])
   Tk<-tc+273.15
   st<- -(0.4*9.81*(2+maxhgt-d)*H)/(1241*Tk*uf^3)
   # H>0
@@ -489,16 +538,17 @@
   }
   fa
 }
-#' Caclulates topographic wetness index
+#' Calculates topographic wetness index
 .topidx <- function(dtm) {
   minslope<-atan(0.005/mean(res(dtm)))
-  slope<-terrain(dtm)
+  slope<-terrain(dtm,unit="radians")
   B<-.is(slope)
   B[B<minslope]<-minslope
   a<-.flowacc(dtm)
   a<-a*res(dtm)[1]* res(dtm)[2]
   tpx<- a/tan(B)
-  raster(tpx,template=dtm)
+  r<-.rast(tpx,dtm)
+  r
 }
 .multisoil <- function(micro,soilinit,tfact,mult,twi) {
   soilc<-micro$soilc
@@ -530,17 +580,14 @@
 }
 #' Calculates canopy boundary layer conductivity and conductivity to ground
 .conductivityE<-function(micro,reqhgt,xyf=1,zf=NA,slr=NA,apr=NA,hor=NA,wsa=NA,maxhgt=NA) {
-  if (is.null(micro$swabs[1])) {
+  if (micro$progress<2) {
     micro<-canopyrad(micro,slr,apr,hor)
   }
-  if (is.null(micro$uf[1])) {
+  if (micro$progress<3) {
     micro<-wind(micro,xyf=xyf,zf=zf,slr=slr,apr=apr,hor=hor,wsa=wsa,maxhgt=maxhgt)
   }
   # Calculate approximate H
-  ref<-(1-micro$trdf)*micro$lref+micro$trdf*micro$gref
-  Rsw<-(micro$si*micro$dirr+micro$difr*micro$svfa)*(1-ref)*0.5
-  Rlw<-0.97*(micro$lwsky/micro$skyem)-micro$lwsky
-  Hest<-0.5*(Rsw-Rlw)
+  Hest<-0.5*(micro$canabs-micro$lwout)
   # Calculate approximate diabatic correction
   dbm<-.diabatic(micro$tc,micro$uf,micro$d,micro$zm,micro$maxhgt,Hest)
   # Calculate boundary layer conductivity
@@ -553,10 +600,10 @@
   micro<-wind(micro,xyf,zf,dbm$psi_m,reqhgt,slr=slr,apr=apr,hor=hor,wsa=wsa,maxhgt=maxhgt)
   micro$gHa<-gHa
   micro$dbm<-dbm
+  micro$progress<-4
   # Clean micro
   micro$vegx<-NULL
   micro$veghgt<-NULL
-  micro$gref<-NULL
   micro$si<-NULL
   return(micro)
 }
@@ -579,7 +626,26 @@
   hr[hr>1]<-1
   hr
 }
-.radabs<-function(micro,pai_a) {
+# Calculate absorbed reflected radiation
+.radref<-function(micro,pai_a,pai_b,reqhgt) {
+  # canopy reflected
+  a<- (-sqrt(1-micro$lref)*micro$pai*(micro$k*micro$dirr+micro$difr))/
+    (micro$vha*(micro$dirr+micro$difr))
+  b<-micro$lref*(micro$pai/micro$vha)*(1-micro$lref)*0.5*micro$lref*(micro$dirr+micro$difr)
+  rcan<-b*(exp(a*(micro$vha-reqhgt))*((exp(2*a*reqhgt-1)/(2*a))+(micro$vha-reqhgt)))
+  rcan[is.na(rcan)]<-0
+  rcan[rcan<0]<-0
+  # ground reflected
+  trdi<-.cantransdir(pai_b,micro$k,micro$lref,micro$clump)
+  trdf<-.cantransdif(pai_b,micro$lref,micro$clump)
+  rgr<-(1-micro$lref)*trdf*micro$gref*(trdi*micro$radm*micro$dirr+trdf*micro$svfa*micro$difr)
+  # both
+  rref<-rcan+rgr
+  rref
+}
+# Calculate leaf absorbed radiation
+.radabs<-function(micro,pai_a,reqhgt,tcan) {
+  pai_b<-micro$pai-pai_a
   #' Calculate radiation absorbed below PAI
   trdi<-.cantransdir(pai_a,micro$k,micro$lref,micro$clump)
   trdf<-.cantransdif(pai_a,micro$lref,micro$clump)
@@ -587,10 +653,11 @@
   # SW radiation
   rad_dir<-trdi*micro$dirr*micro$radm
   rad_dif<-trdf*micro$difr*micro$svfa
-  radzsw<-(1-micro$lref)*(rad_dir+rad_dif)
+  rad_ref<-.radref(micro,pai_a,pai_b,reqhgt)
+  radzsw<-(1-micro$lref)*(rad_dir+rad_dif)+rad_ref
   # LW radiation
-  radzlw<-0.97*trlw*micro$lwsky*micro$svfa
-  return(list(radzsw=radzsw,radzlw=radzlw,rad_dir=rad_dir,rad_dif=rad_dif,trdf=trdf))
+  radzlw<-0.97*(trlw*micro$lwsky+(1-trlw)*0.97*5.67*10^-8*tcan)
+  return(list(radzsw=radzsw,radzlw=radzlw,rad_dir=rad_dir,rad_dif=rad_dif,rad_ref=rad_ref,trdf=trdf))
 }
 # Convert hourly weather to daily
 .climtodaily<-function(climdata) {
@@ -604,7 +671,7 @@
 }
 #' Expand daily data to hourly
 .expandtohour<-function(amn,amx,smn,smx,v) {
-  r<-raster(amn[,,1])
+  r<-rast(amn[,,1])
   dtm<-rep(v[smn],each=24)
   dtx<-rep(v[smx],each=24)
   dtr<-dtx-dtm
@@ -615,7 +682,7 @@
   ao
 }
 .expandtohour2<-function(amn,amx,v) {
-  r<-raster(amn[,,1])
+  r<-rast(amn[,,1])
   mev<-matrix(v,ncol=24,byrow=T)
   mev<-rep(apply(mev,1,mean),each=24)
   mu<-v/mev
@@ -645,7 +712,7 @@
   windspeed<-.expandtohour2(mout_mn$windspeed,mout_mx$windspeed,climdata$windspeed)
   # Expand shortwave radiation
   tr<-.ehr(mout_mn$trdf)
-  r<-raster(tr[,,1])
+  r<-rast(tr[,,1])
   rdi<-climdata$swrad-climdata$difrad
   raddir<-.vta(rdi,r)*tr
   raddif<-.vta(climdata$difrad,r)*tr
@@ -660,19 +727,20 @@
             raddir=raddir,raddif=raddif,radlw=radlw)
   return(out)
 }
-# Crop raster for running runmicro_big
+# Crop SpatRaster object for running runmicro_big
+#' @import terra
 .cropraster<-function(r,rw,cl) {
-  e<-extent(r)
-  xmn<-e@xmin+(cl-1)*100*res(r)[1]
-  xmx<-e@xmin+cl*100*res(r)[1]
-  ymn<-e@ymax-rw*100*res(r)[2]
-  ymx<-e@ymax-(rw-1)*100*res(r)[2]
-  xmn<-ifelse(xmn<e@xmin,e@xmin,xmn)
-  xmx<-ifelse(xmx>e@xmax,e@xmax,xmx)
-  ymn<-ifelse(ymn<e@ymin,e@ymin,ymn)
-  ymx<-ifelse(ymx>e@ymax,e@ymax,ymx)
-  e2<-extent(xmn,xmx,ymn,ymx)
-  r2<-crop(r,e2)
+  e<-ext(r)
+  xmn<-e$xmin+(cl-1)*100*res(r)[1]
+  xmx<-e$xmin+cl*100*res(r)[1]
+  ymn<-e$ymax-rw*100*res(r)[2]
+  ymx<-e$ymax-(rw-1)*100*res(r)[2]
+  xmn<-ifelse(xmn<e$xmin,e$xmin,xmn)
+  xmx<-ifelse(xmx>e$xmax,e$xmax,xmx)
+  ymn<-ifelse(ymn<e$ymin,e$ymin,ymn)
+  ymx<-ifelse(ymx>e$ymax,e$ymax,ymx)
+  e2<-ext(c(xmn,xmx,ymn,ymx))
+  r2<-terra::crop(r,e2)
   r2
 }
 # Crop array for running runmicro_big
@@ -757,13 +825,13 @@
   ea_mx<-(mout_mx$relhum/100)*.satvap(mout_mx$Tz)
   ea<-(ea_mn+ea_mx)/2
   ea<-.ehr(ea)
-  relhum<-(ea/.satvap(T0))*100
+  relhum<-(ea/.satvap(Tz))*100
   relhum[relhum>100]<-100
   # Expand windspeed
   windspeed<-.expandtohour2(mout_mn$windspeed,mout_mx$windspeed,climdata$windspeed)
   # Expand shortwave radiation
   tr<-.ehr(mout_mn$trdf)
-  r<-raster(tr[,,1])
+  r<-rast(tr[,,1])
   rdi<-climdata$swrad-climdata$difrad
   raddir<-.vta(rdi,r)*tr
   raddif<-.vta(climdata$difrad,r)*tr
@@ -779,41 +847,43 @@
   return(out)
 }
 #' Resample array
+#' @import terra
 .resa<-function(varin,r,dtm) {
   if (dim(varin)[1]!=dim(dtm)[1] | dim(varin)[2]!=dim(dtm)[2]) {
-    b<-brick(varin)
-    extent(b)<-extent(r)
+    b<-rast(varin)
+    ext(b)<-ext(r)
     crs(b) <- crs(r)
     if (as.character(crs(b)) != as.character(crs(dtm))) {
+      b <- project(b,dtm, method = 'near')
       b <- projectRaster(from = b, crs = crs(dtm), method = 'ngb')
     }
     b<-resample(b,dtm)
     a<-as.array(b)
+    a<-round(a,3)
   } else a<-varin
   a
 }
-
-#' Latitudes from raster
+#' Latitudes from SpatRaster object
 .latsfromr <- function(r) {
-  e <- extent(r)
-  lts <- rep(seq(e@ymax - res(r)[2] / 2, e@ymin + res(r)[2] / 2, length.out = dim(r)[1]), dim(r)[2])
+  e <- ext(r)
+  lts <- rep(seq(e$ymax - res(r)[2] / 2, e$ymin + res(r)[2] / 2, length.out = dim(r)[1]), dim(r)[2])
   lts <- array(lts, dim = dim(r)[1:2])
   lts
 }
-#' Longitudes from raster
+#' Longitudes from SpatRaster object
 .lonsfromr <- function(r) {
-  e <- extent(r)
-  lns <- rep(seq(e@xmin + res(r)[1] / 2, e@xmax - res(r)[1] / 2, length.out = dim(r)[2]), dim(r)[1])
+  e <- ext(r)
+  lns <- rep(seq(e$xmin + res(r)[1] / 2, e$xmax - res(r)[1] / 2, length.out = dim(r)[2]), dim(r)[1])
   lns <- lns[order(lns)]
   lns <- array(lns, dim = dim(r)[1:2])
   lns
 }
-#' Lats and longs form raster, including reprojection
+#' Lats and longs from SpatRaster object, including reprojection
 .latslonsfromr <- function(r) {
   lats<-.latsfromr(r)
   lons<-.lonsfromr(r)
   xy<-data.frame(x=as.vector(lons),y=as.vector(lats))
-  xy <- sf::st_as_sf(xy, coords = c('x', 'y'), crs = sf::st_crs(r)$wkt)
+  xy <- sf::st_as_sf(xy, coords = c('x', 'y'), crs = crs(r))
   ll <- sf::st_transform(xy, 4326)
   ll <- data.frame(lat = sf::st_coordinates(ll)[,2],
                    long = sf::st_coordinates(ll)[,1])
@@ -831,161 +901,8 @@
                                                                    (0.622 * 2501000 ^ 2 * rv) / (287 * (tc + 273.15) ^ 2))
   lr
 }
-# Run checks for climate arrays
-.checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, daily = FALSE) {
-  check.vals<-function(x,mn,mx,char,unit) {
-    sel<-which(is.na(x))
-    if (length(sel)>0) stop(paste0("Missing values in climdata$",char))
-    sel<-which(x<mn)
-    if (length(sel)>0) {
-      mx<-min(x)
-      stop(paste0(mx," outside range of typical ",char," values. Units should be ",unit))
-    }
-    sel<-which(x>mx)
-    if (length(sel)>0) {
-      mx<-max(x)
-      stop(paste0(mx," outside range of typical ",char," values. Units should be ",unit))
-    }
-  }
-  check.mean<-function(x,mn,mx,char,unit) {
-    me<-mean(x,na.rm=T)
-    if (me<mn | me>mx) stop(paste0("Mean ",char," of ",me," implausible. Units should be ",unit))
-  }
-  up.lim<-function(x,mx,char) {
-    mxx<-max(x,na.rm=T)
-    x[x>mx]<-mx
-    if (mxx>mx) stop(paste0(char," values too high"))
-    x
-  }
-  if (class(dtm)[1] != "RasterLayer") stop("dtm must be a raster")
-  # get si
-  if (is.na(crs(dtm))) stop("dtm must have a coordinate reference system specified")
-  ll<-.latlongfromraster(dtm)
-  tme<-as.POSIXlt(weather$obs_time,tz="UTC")
-  # check tme
-  sel<-which(is.na(tme))
-  if (length(sel)>0) stop("Cannot recognise all times in tme")
-  jd<-.jday(tme)
-  lt<-tme$hour+tme$min/60+tme$sec/3600
-  sa<-.solalt(lt,ll$lat,ll$long,jd,merid,dst)
-  ze<-90-sa
-  si<-cos((90-sa)*(pi/180))
-  si[si<0]<-0
-  # Check weather  values
-  check.vals(weather$temp,-50,65,"temperature","deg C")
-  weather$relhum<-up.lim(weather$relhum,100,"relative humidity")
-  check.vals(weather$relhum,0,100,"relative humidity","percentage (0-100)")
-  check.mean(weather$relhum,5,100,"relative humidity","percentage (0-100)")
-  check.vals(weather$pres,84,109,"pressure","kPa ~101.3")
-  check.vals(weather$swrad,0,1350,"shortwave radiation","W / m^2")
-  check.vals(weather$difrad,0,1350,"diffuse radiation","W / m^2")
-  weather$skyem<-up.lim(weather$skyem,1,"sky emissivity")
-  check.mean(weather$skyem,0.3,0.99,"sky emissivity","in range 0 - 1")
-  check.vals(weather$skyem,0.3,1,"sky emissivity","in range 0 - 1")
-  check.vals(weather$windspeed,0,100,"wind speed","m/s")
-  if (max(weather$windspeed)>30) stop("Maximum wind speed seems quite high. Check units are m/s and for 2 m above ground")
-  # Check direct radiation at low solar angles
-  dirr<-weather$swrad-weather$difrad
-  sel<-which(dirr<0)
-  if (length(sel)>0) {
-    weather$difrad[sel]<-weather$swrad[sel]
-    stop("Diffuse radiation values higher than total shortwave radiation")
-  }
-  dni<-dirr/si
-  dni[is.na(dni)]<-0
-  dni2<-ifelse(dni>1352,1352,dni)
-  dirr2<-dni2*si
-  dif<-dirr-dirr2
-  if (max(dif) > 0.01) {
-    stop("Computed direct radiation values too high near dawn / dusk. Divide values by cos (zenith angle) and then cap at 1352")
-    weather$difrad<-weather$difrad+dif
-  }
-  dirr<-weather$swrad-weather$difrad
-  sel<-which(dirr<0)
-  weather$swrad[sel]<-weather$difrad[sel]
-  weather$swrad<-ifelse(weather$swrad>1352,1352,weather$swrad)
-  weather$difrad<-ifelse(weather$difrad>1352,1352,weather$difrad)
-  # Wind direction
-  mn<-min(weather$winddir)
-  mx<-max(weather$winddir)
-  if (mn<0 | mx>360) {
-    weather$winddir<-weather$winddir%%360
-    stop("wind direction must be in range 0-360. Apply modulo operation")
-  }
-  # Check other variables
-  hrs<-dim(weather)[1]
-  if (daily) {
-    dys<-hrs
-  } else dys<-hrs/24
-  if(dys != floor(dys)) stop ("weather needs to include data for entire days (24 hours)")
-  if(length(rainfall) != dys) stop("duration of rainfall sequence doesn't match other climate data")
-  # Check vegp data
-  xy<-dim(dtm)[1:2]
-  if (dim(vegp$pai)[1] != xy[1]) stop("y dimension of vegp$pai does not match dtm")
-  if (dim(vegp$pai)[2] != xy[2]) stop("x dimension of vegp$pai does not match dtm")
-  if (class(vegp$x)[1] != "RasterLayer") stop("vegp$x must be a raster")
-  if (class(vegp$gsmax)[1] != "RasterLayer") stop("vegp$gsmax must be a raster")
-  if (class(vegp$leafr)[1] != "RasterLayer") stop("vegp$leafr must be a raster")
-  if (class(vegp$clump)[1] != "RasterLayer") stop("vegp$clump must be a raster")
-  if (class(vegp$leafd)[1] != "RasterLayer") stop("vegp$leafd must be a raster")
-  if (dim(vegp$x)[1] != xy[1]) stop("y dimension of vegp$x does not match dtm")
-  if (dim(vegp$x)[2] != xy[2]) stop("x dimension of vegp$x does not match dtm")
-  if (dim(vegp$gsmax)[1] != xy[1]) stop("y dimension of vegp$gsmax does not match dtm")
-  if (dim(vegp$gsmax)[2] != xy[2]) stop("x dimension of vegp$gsmax does not match dtm")
-  if (dim(vegp$leafr)[1] != xy[1]) stop("y dimension of vegp$leafr does not match dtm")
-  if (dim(vegp$leafr)[2] != xy[2]) stop("x dimension of vegp$leafr does not match dtm")
-  if (dim(vegp$clump)[1] != xy[1]) stop("y dimension of vegp$clump does not match dtm")
-  if (dim(vegp$clump)[2] != xy[2]) stop("x dimension of vegp$clump does not match dtm")
-  if (dim(vegp$leafd)[1] != xy[1]) stop("y dimension of vegp$leafd does not match dtm")
-  if (dim(vegp$leafd)[2] != xy[2]) stop("x dimension of vegp$leafd does not match dtm")
-  if (dim(vegp$x)[3]>1) stop("time variant vegp$x not supported")
-  if (dim(vegp$gsmax)[3]>1) stop("time variant vegp$x not supported")
-  if (dim(vegp$leafr)[3]>1) stop("time variant vegp$leafr not supported")
-  if (dim(vegp$clump)[3]>1) stop("time variant vegp$clump not supported")
-  if (dim(vegp$leafd)[3]>1) stop("time variant vegp$leafd not supported")
-  # Check soil data
-  xx<-unique(getValues(soilc$soiltype))
-  if (max(xx,na.rm=T) > 11) stop("Unrecognised soil type")
-  if (min(xx,na.rm=T) < 1) stop("Unrecognised soil type")
-  if (class(soilc$soiltype)[1] != "RasterLayer") stop("soilc$soiltype must be a raster")
-  if (class(soilc$groundr)[1] != "RasterLayer") stop("soilc$groundr must be a raster")
-  if (dim(soilc$soiltype)[1] != xy[1]) stop("y dimension of soilc$soiltype does not match dtm")
-  if (dim(soilc$soiltype)[2] != xy[2]) stop("x dimension of soilc$soiltype does not match dtm")
-  if (dim(soilc$groundr)[1] != xy[1]) stop("y dimension of soilc$groundr does not match dtm")
-  if (dim(soilc$groundr)[2] != xy[2]) stop("x dimension of soilc$groundr does not match dtm")
-  if (dim(soilc$soiltype)[3]>1) stop("time variant soilc$soiltype not supported")
-  if (dim(soilc$groundr)[3]>1) stop("time variant soilc$groundr not supported")
-  xx<-getValues(soilc$groundr)
-  xx<-xx[is.na(xx)==F]
-  check.vals(xx,0,1,"soil reflectivity","range 0 to 1")
-  xx<-getValues(vegp$leafr)
-  xx<-xx[is.na(xx)==F]
-  check.vals(xx,0,1,"leaf reflectivity","range 0 to 1")
-  xx<-getValues(vegp$clump)
-  xx<-xx[is.na(xx)==F]
-  check.vals(xx,0,1,"vegetation clumping factor","range 0 to 1")
-  xx<-getValues(vegp$leafd)
-  xx<-xx[is.na(xx)==F]
-  check.vals(xx,0,5,"leaf diamater","metres")
-  xx<-getValues(vegp$gsmax)
-  xx<-xx[is.na(xx)==F]
-  check.vals(xx,0,2,"maximum stomatal conductance","mol / m^2 /s")
-  if (mean(xx)>1) warning(paste0("Mean leaf diameter of ",mean(xx)," seems large. Check units are in metres"))
-  # PAI
-  if (class(vegp$pai)[1] != "array") {
-    if (class(vegp$pai)[1] == "RasterLayer") {
-      vegp$pai<-array(getValues(vegp$pai,format="matrix"))
-      warning("vegp$pai assumed time-invariant and converted to an array")
-    } else stop("vegp$pai must be an array or a raster")
-  }
-  xx<-vegp$pai
-  xx<-xx[is.na(xx)==F]
-  if (min(xx)<0) stop("Minimum vegp$pai must be greater than or equal to zero")
-  if (max(xx)>15) warning(paste0("Maximum vegp$pai of ",max(xx)," seems high"))
-  return(list(weather=weather,rainfall=rainfall,vegp=vegp,soilc=soilc))
-}
 #' convert climate array to data.frame of weather
-.catoweather<-function(climarray) {
+.catoweather<-function(climarray,tme) {
   # ~~~~ Wind
   uwind<-climarray$windspeed*cos(climarray$winddir*(pi/180))
   vwind<-climarray$windspeed*sin(climarray$winddir*(pi/180))
@@ -1002,7 +919,7 @@
                       skyem=apply(climarray$skyem,3,mean,na.rm=T),
                       windspeed=ws,
                       winddir=wd)
-  weather
+  return(weather)
 }
 #' Corrects wind profile
 .windcorrect <- function(uz, windhgt, maxhgt) {

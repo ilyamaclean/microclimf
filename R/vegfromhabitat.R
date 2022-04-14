@@ -29,14 +29,14 @@ globalVariables("globclim")
   long<- ifelse(long < -179.0625, long + 360, long)
   lat<- ifelse(lat< -89.49406, -89.49406, lat)
   lat<- ifelse(lat> 89.49406, 89.49406, lat)
-  ll<- SpatialPoints(data.frame(x = long, y = lat))
+  ll<-vect(cbind(long,lat))
   mmonth <-c(16, 45.5, 75, 105.5, 136, 166.5, 197, 228, 258.5, 289, 319.5, 350)
-  e <- extent(c(-179.0625, 180.9375, -89.49406, 89.49406))
+  e <- ext(c(-179.0625, 180.9375, -89.49406, 89.49406))
   clim <- rep(NA,5)
   for (i in 1:5) {
-    r <- raster(globclim[,,i])
-    extent(r) <- e
-    clim[i] <- extract(r, ll)
+    r <- rast(globclim[,,i])
+    ext(r) <- e
+    clim[i] <- extract(r, ll)$lyr.1
   }
   wgts <- function(x1, x2, ll, lmn, lmx) {
     ll <- ifelse(ll < lmn, lmn, lat)
@@ -290,20 +290,6 @@ globalVariables("globclim")
   lai<-lai[yhr]
   return(lai)
 }
-
-.paifromhabitat <- function(habitat, lat, long, tme) {
-  yr<-unique(tme$year+1900)
-  pai<-0
-  lai<-.PAIforayear(habitat, lat, long)
-  for (i in yr) {
-    sel<-which(tme$year+1900==i)
-    tme2<-tme[sel]
-    mth<-unique(tme2$mon+1)
-    pai1<-lai[mth]
-    pai<-c(pai,pai1)
-  }
-  return(pai[-1])
-}
 .onehab<-function(habitat) {
   if (habitat == 1) {  # Evergreen needleleaf forest
     hgt<-15 # Vegetation height
@@ -419,13 +405,26 @@ globalVariables("globclim")
   }
   return(list(hgt=hgt,x=x,gsmax=gsmax,leafr=leafr,leafd=leafd))
 }
+.paifromhabitat <- function(habitat, lat, long, tme) {
+  yr<-unique(tme$year+1900)
+  pai<-0
+  lai<-.PAIforayear(habitat, lat, long)
+  for (i in yr) {
+    sel<-which(tme$year+1900==i)
+    tme2<-tme[sel]
+    mth<-unique(tme2$mon+1)
+    pai1<-lai[mth]
+    pai<-c(pai,pai1)
+  }
+  return(pai[-1])
+}
 #' Generate vegpetation paramaters form habitat type
 #'
 #' The function `vegpfromhab` generates an object of class vegparams from
-#' a RasterLayer object of habitat types
+#' a SpatRaster object of habitat types
 #'
-#' @param habitats a raster layer of habitat types expressed as integers (see details)
-#' @param hgts an optional raster of vegetation heights. Estimated from habitat type if not provided.
+#' @param habitats a SpatRaster object of habitat types expressed as integers (see details)
+#' @param hgts an optional SpatRaster object of vegetation heights. Estimated from habitat type if not provided.
 #' @param pai an optional array of plant area index values. Estimated at monthly intervals
 #' from habitat type, with seasonal variation dtermined form location and date if not provided.
 #' @param lat latitude in decimal degrees. Only needed if `pai` not provided.
@@ -433,12 +432,12 @@ globalVariables("globclim")
 #' @param tme POSIXlt object of dates. Only needed if `pai` not provided (see details).
 #' @return an object of class vegparams - a list with the following elements:
 #' @return `pai` an array of monthly plant area index values (see details).
-#' @return `hgt` a raster if vegetation heights (m)
-#' @return `x` a raster of ratios of vertical to horizontal projections of leaf foliage
-#' @return `gsmax` a raster of maximum stomatal conductances (mol / m^2 / s)
-#' @return `leafr` a raster of leaf reflectance values (to shortwave radiation)
-#' @return `clump` a raster indicating the degree of canopy clumpiness, here set to 0 (vegetation not clumped)
-#' @return `leafd` a raster of mean leaf widths (m)
+#' @return `hgt` a SpatRaster object if vegetation heights (m)
+#' @return `x` a SpatRaster object of ratios of vertical to horizontal projections of leaf foliage
+#' @return `gsmax` a SpatRaster object of maximum stomatal conductances (mol / m^2 / s)
+#' @return `leafr` a SpatRaster object of leaf reflectance values (to shortwave radiation)
+#' @return `clump` a SpatRaster object indicating the degree of canopy clumpiness, here set to 0 (vegetation not clumped)
+#' @return `leafd` a SpatRaster object of mean leaf widths (m)
 #'
 #' @details
 #' This function estimates the vegetation parameters needed to run microclimf from habitat types.
@@ -470,16 +469,16 @@ globalVariables("globclim")
 #' (16) for Barren or sparsely vegetated
 
 #' @export
-#' @import raster sp
+#' @import terra sp
 #'
 #' @examples
-#' library(raster)
+#' library(terra)
 #' tme<-as.POSIXlt(c(0:8783)*3600,origin="2000-01-01 00:00", tz = "GMT")
 #' veg<-vegpfromhab(habitats,lat=50,long=-5,tme=tme)
-#' plot(raster(veg$pai[,,1]), main = "Jan PAI")
+#' plot(rast(veg$pai[,,1]), main = "Jan PAI")
 #' plot(veg$hgt, main = "Vegetation height")
 #' plot(veg$x, main = "Leaf angle coefficient")
-#' plot(vegp$gsmax, main = "Maximum stomatal conductance")
+#' plot(veg$gsmax, main = "Maximum stomatal conductance")
 #' plot(veg$leafr, main = "Leaf reflectance")
 #' plot(veg$clump, main = "Canopy clumping factor")
 #' plot(veg$leafd, main = "Leaf diamater")
@@ -492,6 +491,7 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme) {
     }
     a
   }
+  if (class(habitats)[1] == "PackedSpatRaster") habitats<-rast(habitats)
   # unique habitats
   m<-.is(habitats)
   uh<-unique(as.vector(m))
@@ -504,8 +504,7 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme) {
     pai<-array(NA,dim=c(dim(m),length(paii)))
   }
   # Create blank rasters
-  x<-m; gsmax<-m; leafr<-m; leafd<-m; hgt<-m
-  clump<-habitats*0
+  x<-m; gsmax<-m; leafr<-m; leafd<-m; hgt<-m;
   for (i in uh) {
     sel<-which(m==i)
     if (is.na(pte)) {
@@ -521,13 +520,13 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme) {
   }
   # Convert to rasters
   if (class(hgts)=="logical") {
-    hgt<-raster(hgt,template=habitats)
+    hgt<-.rast(hgt,habitats)
   } else hgt<-hgts
-  x<-raster(x,template=habitats)
-  gsmax<-raster(gsmax,template=habitats)
-  leafr<-raster(leafr,template=habitats)
+  x<-.rast(x,habitats)
+  gsmax<-.rast(gsmax,habitats)
+  leafr<-.rast(leafr,habitats)
   clump<-habitats*0
-  leafd<-raster(leafd,template=habitats)
+  leafd<-.rast(leafd,habitats)
   vegp<-list(pai=pai,hgt=hgt,x=x,gsmax=gsmax,leafr=leafr,clump=clump,leafd=leafd)
   class(vegp)<-"vegparams"
   return(vegp)

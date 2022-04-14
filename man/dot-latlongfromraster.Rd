@@ -2,10 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.latlongfromraster}
 \alias{.latlongfromraster}
-\title{Calculates latitude and longitude from raster}
+\title{Calculates latitude and longitude from SpatRaster object}
 \usage{
 .latlongfromraster(r)
 }
 \description{
-Calculates latitude and longitude from raster
+Calculates latitude and longitude from SpatRaster object
 }

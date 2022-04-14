@@ -30,10 +30,10 @@ when calculating smoothed wind speed (see details)}
 \item{reqhgt}{option height above ground for which wind speeds are wanted. If ommited only the surface wind
 frictian velocity is returned.}
 
-\item{slr}{an optional RasterLayer of slope values (Radians). Calculated from
+\item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
-\item{apr}{an optional RasterLayer of aspect values (Radians). Calculated from
+\item{apr}{an optional SpatRaster object of aspect values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
 \item{hor}{an optional array of the tangent of the angle to the horizon in
@@ -64,7 +64,7 @@ of vegetation on wind , which ultimately dictate the wind height profile. In
 so doing, it is necessary to accomodate the fact the wind speed is not just affected by
 the surface roughness at each point location, but also by vegetation surrounding the
 location. This is accomodated for by applying `xyf` which effectively smooths though surface roughness
-using `raster::aggregate` where `xyf` is the aggregation factor. Because surface roughness
+using `terra::aggregate` where `xyf` is the aggregation factor. Because surface roughness
 also depends on the plant area index (PAI), which is time-varient, and is computationally intensive
 to perform aggregations on PAI at each hourly time increment, `zf` determines the time at
 what frequency to aggregate PAI. E.g. where `zf` is 100, PAI at every 100th time increment is aggregated.

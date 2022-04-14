@@ -4,7 +4,7 @@
 \alias{.radabs}
 \title{Calculate radiation absorbed below PAI}
 \usage{
-.radabs(micro, pai_a)
+.radabs(micro, pai_a, reqhgt, tcan)
 }
 \description{
 Calculate radiation absorbed below PAI

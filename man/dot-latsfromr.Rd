@@ -2,10 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.latsfromr}
 \alias{.latsfromr}
-\title{Latitudes from raster}
+\title{Latitudes from SpatRaster object}
 \usage{
 .latsfromr(r)
 }
 \description{
-Latitudes from raster
+Latitudes from SpatRaster object
 }

@@ -35,10 +35,10 @@ soiltemp_hr(
 \item{tfact}{coefficient determining sensitivity of soil moisture to variation
 in topographic wetness (see [soilmdistribute()])}
 
-\item{slr}{an optional RasterLayer of slope values (Radians). Calculated from
+\item{slr}{an optional SpatRast object of slope values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
-\item{apr}{an optional RasterLayer of aspect values (Radians). Calculated from
+\item{apr}{an optional SpatRast object of aspect values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
 \item{hor}{an optional array of the tangent of the angle to the horizon in
@@ -50,7 +50,7 @@ Calculated from dtm if not supplied, but outer cells will be NA.}
 \item{maxhgt}{an optional height (m) for which wind speed is needed. Determined
 from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.}
 
-\item{twi}{optional raster of topographic wetness index values.
+\item{twi}{optional SpatRast object of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
 
 \item{soilmcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilm()]}

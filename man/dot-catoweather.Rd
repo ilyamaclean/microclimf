@@ -4,7 +4,7 @@
 \alias{.catoweather}
 \title{convert climate array to data.frame of weather}
 \usage{
-.catoweather(climarray)
+.catoweather(climarray, tme)
 }
 \description{
 convert climate array to data.frame of weather

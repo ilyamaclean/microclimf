@@ -43,10 +43,10 @@ in topographic wetness (see [soilmdistribute()])}
 \item{surfwet}{an optional single numeric value of array of values specifying the proportion
 of the canopy surface that should be treated as wet surface (see details)}
 
-\item{slr}{an optional RasterLayer of slope values (Radians). Calculated from
+\item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
-\item{apr}{an optional RasterLayer of aspect values (Radians). Calculated from
+\item{apr}{an optional SpatRaster object of aspect values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
 \item{hor}{an optional array of the tangent of the angle to the horizon in
@@ -58,7 +58,7 @@ Calculated from dtm if not supplied, but outer cells will be NA.}
 \item{maxhgt}{an optional height (m) for which wind speed is needed. Determined
 from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.}
 
-\item{twi}{optional raster of topographic wetness index values.
+\item{twi}{optional SpatRaster object of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
 }
 \value{
@@ -102,8 +102,7 @@ latent heat fluxes. However, except when extremely droughted, the matric potenti
 is such that `surfwet` ~ 1.
 }
 \examples{
-library(raster)
-library(sp)
+library(terra)
 library(zoo)
 library(abind)
 # Create model input with inbuilt datasets
@@ -111,21 +110,22 @@ micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
 # Run model 5 cm above ground (takes ~ 3 mins to run on 50 x 50 x 8760 values)
 mout<-runmicro_hr(micro, 0.05)
 # Plot air temperatures on hottest hour
-plot(raster(mout$Tz[,,4094]))
+plot(rast(mout$Tz[,,4094]))
 # Plot mean air temperatures
 mairt<-apply(mout$Tz,c(1,2),mean)
-plot(raster(mairt))
+plot(rast(mairt))
 # Plot ground temperatures on hottest and coldest hour
-plot(raster(mout$T0[,,991])) # coldest hour
-plot(raster(mout$T0[,,4094])) # hottest hour
+plot(rast(mout$T0[,,991])) # coldest hour
+plot(rast(mout$T0[,,4094])) # hottest hour
 # Run model 20 cm below ground
 mout<-runmicro_hr(micro, -0.2)
 # Extract and plot mean soil temperatures
 msoilt<-apply(mout$Tz,c(1,2),mean)
-plot(raster(msoilt))
+plot(rast(msoilt))
 }
 \seealso{
 [runmicro_dy()] for faster running microclimate model in daily time-steps,
 including the option to expand daily outputs to hourly using the input diurnal
-temperature cycle.
+temperature cycle and [runmicro_big()] for running the microclimate model over large areas
+as tiles.
 }

@@ -59,9 +59,9 @@
   return(list(To=To,pai_a=pai_a,folden=folden,R0=R0))
 }
 # Calculates leaf temperature
-.leaftemp<-function(micro,pai_a,gs) {
-  # Calculate radiation absorbption
-  rad<-.radabs(micro,pai_a)
+.leaftemp<-function(micro,pai_a,gs,reqhgt,tcan) {
+  # Calculate radiation absorption
+  rad<-.radabs(micro,pai_a,reqhgt,tcan)
   radabs<-rad$radzsw+rad$radzlw
   Rem<-0.97*5.67*10^-8*(micro$tc+273.15^4)
   # Calculate conductivity
@@ -82,9 +82,9 @@
   # Calculate soil surface effective vapour pressure
   n<-dim(ez)[3]
   rhs<-.soilrh(micro$theta,
-               .rta(raster(micro$soilb),n),
-               .rta(raster(micro$psi_e),n),
-               .rta(raster(micro$Smax),n),
+               .rta(rast(micro$soilb),n),
+               .rta(rast(micro$psi_e),n),
+               .rta(rast(micro$Smax),n),
                micro$T0)
   e0<-.satvap(micro$T0)*rhs
   # Calculate d and zh of ground-layer

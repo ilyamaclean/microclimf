@@ -9,10 +9,10 @@ groundrad(micro, slr = NA, apr = NA, hor = NA)
 \arguments{
 \item{micro}{an object of class `micro` as returned by [modelin()]}
 
-\item{slr}{an optional RasterLayer of slope values (Radians). Calculated from
+\item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
-\item{apr}{an optional RasterLayer of aspect values (Radians). Calculated from
+\item{apr}{an optional SpatRaster object of aspect values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
 \item{hor}{an optional array of the tangent of the angle to the horizon in

@@ -5,13 +5,13 @@
 \alias{habitats}
 \title{A one m resolution dataset of habitat types}
 \format{
-A RasterLayer object with 50 rows and 50 columns
+A PackedSpatRaster object with 50 rows and 50 columns
 }
 \usage{
 habitats
 }
 \description{
-A raster layer of habitat types expressed as integers for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
+A spatial dataset of habitat types expressed as integers for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
 (xmin, xmax, ymin, ymax) using the Ordance Survey GB Grid Reference system (CRS: 27700). Integer values
 correspond to habitat types listed in [vegpfromhab()].
 }

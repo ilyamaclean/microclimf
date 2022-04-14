@@ -2,10 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.lonsfromr}
 \alias{.lonsfromr}
-\title{Longitudes from raster}
+\title{Longitudes from SpatRaster object}
 \usage{
 .lonsfromr(r)
 }
 \description{
-Longitudes from raster
+Longitudes from SpatRaster object
 }

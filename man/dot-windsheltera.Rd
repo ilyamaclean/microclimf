@@ -4,7 +4,7 @@
 \alias{.windsheltera}
 \title{Calculates array of wind shelter coefficients in wdct directions}
 \usage{
-.windsheltera(dsm, wdct = 8, whgt = 2, xyf = 10, hs = TRUE)
+.windsheltera(dsm, wdct = 8, whgt = 2, xyf = 10, hs = TRUE, cors = NA)
 }
 \description{
 Calculates array of wind shelter coefficients in wdct directions

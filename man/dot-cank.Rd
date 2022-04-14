@@ -4,7 +4,7 @@
 \alias{.cank}
 \title{Calculates radiation extinction coefficient for canopy}
 \usage{
-.cank(x, sa)
+.cank(x, sa, si)
 }
 \description{
 Calculates radiation extinction coefficient for canopy

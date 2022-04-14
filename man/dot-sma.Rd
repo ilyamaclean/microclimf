@@ -4,7 +4,7 @@
 \alias{.sma}
 \title{Smooth array}
 \usage{
-.sma(a, xyf, zf)
+.sma(a, xyf, zf, cors = NA)
 }
 \description{
 Smooth array

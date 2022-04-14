@@ -7,15 +7,15 @@
 soilcfromtype(soiltype, groundr = 0.15)
 }
 \arguments{
-\item{groundr}{a single numeric value, matrix or raster of soil reflectance (in range 0-1)}
+\item{groundr}{a single numeric value, matrix or SpatRaster object of soil reflectance (in range 0-1)}
 
-\item{a}{raster of soiltypes numbered numerically as integers as in `soilparameters`}
+\item{a}{SpatRaster object of soiltypes numbered numerically as integers as in `soilparameters`}
 }
 \value{
-an object of class `soilcharac`, a list of two raster layers of `soiltype` and
-`groundr` converted to a raster.
+an object of class `soilcharac`, a list of two SpatRaster object of `soiltype` and
+`groundr` converted to a SpatRaster object.
 }
 \description{
 The function `soilcfromtype` creates an object of class `soilcharac`
-from a raster of soil types and specified ground reflectance
+from a SpatRaster object of soil types and specified ground reflectance
 }

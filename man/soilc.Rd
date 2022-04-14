@@ -7,8 +7,8 @@
 \format{
 A list of  the following objects:
 \describe{
-  \item{soiltype}{a RasterLayer object of numeric integers corresponding to soil types given in soilparameters}
-  \item{groundr}{a RasterLayer object of soil reflectance of shortwave radiation}
+  \item{soiltype}{a PackedSpatRaster object of numeric integers corresponding to soil types given in soilparameters}
+  \item{groundr}{a PackedSpatRaster object of soil reflectance of shortwave radiation}
 }
 }
 \usage{

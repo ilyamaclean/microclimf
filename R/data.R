@@ -18,10 +18,10 @@
 #'
 #' A one m resolution digital terrain dataset.
 #'
-#' A dataset of elevations (m) for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
+#' A spatial dataset of elevations (m) for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
 #' (xmin, xmax, ymin, ymax) using the Ordance Survey GB Grid Reference system (CRS: 27700).
 #'
-#' @format A RasterLayer object with 50 rows and 50 columns
+#' @format A PackedSpatRaster object with 50 rows and 50 columns
 #' @source \url{http://www.tellusgb.ac.uk/}
 "dtmcaerth"
 #' A dataset of global climate variables
@@ -41,11 +41,11 @@
 "globclim"
 #' A one m resolution dataset of habitat types
 #'
-#' A raster layer of habitat types expressed as integers for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
+#' A spatial dataset of habitat types expressed as integers for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
 #' (xmin, xmax, ymin, ymax) using the Ordance Survey GB Grid Reference system (CRS: 27700). Integer values
 #' correspond to habitat types listed in [vegpfromhab()].
 #'
-#' @format A RasterLayer object with 50 rows and 50 columns
+#' @format A PackedSpatRaster object with 50 rows and 50 columns
 "habitats"
 #' Daily rainfall
 #'
@@ -60,8 +60,8 @@
 #'
 #' @format A list of  the following objects:
 #' \describe{
-#'   \item{soiltype}{a RasterLayer object of numeric integers corresponding to soil types given in soilparameters}
-#'   \item{groundr}{a RasterLayer object of soil reflectance of shortwave radiation}
+#'   \item{soiltype}{a PackedSpatRaster object of numeric integers corresponding to soil types given in soilparameters}
+#'   \item{groundr}{a PackedSpatRaster object of soil reflectance of shortwave radiation}
 #'}
 "soilc"
 #' A table of soil parameters
@@ -105,12 +105,12 @@
 #' @format A list of  the following objects:
 #' \describe{
 #'   \item{pai}{an array of monthly plant area index values}
-#'   \item{hgt}{a RasterLayer object of vegetation heights (m)}
-#'   \item{x}{ratio of vertical to horizontal projections of leaf foliage}
-#'   \item{gsmax}{a Rasterlayer object maximum stomatal conductances (mol / m^2 / s)}
-#'   \item{leafr}{a Rasterlayer object of leaf reflectance values}
-#'   \item{clump}{a Rasterlayer object of values between 0 and 1 indicating the degree of canopy clumpiness}
-#'   \item{leafd}{a Rasterlayer object of leaf diameters (m)}
+#'   \item{hgt}{a PackedSpatRaster object of vegetation heights (m)}
+#'   \item{x}{a PackedSpatRaster object of the ratio of vertical to horizontal projections of leaf foliage}
+#'   \item{gsmax}{a PackedSpatRaster object maximum stomatal conductances (mol / m^2 / s)}
+#'   \item{leafr}{a PackedSpatRaster object of leaf reflectance values}
+#'   \item{clump}{a PackedSpatRaster object of values between 0 and 1 indicating the degree of canopy clumpiness}
+#'   \item{leafd}{a PackedSpatRaster object of leaf diameters (m)}
 #'}
 "vegp"
 

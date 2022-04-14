@@ -2,10 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.topidx}
 \alias{.topidx}
-\title{Caclulates topographic wetness index}
+\title{Calculates topographic wetness index}
 \usage{
 .topidx(dtm)
 }
 \description{
-Caclulates topographic wetness index
+Calculates topographic wetness index
 }

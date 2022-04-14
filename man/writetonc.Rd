@@ -7,11 +7,11 @@
 writetonc(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0)
 }
 \arguments{
-\item{mout}{an object of class microut}
+\item{mout}{an object of class microut as returned by runmicro_hr or runmicro_dy with expand = TRUE}
 
 \item{fileout}{output filename}
 
-\item{dtm}{a Rasterlayer covering the extent of the model outputs}
+\item{dtm}{a SpatRast covering the extent of the model outputs}
 
 \item{weather}{a data.frame of hourly weather variables (used to get time stamp)}
 

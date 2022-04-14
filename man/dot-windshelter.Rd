@@ -4,7 +4,17 @@
 \alias{.windshelter}
 \title{Calculate wind speeds accounting for topographic sheltering}
 \usage{
-.windshelter(u2, wdir, dsm, whgt = 2, wdct = 8, xyf = 10, hs = TRUE, wsa = NA)
+.windshelter(
+  u2,
+  wdir,
+  dsm,
+  whgt = 2,
+  wdct = 8,
+  xyf = 10,
+  hs = TRUE,
+  wsa = NA,
+  cors = NA
+)
 }
 \description{
 Calculate wind speeds accounting for topographic sheltering

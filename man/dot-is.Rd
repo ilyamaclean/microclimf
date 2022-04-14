@@ -2,10 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.is}
 \alias{.is}
-\title{Check if input is a raster and convert to matrix if it is}
+\title{Check if input is a SpatRaster or PackedSpatRaster and convert to matrix if it is}
 \usage{
 .is(r)
 }
 \description{
-Check if input is a raster and convert to matrix if it is
+Check if input is a SpatRaster or PackedSpatRaster and convert to matrix if it is
 }

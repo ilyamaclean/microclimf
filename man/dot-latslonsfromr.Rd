@@ -2,10 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.latslonsfromr}
 \alias{.latslonsfromr}
-\title{Lats and longs form raster, including reprojection}
+\title{Lats and longs from SpatRaster object, including reprojection}
 \usage{
 .latslonsfromr(r)
 }
 \description{
-Lats and longs form raster, including reprojection
+Lats and longs from SpatRaster object, including reprojection
 }

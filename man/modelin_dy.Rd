@@ -6,7 +6,7 @@
 \usage{
 modelin_dy(
   weather,
-  rainfall,
+  precip,
   vegp,
   soilc,
   dtm,
@@ -19,13 +19,13 @@ modelin_dy(
 \arguments{
 \item{weather}{a data.frame of hourly weather variables (see details)}
 
-\item{rainfall}{a vector of daily rainfall}
+\item{precip}{a vector of daily precipitation}
 
 \item{vegp}{an object of class vegparams as returned by [vegpfromhab()] (see details)}
 
 \item{soilc}{an object of class soilcharac as returned by [soilcfromtype()]}
 
-\item{dtm}{a RasterLayer onject of elevations (see details)}
+\item{dtm}{a SpatRaster object of elevations (see details)}
 
 \item{windhgt}{height above ground of wind speed measurement (m) in weather dataset}
 
@@ -46,7 +46,7 @@ dataset `climdata`. The array of Plant Area index values in `vegp` must
 of the same x and y dims as `dtm` but can contain any number of repeated
 measures up to the number of entries in `weather`. Data are interpolated to the
 time increment of `weather`. Other vegetation paramaters, including vegetation
-height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
+height are assumed time-invarient. The SpatRaster datasets in `soilc` must have
 the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
 metres and the coordinate reference system must be defined.
 }

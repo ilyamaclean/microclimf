@@ -7,9 +7,9 @@
 vegpfromhab(habitats, hgts = NA, pai = NA, lat, long, tme)
 }
 \arguments{
-\item{habitats}{a raster layer of habitat types expressed as integers (see details)}
+\item{habitats}{a SpatRaster object of habitat types expressed as integers (see details)}
 
-\item{hgts}{an optional raster of vegetation heights. Estimated from habitat type if not provided.}
+\item{hgts}{an optional SpatRaster object of vegetation heights. Estimated from habitat type if not provided.}
 
 \item{pai}{an optional array of plant area index values. Estimated at monthly intervals
 from habitat type, with seasonal variation dtermined form location and date if not provided.}
@@ -25,21 +25,21 @@ an object of class vegparams - a list with the following elements:
 
 `pai` an array of monthly plant area index values (see details).
 
-`hgt` a raster if vegetation heights (m)
+`hgt` a SpatRaster object if vegetation heights (m)
 
-`x` a raster of ratios of vertical to horizontal projections of leaf foliage
+`x` a SpatRaster object of ratios of vertical to horizontal projections of leaf foliage
 
-`gsmax` a raster of maximum stomatal conductances (mol / m^2 / s)
+`gsmax` a SpatRaster object of maximum stomatal conductances (mol / m^2 / s)
 
-`leafr` a raster of leaf reflectance values (to shortwave radiation)
+`leafr` a SpatRaster object of leaf reflectance values (to shortwave radiation)
 
-`clump` a raster indicating the degree of canopy clumpiness, here set to 0 (vegetation not clumped)
+`clump` a SpatRaster object indicating the degree of canopy clumpiness, here set to 0 (vegetation not clumped)
 
-`leafd` a raster of mean leaf widths (m)
+`leafd` a SpatRaster object of mean leaf widths (m)
 }
 \description{
 The function `vegpfromhab` generates an object of class vegparams from
-a RasterLayer object of habitat types
+a SpatRaster object of habitat types
 }
 \details{
 This function estimates the vegetation parameters needed to run microclimf from habitat types.
@@ -71,13 +71,13 @@ Habitat types should be expressed as integers as follows:
 (16) for Barren or sparsely vegetated
 }
 \examples{
-library(raster)
+library(terra)
 tme<-as.POSIXlt(c(0:8783)*3600,origin="2000-01-01 00:00", tz = "GMT")
 veg<-vegpfromhab(habitats,lat=50,long=-5,tme=tme)
-plot(raster(veg$pai[,,1]), main = "Jan PAI")
+plot(rast(veg$pai[,,1]), main = "Jan PAI")
 plot(veg$hgt, main = "Vegetation height")
 plot(veg$x, main = "Leaf angle coefficient")
-plot(vegp$gsmax, main = "Maximum stomatal conductance")
+plot(veg$gsmax, main = "Maximum stomatal conductance")
 plot(veg$leafr, main = "Leaf reflectance")
 plot(veg$clump, main = "Canopy clumping factor")
 plot(veg$leafd, main = "Leaf diamater")

@@ -2,17 +2,17 @@
 % Please edit documentation in R/componentfunctions.R
 \name{canopyrad}
 \alias{canopyrad}
-\title{Calculates radiation absorbed by canopy}
+\title{Calculates radiation absorbed by upper surfaces of canopy}
 \usage{
 canopyrad(micro, slr = NA, apr = NA, hor = NA)
 }
 \arguments{
 \item{micro}{an object of class `micro` as returned by [modelin()]}
 
-\item{slr}{an optional RasterLayer of slope values (Radians). Calculated from
+\item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
-\item{apr}{an optional RasterLayer of aspect values (Radians). Calculated from
+\item{apr}{an optional SpatRaster object of aspect values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
 \item{hor}{an optional array of the tangent of the angle to the horizon in
@@ -28,7 +28,7 @@ the canopy surface relative to horizontal
 }
 \description{
 The function `canopyrad` calculates mean shortwave
-radiation absorbed by the canopy per unit plant area
+radiation absorbed by upper surface of the canopy per unit plant area
 }
 \details{
 if [groundrad()] has not been run to add additional elements to `micro`

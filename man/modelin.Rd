@@ -6,7 +6,7 @@
 \usage{
 modelin(
   weather,
-  rainfall,
+  precip,
   vegp,
   soilc,
   dtm,
@@ -20,13 +20,13 @@ modelin(
 \arguments{
 \item{weather}{a data.frame of weather variables (see details)}
 
-\item{rainfall}{a vector of daily rainfall}
+\item{precip}{a vector of daily precipitation}
 
 \item{vegp}{an object of class vegparams as returned by [vegpfromhab()] (see details)}
 
 \item{soilc}{an object of class soilcharac as returned by [soilcfromtype()]}
 
-\item{dtm}{a RasterLayer object of elevations (see details)}
+\item{dtm}{a PackedSpatRaster or SpatRaster object of elevations (see details)}
 
 \item{windhgt}{height above ground of wind speed measurement (m) in weather dataset (see details).}
 
@@ -34,7 +34,7 @@ modelin(
 
 \item{dst}{optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).}
 
-\item{runchecks}{optional logical indicating whteher to call [checkinputs()] to run
+\item{runchecks}{optional logical indicating whether to call [checkinputs()] to run
 checks on format and units of input data.}
 
 \item{daily}{optional logical indicating whether `weather` is daily or hourly}
@@ -51,7 +51,7 @@ dataset `climdata`. The array of Plant Area index values in `vegp` must
 of the same x and y dims as `dtm` but can contain any number of repeated
 measures up to the number of entries in `weather`. Data are interpolated to the
 time increment of `weather`. Other vegetation paramaters, including vegetation
-height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
+height are assumed time-invarient. The SpatRaster datasets in `soilc` must have
 the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
 metres and the coordinate reference system must be defined. As not all wind
 measurements are at reference height, the height of the wind speed measurement

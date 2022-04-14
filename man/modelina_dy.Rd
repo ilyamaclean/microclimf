@@ -6,7 +6,7 @@
 \usage{
 modelina_dy(
   climarray,
-  rainarray,
+  precarray,
   tme,
   r,
   altcorrect = 0,
@@ -22,11 +22,9 @@ modelina_dy(
 \arguments{
 \item{climarray}{a list of arrays of weather variables (see details). See also [nctoarray()]}
 
-\item{rainarray}{an array of daily rainfall (see details)}
-
 \item{tme}{an object of class POSIXlt giving the dates and times for each weather variable stroed in the array}
 
-\item{r}{a raster object giving with the resolution, spatial extent, and projection of the weather data (see details)}
+\item{r}{a SpatRaster object giving with the resolution, spatial extent, and projection of the weather data (see details)}
 
 \item{altcorrect}{a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)}
 
@@ -34,7 +32,7 @@ modelina_dy(
 
 \item{soilc}{an object of class soilcharac as returned by [soilcfromtype()]}
 
-\item{dtm}{a RasterLayer onject of elevations (see details)}
+\item{dtm}{a SpatRaster or PackedSpatRaster object of elevations (see details)}
 
 \item{windhgt}{height above ground of wind speed measurement (m) in climate array dataset}
 
@@ -44,6 +42,8 @@ modelina_dy(
 
 \item{runchecks}{optional logical indicating whether to call [checkinputs()] to run
 checks on format and units of input data.}
+
+\item{precip}{an array of daily precipitation (see details)}
 }
 \description{
 The function `modelin` creates an object of class microin
@@ -60,16 +60,50 @@ the same length as `tme`. If `r` has a different resolution to `dtm` the climate
 data are resampled to match the resolution of `dtm`. The array of Plant Area index values in `vegp` must
 of the same x and y dims as `dtm` but can contain any number of repeated
 measures up to the number of entries in `tme`. Data are interpolated to the
-time increment of `tme`. Other vegetation paramaters, including vegetation
-height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
+time increment of `tme`. Other vegetation parameters, including vegetation
+height are assumed time-invariant. The SpatRaster datasets in `soilc` must have
 the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
 metres and the coordinate reference system must be defined. If `altcorrect`>0,
-and the dimenions of `r` are not identical to those of `dtm`, the elevation
-difference between each pixel of the dtm and the dtm coarsed to the resolution of
-`r` is calaculated and an elevational lapse rate correction is applied to the
-temperature data to accoutn for these elevation differences. If `altcorrect`=1,
+and the dimensions of `r` are not identical to those of `dtm`, the elevation
+difference between each pixel of the dtm and the dtm coarsened to the resolution of
+`r` is calculated and an elevational lapse rate correction is applied to the
+temperature data to account for these elevation differences. If `altcorrect`=1,
 a fixed lapse rate of 5 degrees per 100m is applied. If `altcorrect`=2, humidity-dependent
-lapse rates are calaculate and applied.
+lapse rates are calculate and applied.
+}
+\examples{
+library(terra)
+library(zoo)
+library(abind)
+# ======== Create dummy array datasets ========= #
+# ~~ Function to turn vector into 5 x 5 array ~~ #
+toarray<-function(x,xdim=5,ydim=5) {
+  xl<-rep(x,each=ydim*xdim)
+  xl<-array(xl,dim=c(ydim,xdim,length(x)))
+  xl
+}
+# ~~ Create list of climate variable arrays ~~ #
+climarray<-list(temp=toarray(climdata$temp),
+                relhum=toarray(climdata$relhum),
+                pres=toarray(climdata$pres),
+                swrad=toarray(climdata$swrad),
+                difrad=toarray(climdata$difrad),
+                skyem=toarray(climdata$skyem),
+                windspeed=toarray(climdata$windspeed),
+                winddir=toarray(climdata$winddir))
+# ~~ Create precipitation array ~~ #
+precarray<-toarray(rainfall)
+# ~~ Create other variables ~~ #
+tme<-as.POSIXlt(climdata$obs_time)
+r<-rast(toarray(0)[,,1])
+ext(r)<-ext(rast(dtmcaerth))
+crs(r)<-crs(rast(dtmcaerth))
+# ~~ Run modelina ~~ #
+micro<-modelina_dy(climarray,precarray,tme,r,altcorrect=0,vegp,soilc,dtmcaerth)
+# ~~ Run microclimate model (daily with hourly expand) and plot hottest soil surface temperature ~~ #
+mout<-runmicro_dy(micro, 0.05)
+# Plot ground temperatures on hottest hour
+plot(rast(mout$T0[,,4091]))
 }
 \seealso{
 [modelin_dy()], [modelina()], [nctoarray()]

@@ -5,7 +5,7 @@
 \alias{dtmcaerth}
 \title{A one m resolution digital terrain dataset.}
 \format{
-A RasterLayer object with 50 rows and 50 columns
+A PackedSpatRaster object with 50 rows and 50 columns
 }
 \source{
 \url{http://www.tellusgb.ac.uk/}
@@ -14,7 +14,7 @@ A RasterLayer object with 50 rows and 50 columns
 dtmcaerth
 }
 \description{
-A dataset of elevations (m) for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
+A spatial dataset of elevations (m) for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
 (xmin, xmax, ymin, ymax) using the Ordance Survey GB Grid Reference system (CRS: 27700).
 }
 \keyword{datasets}

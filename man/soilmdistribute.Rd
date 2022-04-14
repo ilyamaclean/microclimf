@@ -16,7 +16,7 @@ soilmdistribute(soilm, dtm, Smin = 0.074, Smax = 0.422, tfact = 1.5, twi = NA)
 \item{tfact}{coefficient determining sensitivity of soil moisture to variation
 in topographic wetness}
 
-\item{twi}{optional raster of topographic wetness index values.
+\item{twi}{optional SpatRaster object of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
 
 \item{a}{digital terrain model (used for calaculating topographic wetness)}
@@ -31,14 +31,14 @@ topographic wetness index
 }
 \examples{
 # Calculate vector of soil moistures
-library(raster)
+library(terra)
 swrad <- (1 - 0.15) * climdata$swrad
 lwout <- 5.67e-8 * 0.95 * (climdata$temp + 273.15)^4
 lwnet <- (1 - climdata$skyem) * lwout
 rnet <- swrad - lwnet
 soilm <- soilmpredict(rainfall, rnet, "Loam", c(0.4, 0.4))$soilm1
 sma<- soilmdistribute(soilm, dtmcaerth)
-plot(raster(sma[,,365])) # soil moisture on last day of year
-plot(raster(sma[,,188])) # soil moisture on driest day of year
+plot(rast(sma[,,365])) # soil moisture on last day of year
+plot(rast(sma[,,188])) # soil moisture on driest day of year
 
 }

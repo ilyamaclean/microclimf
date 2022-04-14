@@ -4,10 +4,10 @@
 #' and warnings
 #'
 #' @param weather a data.frame of weather variables (see details)
-#' @param rainfall a vector of daily rainfall
+#' @param precip a vector of daily precipitation
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
-#' @param dtm a RasterLayer object of elevations (see details)
+#' @param dtm a SpatRaster object of elevations (see details)
 #' @param merid optionally, longitude of local time zone meridian (decimal degrees)
 #' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
 #' @param daily optional logical indicating whether input weather data are daily
@@ -18,12 +18,12 @@
 #' of the same x and y dims as `dtm` but can contain any number of repeated
 #' measures up to the number of entries in `weather`. Data are interpolated to the
 #' time increment of `weather`. Other vegetation paramaters, including vegetation
-#' height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
+#' height are assumed time-invarient. The SpatRaster datasets in `soilc` must have
 #' the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
 #' metres and the coordinate reference system must be defined.
 #'
 #' @export
-#' @import raster
+#' @import terra
 #'
 #' @examples
 #' # No warnings or errors given:
@@ -44,7 +44,7 @@
 #' # vegp2<-vegp
 #' # vegp2$pai<-vegp$pai*10
 #' # checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
-checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0, daily = FALSE) {
+checkinputs <- function(weather, precip, vegp, soilc, dtm, merid = 0, dst = 0, daily = FALSE) {
   check.names<-function(nms,char) {
     sel<-which(nms==char)
     if (length(sel) == 0) stop(paste0("Cannot find ",char," in weather"))
@@ -73,7 +73,14 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
     if (mxx>mx) warning(paste0(char," values capped at ",mx))
     x
   }
-  if (class(dtm)[1] != "RasterLayer") stop("dtm must be a raster")
+  check.unpack<-function(r,nme="r") {
+    if (class(r)[1] == "PackedSpatRaster" & class(r)[1] == "SpatRaster") {
+      stop(paste0(nme," must be a SpatRaster produced using the terra package"))
+    }
+    if (class(r)[1] == "PackedSpatRaster") r<-rast(r)
+    r
+  }
+  dtm<-check.unpack(dtm,"dtm")
   # check names
   nms<-names(weather)
   check.names(nms,"obs_time")
@@ -146,16 +153,17 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
     dys<-hrs
   } else dys<-hrs/24
   if(dys != floor(dys)) stop ("weather needs to include data for entire days (24 hours)")
-  if(length(rainfall) != dys) stop("duration of rainfall sequence doesn't match weather'")
+  if(length(precip) != dys) stop("duration of precipitation sequence doesn't match weather'")
   # Check vegp data
   xy<-dim(dtm)[1:2]
   if (dim(vegp$pai)[1] != xy[1]) stop("y dimension of vegp$pai does not match dtm")
   if (dim(vegp$pai)[2] != xy[2]) stop("x dimension of vegp$pai does not match dtm")
-  if (class(vegp$x)[1] != "RasterLayer") stop("vegp$x must be a raster")
-  if (class(vegp$gsmax)[1] != "RasterLayer") stop("vegp$gsmax must be a raster")
-  if (class(vegp$leafr)[1] != "RasterLayer") stop("vegp$leafr must be a raster")
-  if (class(vegp$clump)[1] != "RasterLayer") stop("vegp$clump must be a raster")
-  if (class(vegp$leafd)[1] != "RasterLayer") stop("vegp$leafd must be a raster")
+  vegp$hgt<-check.unpack(vegp$hgt,"vegp$hgt")
+  vegp$x<-check.unpack(vegp$x,"vegp$x")
+  vegp$gsmax<-check.unpack(vegp$gsmax,"vegp$gsmax")
+  vegp$leafr<-check.unpack(vegp$leafr,"vegp$leafr")
+  vegp$clump<-check.unpack(vegp$clump,"vegp$clump")
+  vegp$leafd<-check.unpack(vegp$leafd,"vegp$leafd")
   if (dim(vegp$x)[1] != xy[1]) stop("y dimension of vegp$x does not match dtm")
   if (dim(vegp$x)[2] != xy[2]) stop("x dimension of vegp$x does not match dtm")
   if (dim(vegp$gsmax)[1] != xy[1]) stop("y dimension of vegp$gsmax does not match dtm")
@@ -172,45 +180,46 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
   if (dim(vegp$clump)[3]>1) stop("time variant vegp$clump not supported")
   if (dim(vegp$leafd)[3]>1) stop("time variant vegp$leafd not supported")
   # Check soil data
-  xx<-unique(getValues(soilc$soiltype))
+  soilc$soiltype<-check.unpack(soilc$soiltype,"soilc$soiltype")
+  soilc$groundr<-check.unpack(soilc$groundr,"soilc$groundr")
+  xx<-unique(as.vector(soilc$soiltype))
   if (max(xx,na.rm=T) > 11) stop("Unrecognised soil type")
   if (min(xx,na.rm=T) < 1) stop("Unrecognised soil type")
-  if (class(soilc$soiltype)[1] != "RasterLayer") stop("soilc$soiltype must be a raster")
-  if (class(soilc$groundr)[1] != "RasterLayer") stop("soilc$groundr must be a raster")
   if (dim(soilc$soiltype)[1] != xy[1]) stop("y dimension of soilc$soiltype does not match dtm")
   if (dim(soilc$soiltype)[2] != xy[2]) stop("x dimension of soilc$soiltype does not match dtm")
   if (dim(soilc$groundr)[1] != xy[1]) stop("y dimension of soilc$groundr does not match dtm")
   if (dim(soilc$groundr)[2] != xy[2]) stop("x dimension of soilc$groundr does not match dtm")
   if (dim(soilc$soiltype)[3]>1) stop("time variant soilc$soiltype not supported")
   if (dim(soilc$groundr)[3]>1) stop("time variant soilc$groundr not supported")
-  xx<-getValues(soilc$groundr)
+  xx<-as.vector(soilc$groundr)
   xx<-xx[is.na(xx)==F]
   check.vals(xx,0,1,"soil reflectivity","range 0 to 1")
-  xx<-getValues(vegp$leafr)
+  xx<-as.vector(vegp$leafr)
   xx<-xx[is.na(xx)==F]
   check.vals(xx,0,1,"leaf reflectivity","range 0 to 1")
-  xx<-getValues(vegp$clump)
+  xx<-as.vector(vegp$clump)
   xx<-xx[is.na(xx)==F]
   check.vals(xx,0,1,"vegetation clumping factor","range 0 to 1")
-  xx<-getValues(vegp$leafd)
+  xx<-as.vector(vegp$leafd)
   xx<-xx[is.na(xx)==F]
   check.vals(xx,0,5,"leaf diamater","metres")
-  xx<-getValues(vegp$gsmax)
+  if (mean(xx)>1) warning(paste0("Mean leaf diameter of ",mean(xx)," seems large. Check units are in metres"))
+  xx<-as.vector(vegp$gsmax)
   xx<-xx[is.na(xx)==F]
   check.vals(xx,0,2,"maximum stomatal conductance","mol / m^2 /s")
-  if (mean(xx)>1) warning(paste0("Mean leaf diameter of ",mean(xx)," seems large. Check units are in metres"))
   # PAI
   if (class(vegp$pai)[1] != "array") {
-    if (class(vegp$pai)[1] == "RasterLayer") {
-      vegp$pai<-array(getValues(vegp$pai,format="matrix"))
+    if (class(vegp$pai)[1] == "PackedSpatRaster") vegp$pai<-rast(vegp$pai)
+    if (class(vegp$pai)[1] == "SpatRaster") {
+      vegp$pai<-array(as.matrix(vegp$pai))
       warning("vegp$pai assumed time-invariant and converted to an array")
-    } else stop("vegp$pai must be an array or a raster")
+    } else stop("vegp$pai must be an array or a SpatRaster object")
   }
   xx<-vegp$pai
   xx<-xx[is.na(xx)==F]
   if (min(xx)<0) stop("Minimum vegp$pai must be greater than or equal to zero")
   if (max(xx)>15) warning(paste0("Maximum vegp$pai of ",max(xx)," seems high"))
-  return(list(weather=weather,rainfall=rainfall,vegp=vegp,soilc=soilc))
+  return(list(weather=weather,precip=precip,vegp=vegp,soilc=soilc))
 }
 
 #' Create object of class microin with weather data as data.frame
@@ -221,14 +230,14 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
 #' weather data are a data.frame - i.e. not spatially variable.
 #'
 #' @param weather a data.frame of weather variables (see details)
-#' @param rainfall a vector of daily rainfall
+#' @param precip a vector of daily precipitation
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
-#' @param dtm a RasterLayer object of elevations (see details)
+#' @param dtm a PackedSpatRaster or SpatRaster object of elevations (see details)
 #' @param windhgt height above ground of wind speed measurement (m) in weather dataset (see details).
 #' @param merid optionally, longitude of local time zone meridian (decimal degrees)
 #' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
-#' @param runchecks optional logical indicating whteher to call [checkinputs()] to run
+#' @param runchecks optional logical indicating whether to call [checkinputs()] to run
 #' checks on format and units of input data.
 #' @param daily optional logical indicating whether `weather` is daily or hourly
 #' @details The format and and units of `weather` must follow that in the example
@@ -236,7 +245,7 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
 #' of the same x and y dims as `dtm` but can contain any number of repeated
 #' measures up to the number of entries in `weather`. Data are interpolated to the
 #' time increment of `weather`. Other vegetation paramaters, including vegetation
-#' height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
+#' height are assumed time-invarient. The SpatRaster datasets in `soilc` must have
 #' the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
 #' metres and the coordinate reference system must be defined. As not all wind
 #' measurements are at reference height, the height of the wind speed measurement
@@ -247,16 +256,20 @@ checkinputs <- function(weather, rainfall, vegp, soilc, dtm, merid = 0, dst = 0,
 #'
 #' @seealso [checkinputs()], [modelin_dy()], [modelina()]
 #'
-#' @import raster sp
+#' @import terra
 #' @export
-modelin <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = TRUE,daily = FALSE) {
+modelin <- function(weather, precip, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = TRUE,daily = FALSE) {
   if (runchecks) {
-    rc<-checkinputs(weather,rainfall,vegp,soilc,dtm,merid,dst,daily)
+    rc<-checkinputs(weather,precip,vegp,soilc,dtm,merid,dst,daily)
     weather<-rc$weather
-    rainfall<-rc$rainfall
+    precip<-rc$precip
     vegp<-rc$vegp
     soilc<-rc$soilc
   }
+  up<-.unpack(dtm,vegp,soilc)
+  dtm<-up$dtm
+  vegp<-up$vegp
+  soilc<-up$soilc
   # correct wind height
   mxhgt<-max(.is(vegp$hgt),na.rm=T)
   weather$windspeed<-.windcorrect(weather$windspeed,windhgt,mxhgt)
@@ -301,7 +314,7 @@ modelin <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid = 0,
             gsmax=vegp$gsmax,clump=clump,gref=gref,rho=soilp$rho,Vm=soilp$Vm,leafd=vegp$leafd,
             Vq=soilp$Vq,Mc=soilp$Mc,soilb=soilp$soilb,psi_e=soilp$psi_e,Smax=soilp$Smax,
             dtm=dtm,lat=ll$lat,long=ll$long,merid=merid, dst=dst,
-            climdata=weather,prec=rainfall,soilc=soilc)
+            climdata=weather,prec=precip,soilc=soilc,progress=0)
   class(out) <-"microin"
   out
 }
@@ -313,13 +326,13 @@ modelin <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid = 0,
 #' weather data are as arrays - i.e. variable in space
 #'
 #' @param climarray a list of arrays of weather variables (see details). See also [nctoarray()]
-#' @param rainarray an array of daily rainfall (see details)
+#' @param precarray an array of daily precipitation (see details)
 #' @param tme an object of class POSIXlt giving the dates and times for each weather variable stroed in the array
-#' @param r a raster object giving the resolution, spatial extent, and projection of the weather data (see details)
+#' @param r a SpatRaster object giving the resolution, spatial extent, and projection of the weather data (see details)
 #' @param altcorrect a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
-#' @param dtm a RasterLayer onject of elevations (see details)
+#' @param dtm a SpatRaster object of elevations (see details)
 #' @param windhgt height above ground of wind speed measurement (m) in climate array dataset.
 #' @param merid optionally, longitude of local time zone meridian (decimal degrees)
 #' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
@@ -335,7 +348,7 @@ modelin <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid = 0,
 #' of the same x and y dims as `dtm` but can contain any number of repeated
 #' measures up to the number of entries in `tme`. Data are interpolated to the
 #' time increment of `tme`. Other vegetation paramaters, including vegetation
-#' height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
+#' height are assumed time-invarient. The SpatRaster datasets in `soilc` must have
 #' the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
 #' metres and the coordinate reference system must be defined. If `altcorrect`>0,
 #' and the dimenions of `r` are not identical to those of `dtm`, the elevation
@@ -347,20 +360,56 @@ modelin <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid = 0,
 #'
 #' @seealso [modelin()], [modelina_dy()], [nctoarray()]
 #'
-#' @import raster
+#' @import terra
 #' @export
-modelina<-function(climarray,rainarray,tme,r,altcorrect = 0, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = FALSE, daily = FALSE) {
+#' @examples
+#' library(terra)
+#' library(zoo)
+#' library(abind)
+#' # ======== Create dummy array datasets ========= #
+#' # ~~ Function to turn vector into 5 x 5 array ~~ #
+#' toarray<-function(x,xdim=5,ydim=5) {
+#'   xl<-rep(x,each=ydim*xdim)
+#'   xl<-array(xl,dim=c(ydim,xdim,length(x)))
+#'   xl
+#' }
+#' # ~~ Create list of climate variable arrays ~~ #
+#' climarray<-list(temp=toarray(climdata$temp),
+#'                 relhum=toarray(climdata$relhum),
+#'                 pres=toarray(climdata$pres),
+#'                 swrad=toarray(climdata$swrad),
+#'                 difrad=toarray(climdata$difrad),
+#'                 skyem=toarray(climdata$skyem),
+#'                 windspeed=toarray(climdata$windspeed),
+#'                 winddir=toarray(climdata$winddir))
+#' # ~~ Create precipitation array ~~ #
+#' precarray<-toarray(rainfall)
+#' # ~~ Create other variables ~~ #
+#' tme<-as.POSIXlt(climdata$obs_time)
+#' # ~~ Create SpatRast object using dtmcaerth as a template
+#' r<-.rast(toarray(0)[,,1],rast(dtmcaerth))
+# ~~ Run modelina ~~ #
+#' micro<-modelina(climarray,precarray,tme,r,altcorrect=0,vegp,soilc,dtmcaerth)
+#' # ~~ Run microclimate model and plot hottest soil surface temperature ~~ #
+#' mout<-runmicro_hr(micro, 0.05)
+#' # Plot ground temperatures on hottest hour
+#' plot(rast(mout$T0[,,4091]))
+modelina<-function(climarray,precarray,tme,r,altcorrect = 0, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = FALSE, daily = FALSE) {
   # Correct wind speed
   mxhgt<-max(.is(vegp$hgt),na.rm=T)
   climarray$windspeed<-.windcorrect(climarray$windspeed,windhgt,mxhgt)
-  # Create weather and rainfall dataset
-  weather<-.catoweather(climarray)
-  rainfall<-apply(rainarray,3,mean,na.rm=T)
+  # Create weather and precipitation dataset
+  weather<-.catoweather(climarray,tme)
+  precip<-apply(precarray,3,mean,na.rm=T)
   # Run checks
+  up<-.unpack(dtm,vegp,soilc)
+  dtm<-up$dtm
+  vegp<-up$vegp
+  soilc<-up$soilc
   if (runchecks) {
-    rc<-checkinputs(weather,rainfall,vegp,soilc,dtm,merid,dst,daily)
+    rc<-checkinputs(weather,precip,vegp,soilc,dtm,merid,dst,daily)
     weather<-rc$weather
-    rainfall<-rc$rainfall
+    precip<-rc$precip
     vegp<-rc$vegp
     soilc<-rc$soilc
   }
@@ -373,7 +422,7 @@ modelina<-function(climarray,rainarray,tme,r,altcorrect = 0, vegp, soilc, dtm, w
   lt<-tme$hour+tme$min/60+tme$sec/3600
   ll<-.latslonsfromr(r)
   n<-length(tme)
-  sa<-.solalt(.vta(lt,r),.rta(raster(ll$lats),n),.rta(raster(ll$lons),n),.vta(jd,r),merid,dst)
+  sa<-.solalt(.vta(lt,r),.rta(rast(ll$lats),n),.rta(rast(ll$lons),n),.vta(jd,r),merid,dst)
   ze<-90-sa
   si<-cos(ze*(pi/180))
   si[si<0]<-0
@@ -402,6 +451,7 @@ modelina<-function(climarray,rainarray,tme,r,altcorrect = 0, vegp, soilc, dtm, w
   # ~~ Fix lapse rate
   if (altcorrect>0) {
     dtmc<-resample(dtm,r)
+    dtmc[is.na(dtmc)]<-0
     dtmc<-resample(dtmc,dtm)
     elevd<-dtmc-dtm
   }
@@ -421,7 +471,7 @@ modelina<-function(climarray,rainarray,tme,r,altcorrect = 0, vegp, soilc, dtm, w
             gsmax=vegp$gsmax,clump=clump,gref=gref,rho=soilp$rho,Vm=soilp$Vm,leafd=vegp$leafd,
             Vq=soilp$Vq,Mc=soilp$Mc,soilb=soilp$soilb,psi_e=soilp$psi_e,Smax=soilp$Smax,
             dtm=dtm,lat=ll$lat,long=ll$long,merid=merid, dst=dst,
-            climdata=weather,prec=rainfall,soilc=soilc)
+            climdata=weather,prec=precip,soilc=soilc,progress=0)
   class(out) <-"microin"
   out
 }
@@ -432,10 +482,10 @@ modelina<-function(climarray,rainarray,tme,r,altcorrect = 0, vegp, soilc, dtm, w
 #' for running the model in daily timesteps
 #'
 #' @param weather a data.frame of hourly weather variables (see details)
-#' @param rainfall a vector of daily rainfall
+#' @param precip a vector of daily precipitation
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
-#' @param dtm a RasterLayer onject of elevations (see details)
+#' @param dtm a SpatRaster object of elevations (see details)
 #' @param windhgt height above ground of wind speed measurement (m) in weather dataset
 #' @param merid optionally, longitude of local time zone meridian (decimal degrees)
 #' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
@@ -446,18 +496,18 @@ modelina<-function(climarray,rainarray,tme,r,altcorrect = 0, vegp, soilc, dtm, w
 #' of the same x and y dims as `dtm` but can contain any number of repeated
 #' measures up to the number of entries in `weather`. Data are interpolated to the
 #' time increment of `weather`. Other vegetation paramaters, including vegetation
-#' height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
+#' height are assumed time-invarient. The SpatRaster datasets in `soilc` must have
 #' the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
 #' metres and the coordinate reference system must be defined.
 #'
 #' @seealso [inputchecks()], [modelin()]
 #'
-#' @import raster
+#' @import terra
 #' @export
-modelin_dy <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = TRUE) {
+modelin_dy <- function(weather, precip, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = TRUE) {
   climd<-.climtodaily(weather)
-  micro_mn<-modelin(climd$climn,rainfall,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
-  micro_mx<-modelin(climd$climx,rainfall,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
+  micro_mn<-modelin(climd$climn,precip,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
+  micro_mx<-modelin(climd$climx,precip,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
   out<-list(micro_mn=micro_mn,micro_mx=micro_mx,climdata=weather)
   class(out)<-"microindaily"
   return(out)
@@ -470,13 +520,13 @@ modelin_dy <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid =
 #' weather data are as arrays - i.e. variable in space
 #'
 #' @param climarray a list of arrays of weather variables (see details). See also [nctoarray()]
-#' @param rainarray an array of daily rainfall (see details)
+#' @param precip an array of daily precipitation (see details)
 #' @param tme an object of class POSIXlt giving the dates and times for each weather variable stroed in the array
-#' @param r a raster object giving with the resolution, spatial extent, and projection of the weather data (see details)
+#' @param r a SpatRaster object giving with the resolution, spatial extent, and projection of the weather data (see details)
 #' @param altcorrect a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
-#' @param dtm a RasterLayer onject of elevations (see details)
+#' @param dtm a SpatRaster or PackedSpatRaster object of elevations (see details)
 #' @param windhgt height above ground of wind speed measurement (m) in climate array dataset
 #' @param merid optionally, longitude of local time zone meridian (decimal degrees)
 #' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
@@ -490,22 +540,55 @@ modelin_dy <- function(weather, rainfall, vegp, soilc, dtm, windhgt = 2, merid =
 #' data are resampled to match the resolution of `dtm`. The array of Plant Area index values in `vegp` must
 #' of the same x and y dims as `dtm` but can contain any number of repeated
 #' measures up to the number of entries in `tme`. Data are interpolated to the
-#' time increment of `tme`. Other vegetation paramaters, including vegetation
-#' height are assumed time-invarient. The RasterLayer datasets in `soilc` must have
+#' time increment of `tme`. Other vegetation parameters, including vegetation
+#' height are assumed time-invariant. The SpatRaster datasets in `soilc` must have
 #' the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
 #' metres and the coordinate reference system must be defined. If `altcorrect`>0,
-#' and the dimenions of `r` are not identical to those of `dtm`, the elevation
-#' difference between each pixel of the dtm and the dtm coarsed to the resolution of
-#' `r` is calaculated and an elevational lapse rate correction is applied to the
-#' temperature data to accoutn for these elevation differences. If `altcorrect`=1,
+#' and the dimensions of `r` are not identical to those of `dtm`, the elevation
+#' difference between each pixel of the dtm and the dtm coarsened to the resolution of
+#' `r` is calculated and an elevational lapse rate correction is applied to the
+#' temperature data to account for these elevation differences. If `altcorrect`=1,
 #' a fixed lapse rate of 5 degrees per 100m is applied. If `altcorrect`=2, humidity-dependent
-#' lapse rates are calaculate and applied.
+#' lapse rates are calculate and applied.
 #'
 #' @seealso [modelin_dy()], [modelina()], [nctoarray()]
 #'
-#' @import raster
+#' @import terra
 #' @export
-modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = FALSE) {
+#' @examples
+#' library(terra)
+#' library(zoo)
+#' library(abind)
+#' # ======== Create dummy array datasets ========= #
+#' # ~~ Function to turn vector into 5 x 5 array ~~ #
+#' toarray<-function(x,xdim=5,ydim=5) {
+#'   xl<-rep(x,each=ydim*xdim)
+#'   xl<-array(xl,dim=c(ydim,xdim,length(x)))
+#'   xl
+#' }
+#' # ~~ Create list of climate variable arrays ~~ #
+#' climarray<-list(temp=toarray(climdata$temp),
+#'                 relhum=toarray(climdata$relhum),
+#'                 pres=toarray(climdata$pres),
+#'                 swrad=toarray(climdata$swrad),
+#'                 difrad=toarray(climdata$difrad),
+#'                 skyem=toarray(climdata$skyem),
+#'                 windspeed=toarray(climdata$windspeed),
+#'                 winddir=toarray(climdata$winddir))
+#' # ~~ Create precipitation array ~~ #
+#' precarray<-toarray(rainfall)
+#' # ~~ Create other variables ~~ #
+#' tme<-as.POSIXlt(climdata$obs_time)
+#' r<-rast(toarray(0)[,,1])
+#' ext(r)<-ext(rast(dtmcaerth))
+#' crs(r)<-crs(rast(dtmcaerth))
+#' # ~~ Run modelina ~~ #
+#' micro<-modelina_dy(climarray,precarray,tme,r,altcorrect=0,vegp,soilc,dtmcaerth)
+#' # ~~ Run microclimate model (daily with hourly expand) and plot hottest soil surface temperature ~~ #
+#' mout<-runmicro_dy(micro, 0.05)
+#' # Plot ground temperatures on hottest hour
+#' plot(rast(mout$T0[,,4091]))
+modelina_dy <- function(climarray, precarray, tme, r, altcorrect = 0, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = FALSE) {
   # get hour of daily min and max
   th<-apply(climarray$temp,3,mean,na.rm=T)
   td<-matrix(th,ncol=24,byrow=TRUE)
@@ -516,11 +599,11 @@ modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soil
   climd_mn<-.climds(climarray,smn)
   climd_mx<-.climds(climarray,smx)
   tme2<-tme[smn]
-  micro_mn<-modelina(climd_mn,rainarray,tme2,r,altcorrect,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
+  micro_mn<-modelina(climd_mn,precarray,tme2,r,altcorrect,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
   tme2<-tme[smx]
-  micro_mx<-modelina(climd_mx,rainarray,tme2,r,altcorrect,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
+  micro_mx<-modelina(climd_mx,precarray,tme2,r,altcorrect,vegp,soilc,dtm,windhgt,merid,dst,runchecks,daily=TRUE)
   # Convert to dataframe
-  climdata<-.catoweather(climarray)
+  climdata<-.catoweather(climarray,tme)
   # Convert to daily
   climd<-.climtodaily(climdata)
   micro_mn$climdata<-climd$climn
@@ -545,9 +628,9 @@ modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soil
 #' in topographic wetness (see [soilmdistribute()])
 #' @param surfwet an optional single numeric value of array of values specifying the proportion
 #' of the canopy surface that should be treated as wet surface (see details)
-#' @param slr an optional RasterLayer of slope values (Radians). Calculated from
+#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
 #' dtm if not supplied, but outer cells will be NA.
-#' @param apr an optional RasterLayer of aspect values (Radians). Calculated from
+#' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
 #' dtm if not supplied, but outer cells will be NA.
 #' @param hor an optional array of the tangent of the angle to the horizon in
 #' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
@@ -555,7 +638,7 @@ modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soil
 #' Calculated from dtm if not supplied, but outer cells will be NA.
 #' @param maxhgt an optional height (m) for which wind speed is needed. Determined
 #' from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.
-#' @param twi optional raster of topographic wetness index values.
+#' @param twi optional SpatRaster object of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
 #' @return an object of class microout with the following components:
 #' @return `Tz` Array of air temperatures at height `reqhgt` (deg C). Identical to `T0`
@@ -576,7 +659,8 @@ modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soil
 #'
 #' @seealso [runmicro_dy()] for faster running microclimate model in daily time-steps,
 #' including the option to expand daily outputs to hourly using the input diurnal
-#' temperature cycle.
+#' temperature cycle and [runmicro_big()] for running the microclimate model over large areas
+#' as tiles.
 #'
 #' @details `pai_a` is used to calaculate the radiation incercepted by leaves at `reqhgt` if
 #' below canopy. If not supplied it is calaculated from total plant area index by
@@ -586,12 +670,11 @@ modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soil
 #' determines how much of the canopy should be treated as wet surface when calaculating
 #' latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
 #' is such that `surfwet` ~ 1.
-#' @import raster
+#' @import terra
 #' @export
 #'
 #' @examples
-#' library(raster)
-#' library(sp)
+#' library(terra)
 #' library(zoo)
 #' library(abind)
 #' # Create model input with inbuilt datasets
@@ -599,18 +682,18 @@ modelina_dy <- function(climarray, rainarray, tme, r, altcorrect = 0, vegp, soil
 #' # Run model 5 cm above ground (takes ~ 3 mins to run on 50 x 50 x 8760 values)
 #' mout<-runmicro_hr(micro, 0.05)
 #' # Plot air temperatures on hottest hour
-#' plot(raster(mout$Tz[,,4094]))
+#' plot(rast(mout$Tz[,,4094]))
 #' # Plot mean air temperatures
 #' mairt<-apply(mout$Tz,c(1,2),mean)
-#' plot(raster(mairt))
+#' plot(rast(mairt))
 #' # Plot ground temperatures on hottest and coldest hour
-#' plot(raster(mout$T0[,,991])) # coldest hour
-#' plot(raster(mout$T0[,,4094])) # hottest hour
+#' plot(rast(mout$T0[,,991])) # coldest hour
+#' plot(rast(mout$T0[,,4094])) # hottest hour
 #' # Run model 20 cm below ground
 #' mout<-runmicro_hr(micro, -0.2)
 #' # Extract and plot mean soil temperatures
 #' msoilt<-apply(mout$Tz,c(1,2),mean)
-#' plot(raster(msoilt))
+#' plot(rast(msoilt))
 runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA, soilinit = c(NA, NA),
                         tfact = 1.5, surfwet = 1, slr = NA, apr = NA, hor = NA, wsa = NA,
                         maxhgt = NA, twi = NA) {
@@ -652,9 +735,9 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
 #' in topographic wetness (see [soilmdistribute()])
 #' @param surfwet an optional single numeric value of array of values specifying the proportion
 #' of the canopy surface that should be treated as wet surface (see details)
-#' @param slr an optional RasterLayer of slope values (Radians). Calculated from
+#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
 #' dtm if not supplied, but outer cells will be NA.
-#' @param apr an optional RasterLayer of aspect values (Radians). Calculated from
+#' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
 #' dtm if not supplied, but outer cells will be NA.
 #' @param hor an optional array of the tangent of the angle to the horizon in
 #' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
@@ -662,7 +745,7 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
 #' Calculated from dtm if not supplied, but outer cells will be NA.
 #' @param maxhgt an optional height (m) for which wind speed is needed. Determined
 #' from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.
-#' @param twi optional raster of topographic wetness index values.
+#' @param twi optional SpatRaster object of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
 #' @return if expand = TRUE, an object of class microout with the following components:
 #' @return `Tz` Array of air temperatures at height `reqhgt` (deg C). Identical to `T0`
@@ -683,7 +766,8 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
 #' @return if expand = FALSE, an object of class microutdaily, list with the following components:
 #' @return mout_mn an object of class microut for minimum daily temperatures
 #' @return mout_mx an object of class microut for maximum daily temperatures
-#' @seealso [runmicro_hr()] for running microclimate model in hourly time-steps
+#' @seealso [runmicro_hr()] for running microclimate model in hourly time-steps and
+#' [runmicro_big()] for running the microclimate model over large areas as tiles.
 #'
 #' @details
 #' If expand = TRUE, daily minima and maxima are expanded to hourly using values in the hourly
@@ -696,12 +780,11 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
 #' latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
 #' is such that `surfwet` ~ 1.
 #'
-#' @import raster
+#' @import terra
 #' @export
 #'
 #' @examples
-#' library(raster)
-#' library(sp)
+#' library(terra)
 #' library(zoo)
 #' library(abind)
 #' # Create model input with inbuilt datasets
@@ -709,18 +792,18 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
 #' # Run model 5 cm above ground  performing hourly expansion (takes ~50 seconds to run)
 #' mout<-runmicro_dy(microd, 0.05)
 #' # Plot air temperatures on hottest hour
-#' plot(raster(mout$Tz[,,4094]))
+#' plot(rast(mout$Tz[,,4094]))
 #' # Plot mean air temperatures
 #' mairt<-apply(mout$Tz,c(1,2),mean)
-#' plot(raster(mairt))
+#' plot(rast(mairt))
 #' # Plot ground temperatures on hottest and coldest hour
-#' plot(raster(mout$T0[,,991])) # coldest hour
-#' plot(raster(mout$T0[,,4094])) # hottest hour
+#' plot(rast(mout$T0[,,991])) # coldest hour
+#' plot(rast(mout$T0[,,4094])) # hottest hour
 #' # Run model 20 cm below ground
 #' mout<-runmicro_dy(microd, -0.2)
 #' # Extract and plot mean soil temperatures
 #' msoilt<-apply(mout$Tz,c(1,2),mean)
-#' plot(raster(msoilt))
+#' plot(rast(msoilt))
 runmicro_dy <- function(microd, reqhgt, expand = TRUE, pai_a = NA, folden = NA, xyf = 1, zf = NA,
                         soilinit = c(NA, NA), tfact = 1.5, surfwet = 1, slr = NA,
                         apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
@@ -779,15 +862,15 @@ runmicro_dy <- function(microd, reqhgt, expand = TRUE, pai_a = NA, folden = NA, 
 #'
 #' @description The function `writetonc` writes hourly model outputs as an ncdf4 file to a specified file
 #'
-#' @param mout an object of class microut
+#' @param mout an object of class microut as returned by runmicro_hr or runmicro_dy with expand = TRUE
 #' @param fileout output filename
-#' @param dtm a Rasterlayer covering the extent of the model outputs
+#' @param dtm a SpatRast covering the extent of the model outputs
 #' @param weather a data.frame of hourly weather variables (used to get time stamp)
 #' @param reqhgt at at which model was run (m)
 #' @param merid longitude of local time zone meridian (decimal degrees)
 #' @param dst numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
 #'
-#' @import ncdf4 raster
+#' @import ncdf4 terra
 #' @export
 writetonc <- function(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0) {
   atonc<-function(a,rd) {
@@ -798,8 +881,9 @@ writetonc <- function(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0) {
     a
   }
   # Creat eastings and nothings sequence
-  est<-seq(extent(dtm)@xmin+res(dtm)[1]/2,extent(dtm)@xmax-res(dtm)[1]/2,res(dtm)[1])
-  nth<-seq(extent(dtm)@ymin+res(dtm)[2]/2,extent(dtm)@ymax-res(dtm)[2]/2,res(dtm)[2])
+  if (class(dtm)[1] == "PackedSpatRaster") dtm<-rast(dtm)
+  est<-seq(ext(dtm)$xmin+res(dtm)[1]/2,ext(dtm)$xmax-res(dtm)[1]/2,res(dtm)[1])
+  nth<-seq(ext(dtm)$ymin+res(dtm)[2]/2,ext(dtm)$ymax-res(dtm)[2]/2,res(dtm)[2])
   east<-ncdim_def(name="east",units="metres",vals=est,longname="Eastings")
   north<-ncdim_def(name="north",units="metres",vals=nth,longname="Northings")
   # Create time variable
@@ -877,14 +961,15 @@ writetonc <- function(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0) {
 #' The function `runmicro_big` tiles larger studies and saves outputs for each tile
 #'
 #' @param weather a data.frame of weather variables (see details)
-#' @param rainfall a vector of daily rainfall
+#' @param precip a vector of daily precipitation
 #' @param reqhgt height above ground at which model outputs are needed (m).
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
-#' @param dtm a RasterLayer onject of elevations (see details)
+#' @param dtm a SpatRast or PackedSpatRast object of elevations (see details)
 #' @param pathout a file directory to which to save data
 #' @param hourly optional logical indicating whether to expand model to hourly and write
 #' outputs as ncdf4 files, or keep outputs at daily and save raw outputs
+#' @param windhgt height above ground of wind speed measurement (m) in climate dataset
 #' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
 #' @param xyf optional input for called function [wind()]
 #' @param zf optional input for called function [wind()]
@@ -895,42 +980,48 @@ writetonc <- function(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0) {
 #' of the canopy surface that should be treated as wet surface (see details)
 #' @param merid optionally, longitude of local time zone meridian (decimal degrees)
 #' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
-#'
+#' @seealso [runmicro_biga()] for running the microclimate model over large areas
+#' as tiles with climate input data provided as arrays.
 #' @return if `hourly` = TRUE, ncdf4 files of hourly values for each 100 x 100 grid cell tiles of
 #' the study area, numbered by row and column, and saved in a folder `microut` in the
-#' directory specified by path.
-#' @return if `hourly` = FALSE, daily max and min values saved in files with a .R
+#' directory specified by path. Data are stored as intigers and multiplied by 100
+#' @return if `hourly` = FALSE, daily max and min values saved in files (using saveRDS) with a .R
 #' extension for each 100 x 100 grid cell tiles of the study area, numbered by row
 #' and column, and saved in a folder `microut` in the directory specified by path. This
-#' saves disk space, is singnificantly faster and files can later be expanded to
-#' hourly and written out as ncdf4 files using [expandtonc()]
+#' saves disk space, is significantly faster and files can later be expanded to
+#' hourly and written out as ncdf4 files using [expandtonc()]. Data are stored as integers and
+#' multiplied by 100. A cropped dtm of the tile is also saved as a PackedSpatRast object.
 #'
-#' @import raster ncdf4
+#' @import terra ncdf4
 #' @export
 #'
 #' @details
-#' The parmater `pai_a` is used to calaculate the radiation incercepted by leaves at `reqhgt` if
+#' The parameter `pai_a` is used to calculate the radiation intercepted by leaves at `reqhgt` if
 #' below canopy. If not supplied it is calculated from total plant area index by
 #' assuming leaf density within the canopy is uniformly vertically distributed. If suuplied
 #' it must have the same dimensions as micro$pai. I.e. with the same x and y dims as the
-#' the supplied dtm and values for each hour as the z dimension. The paramater `surfwet`
-#' determines how much of the canopy should be treated as wet surface when calaculating
+#' the supplied dtm and values for each hour as the z dimension. The parameter `surfwet`
+#' determines how much of the canopy should be treated as wet surface when calculating
 #' latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
 #' is such that `surfwet` ~ 1.
-runmicro_big <- function(weather, rainfall, reqhgt, vegp, soilc, dtm, pathout, hourly = FALSE,
-                         pai_a = NA, folden = NA, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
+runmicro_big <- function(weather, precip, reqhgt, vegp, soilc, dtm, pathout, hourly = FALSE,
+                         windhgt = 2, pai_a = NA, folden = NA, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
                          surfwet = 1, merid = 0, dst = 0, runchecks = TRUE) {
   # Calculate universal variables
   path2<-paste0(pathout,"microut/")
   dir.create(path2,showWarnings = FALSE)
+  up<-.unpack(dtm,vegp,soilc)
+  dtm<-up$dtm
+  vegp<-up$vegp
+  soilc<-up$soilc
   cat("Computing terrain variables over whole area\n")
-  slr<-terrain(dtm,opt="slope")
-  apr<-terrain(dtm,opt="aspect")
+  slr<-terrain(dtm,v="slope",unit="radians")
+  apr<-terrain(dtm,v="aspect",unit="radians")
   twi<-.topidx(dtm)
   hor<-array(NA,dim=c(dim(dtm)[1:2],24))
   for (i in 1:24) hor[,,i]<-.horizon(dtm,(i-1)*15)
   dsm<-dtm+vegp$hgt
-  maxhgt<-max(getValues(vegp$hgt),na.rm=T)
+  maxhgt<-max(.is(vegp$hgt),na.rm=T)
   maxhgt<-ifelse(maxhgt<2,2,maxhgt)
   if (is.na(xyf)) xyf<-trunc(pmax(10/res(dtm)[1],10))
   wsa<-.windsheltera(dsm,8,maxhgt,xyf)
@@ -941,7 +1032,7 @@ runmicro_big <- function(weather, rainfall, reqhgt, vegp, soilc, dtm, pathout, h
   for (rw in 1:rws) {
     for (cl in 1:cls) {
       dtmi<-.cropraster(dtm,rw,cl)
-      v<-getValues(dtmi)
+      v<-as.vector(dtmi)
       if (is.na(mean(v,na.rm=T))==F) {
         slri<-.cropraster(slr,rw,cl)
         apri<-.cropraster(apr,rw,cl)
@@ -950,7 +1041,7 @@ runmicro_big <- function(weather, rainfall, reqhgt, vegp, soilc, dtm, pathout, h
         wsai<-.croparray(wsa,rw,cl)
         vegpi<-.vegpcrop(vegp,rw,cl)
         soilci<-.soilccrop(soilc,rw,cl)
-        microd<-suppressWarnings(modelin_dy(weather,rainfall,vegpi,soilci,dtmi,merid,dst,runchecks))
+        microd<-suppressWarnings(modelin_dy(weather,precip,vegpi,soilci,dtmi,windhgt,merid,dst,runchecks))
         cat(paste0("Running model for tile ",rw," ",cl,"\n"))
         if (hourly) {
           expand = TRUE
@@ -965,8 +1056,9 @@ runmicro_big <- function(weather, rainfall, reqhgt, vegp, soilc, dtm, pathout, h
           writetonc(mout,fo,dtmi,weather,reqhgt, merid, dst)
         } else {
           mout<-.outasint(mout,weather,dtmi,reqhgt,merid,dst)
+          mout$dtm<-wrap(dtmi)
           fo<-paste0(path2,"area_",rwt,"_",clt,".R")
-          save(mout,file=fo)
+          saveRDS(mout,file=fo)
         }
       }
     }
@@ -979,11 +1071,10 @@ runmicro_big <- function(weather, rainfall, reqhgt, vegp, soilc, dtm, pathout, h
 #'
 #' @param filein file to be loaded as written out by [runmicro_big()]
 #' @param file to be written out. Must have .nc extension.
-#' @import ncdf4 raster
+#' @import ncdf4 terra
 #' @export
 expandtonc <- function(filein, fileout) {
-  mm<-load(filein)
-  mout<-get(mm)
+  mout<-readRDS(filein)
   dtm<-mout$dtm; mout$dtm<-NULL
   weather<-mout$weather; mout$weather<-NULL
   reqhgt<-mout$reqhgt; mout$reqhgt<-NULL
@@ -1017,4 +1108,116 @@ expandtonc <- function(filein, fileout) {
   }
   cat("Writing data as ncdf4 file \n")
   writetonc(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0)
+}
+#' runmicro on big areas with climate data provided as arrays
+#'
+#' The function `runmicro_biga` tiles larger studies and saves outputs for each tile
+#'
+#' @param climarray a list of arrays of weather variables (see details). See also [nctoarray()]
+#' @param precip an array of daily precipitation (see details)
+#' @param tme an object of class POSIXlt giving the dates and times for each weather variable stroed in the array
+#' @param r a SpatRaster object giving with the resolution, spatial extent, and projection of the weather data (see details)
+#' @param altcorrect a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)
+#' @param reqhgt height above ground at which model outputs are needed (m).
+#' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
+#' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
+#' @param dtm a SpatRast or PackedSpatRast object of elevations (see details)
+#' @param pathout a file directory to which to save data
+#' @param hourly optional logical indicating whether to expand model to hourly and write
+#' outputs as ncdf4 files, or keep outputs at daily and save raw outputs
+#' @param windhgt height above ground of wind speed measurement (m) in climate dataset
+#' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
+#' @param xyf optional input for called function [wind()]
+#' @param zf optional input for called function [wind()]
+#' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
+#' @param tfact coefficient determining sensitivity of soil moisture to variation
+#' in topographic wetness (see [soilmdistribute()])
+#' @param surfwet an optional single numeric value of array of values specifying the proportion
+#' of the canopy surface that should be treated as wet surface (see details)
+#' @param merid optionally, longitude of local time zone meridian (decimal degrees)
+#' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
+#' @param seealso [runmicro_biga()] for running the microclimate model over large areas
+#' as tiles with climate input data provided as a data.frame.
+#' @return if `hourly` = TRUE, ncdf4 files of hourly values for each 100 x 100 grid cell tiles of
+#' the study area, numbered by row and column, and saved in a folder `microut` in the
+#' directory specified by path. Data are stored as intigers and multiplied by 100
+#' @return if `hourly` = FALSE, daily max and min values saved in files (using saveRDS) with a .R
+#' extension for each 100 x 100 grid cell tiles of the study area, numbered by row
+#' and column, and saved in a folder `microut` in the directory specified by path. This
+#' saves disk space, is significantly faster and files can later be expanded to
+#' hourly and written out as ncdf4 files using [expandtonc()]. Data are stored as integers and
+#' multiplied by 100. A cropped dtm of the tile is also saved as a PackedSpatRast object.
+#'
+#' @import terra ncdf4
+#' @export
+#'
+#' @details
+#' The parameter `pai_a` is used to calculate the radiation intercepted by leaves at `reqhgt` if
+#' below canopy. If not supplied it is calculated from total plant area index by
+#' assuming leaf density within the canopy is uniformly vertically distributed. If suuplied
+#' it must have the same dimensions as micro$pai. I.e. with the same x and y dims as the
+#' the supplied dtm and values for each hour as the z dimension. The parameter `surfwet`
+#' determines how much of the canopy should be treated as wet surface when calculating
+#' latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
+#' is such that `surfwet` ~ 1.
+runmicro_biga <- function(climarray, precarray, tme, r, altcorrect, reqhgt, vegp, soilc, dtm, pathout, hourly = FALSE,
+                          windhgt = 2, pai_a = NA, folden = NA, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
+                          surfwet = 1, merid = 0, dst = 0, runchecks = TRUE) {
+  # Calculate universal variables
+  path2<-paste0(pathout,"microut/")
+  dir.create(path2,showWarnings = FALSE)
+  up<-.unpack(dtm,vegp,soilc)
+  dtm<-up$dtm
+  vegp<-up$vegp
+  soilc<-up$soilc
+  cat("Computing terrain variables over whole area\n")
+  slr<-terrain(dtm,v="slope",unit="radians")
+  apr<-terrain(dtm,v="aspect",unit="radians")
+  twi<-.topidx(dtm)
+  hor<-array(NA,dim=c(dim(dtm)[1:2],24))
+  for (i in 1:24) hor[,,i]<-.horizon(dtm,(i-1)*15)
+  dsm<-dtm+vegp$hgt
+  maxhgt<-max(.is(vegp$hgt),na.rm=T)
+  maxhgt<-ifelse(maxhgt<2,2,maxhgt)
+  if (is.na(xyf)) xyf<-trunc(pmax(10/res(dtm)[1],10))
+  wsa<-.windsheltera(dsm,8,maxhgt,xyf)
+  dms<-dim(dtm)[1:2]
+  rws<-ceiling(dms[1]/100)
+  cls<-ceiling(dms[2]/100)
+  cat(paste0("Running model over ",rws*cls," tiles\n"))
+  for (rw in 1:rws) {
+    for (cl in 1:cls) {
+      dtmi<-.cropraster(dtm,rw,cl)
+      v<-as.vector(dtmi)
+      if (is.na(mean(v,na.rm=T))==F) {
+        slri<-.cropraster(slr,rw,cl)
+        apri<-.cropraster(apr,rw,cl)
+        twii<-.cropraster(twi,rw,cl)
+        hori<-.croparray(hor,rw,cl)
+        wsai<-.croparray(wsa,rw,cl)
+        vegpi<-.vegpcrop(vegp,rw,cl)
+        soilci<-.soilccrop(soilc,rw,cl)
+        microd<-suppressWarnings(modelina_dy(climarray,precarray,tme,r,altcorrect,vegpi,soilci,dtmi,
+                                             windhgt,merid,dst,runchecks))
+        cat(paste0("Running model for tile ",rw," ",cl,"\n"))
+        if (hourly) {
+          expand = TRUE
+        } else expand = FALSE
+        mout<-runmicro_dy(microd,reqhgt,expand,NA,NA,xyf,zf,soilinit,tfact,surfwet,
+                          slri,apri,hori,wsai,maxhgt,twii)
+        rwt<-ifelse(rw<10,paste0("0",rw),paste0("",rw))
+        clt<-ifelse(cl<10,paste0("0",cl),paste0("",cl))
+        cat(paste0("Writing model outputs for tile ",rw," ",cl,"\n"))
+        if (hourly) {
+          fo<-paste0(path2,"area_",rwt,"_",clt,".nc")
+          writetonc(mout,fo,dtmi,weather,reqhgt, merid, dst)
+        } else {
+          mout<-.outasint(mout,weather,dtmi,reqhgt,merid,dst)
+          mout$dtm<-wrap(dtmi)
+          fo<-paste0(path2,"area_",rwt,"_",clt,".R")
+          saveRDS(mout,file=fo)
+        }
+      }
+    }
+  }
 }

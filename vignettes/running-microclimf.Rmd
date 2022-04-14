@@ -55,8 +55,7 @@ In the code below, the model is run in hourly time increments. An object of clas
 
 ```{r eval=FALSE}
 library(microclimf)
-library(raster)
-library(sp)
+library(terra)
 library(zoo)
 library(abind)
 # Create model input with inbuilt datasets
@@ -65,13 +64,13 @@ micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
 mout<-runmicro_hr(micro, 0.05)
 attributes(mout)
 # Plot air temperatures on hottest hour
-plot(raster(mout$Tz[,,4094]))
+plot(rast(mout$Tz[,,4094]))
 # Plot mean air temperatures
 mairt<-apply(mout$Tz,c(1,2),mean)
-plot(raster(mairt))
+plot(rast(mairt))
 # Plot ground temperatures on hottest and coldest hour
-plot(raster(mout$T0[,,991])) # coldest hour
-plot(raster(mout$T0[,,4094])) # hottest hour
+plot(rast(mout$T0[,,991])) # coldest hour
+plot(rast(mout$T0[,,4094])) # hottest hour
 ```
 
 The locations with the highest maximum temperatures are those where the vegetation surface lies just above or at 5cm. Heat absorbed by the vegetation and the air warmed significantly in proximity to the vegetation. The locations with the lowest maximum temperatures are those shaded topographically or by vegetation.
@@ -85,10 +84,10 @@ microd<-modelin_dy(climdata,rainfall,vegp,soilc,dtmcaerth)
 # Run model 5 cm above ground  performing hourly expansion (takes ~38 seconds to run)
 mout<-runmicro_dy(microd, 0.05)
 # Plot air temperatures on hottest hour
-plot(raster(mout$Tz[,,4094]))
+plot(rast(mout$Tz[,,4094]))
 # Plot mean air temperatures
 mairt<-apply(mout$Tz,c(1,2),mean)
-plot(raster(mairt))
+plot(rast(mairt))
 ```
 
 ## Model inputs
@@ -111,30 +110,32 @@ In addition to the above data frame of hourly weather variables, a vector of dai
 The inbuilt dataset `vegp` gives an example of the vegetation parameters needed to run the model. Here the attributes are shown and individual parameters plotted:
 
 ```{r, fig.show='hold'}
-library(raster)
+library(terra)
 attributes(vegp)
 # Plot spatial and temporal variation in pai
-plot(raster(vegp$pai[,,1]), main = "Jan PAI")
+plot(rast(vegp$pai[,,1]), main = "Jan PAI")
 vegpmean<-apply(vegp$pai,3,mean,na.rm=T)
 plot(vegpmean, type="l", main = "Seasonal variation in PAI")
 # Plot other variables
-plot(vegp$hgt, main="Vegetation height") 
-plot(vegp$x, main = "Leaf angle distribution") 
-plot(vegp$gsmax, main="Max. stomatal conductance") 
-plot(vegp$leafr,col=gray(0:255/255), main = "Leaf reflectivity")
-plot(vegp$clump, main = "Canopy clumping factor") # set to 0 
-plot(vegp$leafd, main = "Mean leaf diameter") # set to 0.05 
+plot(rast(vegp$hgt), main="Vegetation height") 
+plot(rast(vegp$x), main = "Leaf angle distribution") 
+plot(rast(vegp$gsmax), main="Max. stomatal conductance") 
+plot(rast(vegp$leafr),col=gray(0:255/255), main = "Leaf reflectivity")
+plot(rast(vegp$clump), main = "Canopy clumping factor") # set to 0 
+plot(rast(vegp$leafd), main = "Mean leaf diameter") # set to 0.05 
 ```
 
 * The `vegp` dataset is a list of the following:
     * `pai` - a 3D array of plant area index values 
-    * `hgt` - a a RasterLayer object of vegetation heights (m)
-    * `x` - a RasterLayer object of ratios of vertical to horizontal projections of leaf foliage
-    * `gsmax` - a Rasterlayer object maximum stomatal conductances (mol/m^2/s)
-    * `leafr` - a Rasterlayer object of leaf reflectance values for shortwave radiation (0 - 1)
-    * `clump` - a Rasterlayer object of values between 0 and 1 indicating the degree of canopy clumpiness (0 - even, 1 = highly clumped)
-    * `leafd` - a Rasterlayer object of leaf diameters (m)
+    * `hgt` - a a PackedSpatRast object of vegetation heights (m)
+    * `x` - a PackedSpatRast object of ratios of vertical to horizontal projections of leaf foliage
+    * `gsmax` - a PackedSpatRast object maximum stomatal conductances (mol/m^2/s)
+    * `leafr` - a PackedSpatRast object of leaf reflectance values for shortwave radiation (0 - 1)
+    * `clump` - a PackedSpatRast object of values between 0 and 1 indicating the degree of canopy clumpiness (0 - even, 1 = highly clumped)
+    * `leafd` - a PackedSpatRast object of leaf diameters (m)
     
+The inbuilt raster layers in microclimf are stored as PackedSpatRast objects to use less memory (see ?terra::wrap). To convert them to normal SpatRast objects the rast function is used as follows mySpatRast<-rast(myPackedSpatRast). In all instances, the model can be run with objects stored in either format. However, to plot a PackedSpatRast object, one must first unpack it. 
+
 If users do know values of these vegetation parameters across their study area, they can be approximated from habitat type using the `vegpfromhab` function. This function takes as an input, a raster of habitat types numerically coded as follows:
 
 (1) for Evergreen needleleaf forest,
@@ -155,34 +156,36 @@ If users do know values of these vegetation parameters across their study area, 
 (16) for Barren or sparsely vegetated
 
 
-It returns an object of class vegparams as required by the model.Here this is illustrated using he inbuilt habitat raster layer 
+It returns an object of class vegparams as required by the model.Here this is illustrated using he inbuilt habitat SpatRast layer 
 
 ```{r eval=FALSE}
-plot(habitats, main = "Habitat types") # inbuilt habitat raster layer
+plot(rast(habitats), main = "Habitat types") # inbuilt habitat SpatRast layer
 tme<-as.POSIXlt(c(0:8783)*3600,origin="2000-01-01 00:00", tz = "GMT")
 # Create an object of class vegparams:
 veg<-vegpfromhab(habitats,lat=50,long=-5,tme=tme)
 ```
 ![](images/plot0.png)\
 
-Note however, that be doing so, all values for a habitat type will be identical, when in reality this is unlikely to be the case. If one is unable to quantify the main determinants of microclimatic variation then there is little prospect of being able to model microclimatic conditions accurately and any outputs form the model should be treated wiht a high-degree of skepticism. 
+Note however, that be doing so, all values for a habitat type will be identical, when in reality this is unlikely to be the case. If one is unable to quantify the main determinants of microclimatic variation then there is little prospect of being able to model microclimatic conditions accurately and any outputs form the model should be treated with a high-degree of skepticism. 
 
-The model is most sensitive to `pai`. The plant area index is essentially the total one sided area of both leaves and woody and dead vegetation per unit ground area. It is needed primarily so that canopy cover can be estimated, but even for temperatures above canopy, `pai` partially determines the temperature profile. The first two dimensions of the array must correspond with the various RasterLayers (as well as the resolution and extent of the input raster elevation dataset). The third dimension is included to account for potential seasonal variation in `pai`. All other vegetation variables are assumed time-invariant. Any number of replicate `pai` values can be provided up to the number of climate observations. If fewer are provided than the number of climate observation are provided, then data are interpolated. In `vegp` 12 replicates are provided - representing approximately monthly values across the year. The model is also sensitive to `hgt`, primarily as this dictates whether the temperature at a given height is above or below canopy, but it also has an important bearing on temperature profiles above canopy. 
+The model is most sensitive to `pai`. The plant area index is the total one sided area of both leaves and woody and dead vegetation per unit ground area. It is needed primarily so that canopy cover can be estimated, but even for temperatures above canopy, `pai` partially determines the temperature profile. The first two dimensions of the array must correspond with those of the various SpatRast objects (as well as the resolution and extent of the input raster elevation dataset). The third dimension is included to account for potential seasonal variation in `pai`. All other vegetation variables are assumed time-invariant. Any number of replicate `pai` values can be provided up to the number of climate observations. If fewer than the number of climate observation are provided, then data are interpolated. In `vegp` 12 replicates are provided - representing approximately monthly values across the year. The model is also sensitive to `hgt`, primarily as this dictates whether the temperature at a given height is above or below canopy, but it also has an important bearing on temperature profiles above canopy. 
 
-The model is less sensitive to other parameters. The parameter `x` represents how vertically or horizontally the leaves of the canopy are orientated and controls how much direct radiation is transmitted through the canopy at a given solar angle (when the sun is low above the horizon, less radiation is transmitted through vertically orientated leaves). Users may refer to Campbell (1986) Agric For Meteorol, 36: 317-321 for a detailed explanation. Values for deciduous woodland are typically around 1, but for grassland may be closer to 0.2. The parameter ‘gsmax’ is the maximum stomatal conductance (mol / m^2 / s) of leaves and is needed for evapotranspiration calculations. Values typically range from 0.23 for deciduous broadleaf forest to 0.55 for wetland vegetation. Körner (1995) https://link.springer.com/chapter/10.1007/978-3-642-79354-7_22 gives values for major vegetation types of the world. The parameter ‘leafr’ is the leaf reflectance to shortwave radiation, typically around 0.23. The parameter ‘clump’ dictates how much radiation passes through gaps in the canopy, sand therefore represents the sub-pixel canopy clumpiness, with values ranging from 0 (uniform) to 1 (highly clumped). The parameter ‘leafw’ is the mean diameter of leaves (m, in the direction of wind-flow).
+The model is less sensitive to other parameters. The parameter `x` represents how vertically or horizontally the leaves of the canopy are orientated and controls how much direct radiation is transmitted through the canopy at a given solar angle (when the sun is low above the horizon, less radiation is transmitted through vertically orientated leaves). Users may refer to Campbell (1986) Agric For Meteorol, 36: 317-321 for a detailed explanation. Values for deciduous woodland are typically around 1, but for grassland may be closer to 0.2. The parameter ‘gsmax’ is the maximum stomatal conductance (mol / m^2 / s) of leaves and is needed for evapotranspiration calculations. Values typically range from 0.23 for deciduous broadleaf forest to 0.55 for wetland vegetation. Körner (1995) https://link.springer.com/chapter/10.1007/978-3-642-79354-7_22 gives values for major vegetation types of the world. The parameter ‘leafr’ is the leaf reflectivity to shortwave radiation  (also termed albedo), with typical values around 0.23. The parameter ‘clump’ dictates how much radiation passes through gaps in the canopy, and therefore represents the sub-pixel canopy clumpiness, with values ranging from 0 (uniform) to 1 (highly clumped). The parameter ‘leafw’ is the mean diameter of leaves.
 
 ### Soil parameters
 The inbuilt dataset `soilc` gives an example of the soil parameters needed to run the model. Here the attributes are shown and plotted:
 
 ```{r, fig.show='hold'}
 attributes(soilc)
-plot(soilc$soiltype, main = "Soiltype") # Clay loam throughout
-plot(soilc$groundr, col=gray(0:255/255), main = "Soil reflectivity")
+plot(rast(soilc$soiltype), main = "Soiltype") # Clay loam throughout
+plot(rast(soilc$groundr), col=gray(0:255/255), main = "Soil reflectivity")
 ```
 
 * This is a list of the following:
-    * `soiltype ` - a RasterLayer object of integer soil types
-    * `groundr` - a Rasterlayer object of soil reflectance values for shortwave radiation (0 - 1)
+    * `soiltype` - a PackedSpatRast object of integer soil types
+    * `groundr` - a PackedSpatRast object of soil reflectance values for shortwave radiation (0 - 1)
+
+Again, users in creating such a dataset, can store `soiltype` and `groundr` as either a PackedSpatRast or a SpatRast object.
 
 Soil type 7 corresponds to Clay loam. A full list of which numeric values correspond to which soil types, along with parameters associated with these soil types is shown in the `soilparameters` table:
 
@@ -193,12 +196,12 @@ soilparameters
 ## Fitting soil temperature and moisture data
 If users do not have their own empirical soil temperature and moisture data, and wish instead to use relationships inbuilt into `microclimf` then they can skip straight to the preparing model inputs section. 
 
-To ensure computational efficiency calculations in `microclimf` are performed simultaneously on all grid cells and for all-periods, thus circumventing need for a model that is run in time-steps. This necessitates some simplifying assumptions to be made about the influence of heat storage in the soil, as one would normally need to use a set of time-dependent differential equation that describes soil temperatures as a function of depth and time. This is the type of approach used in other packages such as `NicheMapR` and `microclimc`. 
+To ensure computational efficiency, calculations in `microclimf` are performed simultaneously on all grid cells and for all-periods, thus circumventing need for a model that is run in time-steps. This necessitates some simplifying assumptions to be made about the influence of heat storage in the soil, as one would normally need to use a set of time-dependent differential equation that describes soil temperatures as a function of depth and time. This is the type of approach used in other packages such as `NicheMapR` and `microclimc`. 
 
 The starting point of `microclimf` is thus to estimate ground surface temperatures, and in lieu of explicit first-principles calculations of soil temperatures, it is assumed that, for a given soil type, a reasonable empirical approximation of the difference between soil surface temperature and air temperature at reference height can be approximated from soil moisture, net radiation and wind speed. Thus, prior to computing temperatures, the fractional soil moisture content of the must be estimated. This is achieved using a simple, computationally efficient two-layer soil model run for a point location, in which the volumetric soil moisture fraction at each daily time-increment in a top shallow soil layer is computed from precipitation and net radiation, and the exchange of with an underlying deeper soil layer, with hydraulic conductivity between layers assumed to be dependent on the mean fractional water content of the soil in the antecedent time step. Derived parameters of this relationship for given soil types, empirically calibrated for Cornwall, UK, are provided in the `soilparameters` table. However, users may prefer instead to fit their own relationships for a study area using empirical data, or alternatively using a more complex model. 
 
 ### Fitting soil moisture
-In the example below, the `microclimc` wrapper for `NicheMapR` package is used to run a complex 15-layer soil moisture model. The parameters for fitting a relationship with the simpler soil model are then estimated by iteration and the final relationship and outputs shown.
+In the example below, the `microclimc` wrapper function for the `NicheMapR` package is used to run a complex 15-layer soil moisture model. The parameters for fitting a relationship with the simpler soil model are then estimated by iteration and the final relationship and outputs shown.
 
 ```{r eval=FALSE}
 require(NicheMapR) # - see https://github.com/mrke/NicheMapR
@@ -220,7 +223,7 @@ Here, the red lines are values form NicheMapR and the black  lines those from th
 ![](images/plot1.png)\
 
 ### Fitting soil temperature
-In lieu of explicit first-principles calculations of soil temperatures, it is assumed that, for a given soil type, a reasonable empirical approximation of the difference between hourly soil surface temperature and air temperature at reference height can be approximated from soil moisture and net radiation. In the example below, the `microclimc` wrapper for `NicheMapR` package is used to run a complex first principles multi-layer soil temperature model. The parameters for fitting a relationship with the simpler soil moisture model are then estimated by linear regression and the final relationship and outputs shown. 
+In lieu of explicit first-principles calculations of soil temperatures, it is assumed that, for a given soil type, a reasonable empirical approximation of the difference between hourly soil surface temperature and air temperature at reference height can be approximated from soil moisture and net radiation. In the example below, the `microclimc` wrapper function for the `NicheMapR` package is again used, this time to run a complex first principles multi-layer soil temperature model. The parameters for fitting a relationship with the simpler soil moisture model are then estimated by linear regression and the final relationship and outputs shown. 
 
 ```{r eval=FALSE}
 require(NicheMapR) # - see https://github.com/mrke/NicheMapR
@@ -247,7 +250,7 @@ There are four options for preparing the data for running the model. Firstly whe
 For the first case, the function `modelin` is used. In the example below, the inbuilt datasets of parameter values and a dtm for the study area, `dtmcaerth` are used. 
 
 ```{r, fig.show='hold'}
-plot(dtmcaerth)
+plot(rast(dtmcaerth))
 ```
 
 
@@ -283,13 +286,13 @@ plot(sm$soilm2, type="l", ylim=c(0.1,0.5), col="blue", lwd=2,
 
 In the example above, net radiation is first computed using the inbuilt climate dataset (see section below on radiation). The model is then applied using this dataset and rainfall. The plot shows soil moisture in the shallow surface layer (black) and deeper sub-surface layer (blue). 
 
-However, soil moisture, is usually quite spatially variable. This is handled in `microclimf`, by spatially distributing the soil moisture values for each time increment using the the Bevan and Kirkby (1979) topographic wetness index, such that valley and flat areas are assumed to have higher water content. Values are adjusted such that the average for the study area in each time step is equivalent to the value obtained by running the point model above. Users have the option to control the sensitivity of this topographic adjustment.  These calculations are performed using the `soilmdistribute` as in the example below.
+However, soil moisture, is usually quite spatially variable. This is handled in `microclimf`, by spatially distributing the soil moisture values for each time increment using the the Bevan and Kirkby (1979) topographic wetness index, such that valleys and flat areas are assumed to have higher water content. Values are adjusted such that the average for the study area in each time step is equivalent to the value obtained by running the point model (as shown above). Users have the option to control the sensitivity of this topographic adjustment.  These calculations are performed using the `soilmdistribute` as in the example below.
 
 ```{r, fig.show='hold'}
 sma<- soilmdistribute(sm$soilm1, dtmcaerth)
 mypal <- colorRampPalette(c("red","orange","yellow","green","blue","darkblue"))(255)
-plot(raster(sma[,,188]),col=mypal,zlim=c(0,0.5)) # soil moisture on driest day of year
-plot(raster(sma[,,2]),col=mypal,zlim=c(0,0.5)) # soil moisture on 2nd day of year
+plot(rast(sma[,,188]),col=mypal,range=c(0,0.5)) # soil moisture on driest day of year
+plot(rast(sma[,,2]),col=mypal,range=c(0,0.5)) # soil moisture on 2nd day of year
 ```
 
 ### Radiation
@@ -306,7 +309,7 @@ Radiation absorbed by the ground, accounting for terrain and vegetation cover, i
 micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
 micro<-groundrad(micro)
 # Plot shortwave radiation on 12th hour of year
-plot(raster(micro$radGsw[,,12])) #
+plot(rast(micro$radGsw[,,12])) #
 ```
 ![](images/plot3.png)\
 
@@ -319,27 +322,30 @@ micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
 micro<-soiltemp_hr(micro)
 # Plot temperature of hottest hour
 mypal <- colorRampPalette(c("darkblue","blue","green","yellow","orange","red"))(255)
-plot(raster(micro$T0[,,4094]),col=mypal)
+plot(rast(micro$T0[,,4094]),col=mypal)
 ```
 ![](images/plot4.png)\
 
 One can see that the model predicts that ground surface temperatures can get much hotter than air temperatures. This is as expected. It is not particularly unusual for dark surfaces such as asphalt to attain temperatures in excess of 60 degrees C on sunny days with low wind speed. However, places with significant tall vegetation cover are much cooler.
 
-The equivelent function when the model is run is daily time-steps is `soiltemp_dy`. The daily model gives very similar results to the hourly model in this instance.
+The equivalent function when the model is run is daily time-steps is `soiltemp_dy`. The daily model gives very similar results to the hourly model in this instance.
 
 ### Sensible heat flux and wind
 Sensible heat is the form of heat exchanged between the ground surface or the canopy and the air above it. Sensible heat fluxes can be derived from Fourier’s law of heat transport in which the flux is determined by temperature gradient multiplied by the degree of thermal conductance between the surface and the air. In everyday language, the term conductance is usually used to describe the heat exchanged between objects that are in direct physical contact, but the same principles can be extended to describe the process of conduction by convective currents in the air. 
 
 In still air, such as within the stomatal cavities of leaves, heat is transferred by a process of molecular diffusion. Immediately adjacent to the object, at the so-called boundary layer, surface drag results in slow and smooth layered movement of fluid particles in which layers slide past one another rather like playing cards. In this so called ‘laminar’ flow, conduction between the surface and the air is simultaneously accompanied by heat transfer across streamlines in the air by molecular diffusion. The orderly nature of these laminar flows depends on the length of surface in the direction of flow. Thus convective conductance between the leaves of a canopy the air surrounding the leaf typically diminishes as leaf size increases. As one moves further away from the object, the orderly layered movement breaks down and flow regimes are characterized by turbulent movements, and rapidly fluctuating eddies. These small whirlpools or vortices transport heat efficiently across the fluid in proportion to the size of the eddies. Higher wind speeds result in larger eddies. However, vegetation can itself affect wind speeds – immediately adjacent to the surface, wind speeds are lower. Below canopy, the wind profile is assumed in ‘microclimf’ to be affected foliage density (determined from plant area and vegetation height). Above canopy, the wind profile is assumed to be governed as the roughness of the surface, in turn dependent on vegetation height and leaf area. 
 
-The key step in computing the sensible heat flux is thus computing wind speeds. In `microclimf`, the effects of terrain on wind speed is also accounted for by applying a topographic shelter coefficient. Wind calculations are performed using function `wind`. Since the wind profile at any given location is not just dependent on the surface roughness at a point location, but also on surface upwind, the function contains an optional input parameter `xyf` controlling the number of pixels, and hence the distance over which surface roughness is averaged. HOwever, the default is not to average the surface roughness. The degree of averaging has a strong influence on the outputs of the model. In future versions of the model, it is anticipated that the degree of smoothing will be handled automatically.
+The key step in computing the sensible heat flux is thus computing wind speeds. In `microclimf`, the effects of terrain on wind speed is also accounted for by applying a topographic shelter coefficient. Wind calculations are performed using function `wind`. Since the wind profile at any given location may not just depend on the surface roughness at a point location, but also on surface upwind, the function contains an optional input parameter `xyf` controlling the number of pixels, and hence the distance over which surface roughness is averaged. However, the default is not to average the surface roughness. The degree of averaging has a strong influence on the outputs of the model. In future versions of the model, it is anticipated that the degree of smoothing will be handled automatically.
 
 In the example below wind speed is calculated for 5 cm above ground. The default of no smoothing is assumed, so `xyf` is not specified.
 
 ```{r eval=FALSE}
+rm(list = ls()) # so that inbuilt vegp etc are used
+library(microclimf)
 micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
 micro<-wind(micro, reqhgt = 0.05, xyf = 10)
-plot(raster(micro$uz[,,1]),col=mypal)
+mypal <- colorRampPalette(c("darkblue","blue","green","yellow","orange","red"))(255)
+plot(rast(micro$uz[,,1]),col=mypal)
 ```
 ![](images/plot5.png)\
 
@@ -375,7 +381,7 @@ The air temperature at any specified height `reqhgt`, whether below or above can
 micro<-temphumE(micro, reqhgt = 0.05)
 # Plot temperature of hottest hour
 mypal <- colorRampPalette(c("darkblue","blue","green","yellow","orange","red"))(255)
-plot(raster(micro$Tz[,,4094]),col=mypal)
+plot(rast(micro$Tz[,,4094]),col=mypal)
 ```
 
 ![](images/plot7.png)\
@@ -396,7 +402,7 @@ micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
 T10cm<-below_hr(micro, reqhgt = -0.1)
 # Plot temperature of hottest hour
 mypal <- colorRampPalette(c("darkblue","blue","green","yellow","orange","red"))(255)
-plot(raster(T10cm[,,4094]),col=mypal)
+plot(rast(T10cm[,,4094]),col=mypal)
 ```
 ![](images/plot8.png)\
 
@@ -407,18 +413,18 @@ Using functions `runmicro_hr` or `runmicro_dy`, there is no need run the model f
 # Run model 5 cm above ground
 mout<-runmicro_hr(micro, 0.05)
 # Plot air temperature on hottest hour
-plot(raster(mout$Tz[,,4094]))
+plot(rast(mout$Tz[,,4094]))
 # Run model 10 cm below ground
 mout<-runmicro_hr(micro, -0.1)
 # Plot ground temperatures on hottest hour
-plot(raster(mout$Tz[,,4094]))
+plot(rast(mout$Tz[,,4094]))
 attributes(mout)
 ```
 
-In addition to air temperatures, the model returns leaf (`tleaf`) and ground-surface (`T0`) temperatures, the soil moisture fraction in the upper soil layer (`soilm`), relative humidity (`relhum`), wind speed (`windspeed`) and direct (`raddir`), diffuse (`raddif`) and longwave (`radiation`) all at user specified height `reqhgt`.
+In addition to air temperatures, the model returns leaf (`tleaf`) and ground-surface (`T0`) temperatures, the soil moisture fraction in the upper soil layer (`soilm`), relative humidity (`relhum`), wind speed (`windspeed`) and direct (`raddir`), diffuse (`raddif`) and longwave (`radlw`) all at user specified height `reqhgt`.
 
 ### Running the model with arrays of climate data
-In the examples above, the climate forcing data used to drive the model are assumed to be uniform over the entire study area, an assumption best made when the model is run at high resolution, and thus over limited spatial extents. However, `microclimf` also has the functionality to supply climate forcing datasets as arrays of climate data using `modelina` (model run in hourly time-steps) or `modelina_dy` (model run in daily time-steps). IN so doing, the arrays of climate forcing data are automatically resampled to match the resolution of the digital elevation and vegetation data, which ultimately dictate the resolution at which the microclimate outputs are provided. MOre details are provided in the associated help files.    
+In the examples above, the climate forcing data used to drive the model are assumed to be uniform over the entire study area, an assumption best made when the model is run at high resolution, and thus over limited spatial extents. However, `microclimf` also has the functionality to supply climate forcing datasets as arrays of climate data using `modelina` (model run in hourly time-steps) or `modelina_dy` (model run in daily time-steps). In so doing, the arrays of climate forcing data are automatically resampled to match the resolution of the digital elevation and vegetation data, which ultimately dictate the resolution at which the microclimate outputs are provided. MOre details are provided in the associated help files.    
 
 ### Running the model over large areas
-R reads all datasets into internal memory, and in consequence the physical memory requirements of `microclimf` are very high, in practice limiting model runs to areas of ~2500 pixels at hourly time intervals for the duration of a year. To circumvent this issue, `microclimf` has the functionality to run the model in tiles using function `runmicro_big`. Here terrain-shading and topographic wetness are first calculated over the entire study area as here it is necessary account for terrain effects that extend beyond the boundaries of a single tile. Subsequently, the study area is automatically tiled and the model run over each tile in turn, saving the outputs to a specified directory. By default, the model is run in daily time-increments and results saved as .R data files. Function `expandtonc` has the functionality to expand daily to daily and save the outputs as netcdf4 files. MOre details are provided in the associated help files.    
+R reads all datasets into internal memory, and in consequence the physical memory requirements of `microclimf` are very high, in practice limiting model runs to areas of ~2500 pixels at hourly time intervals for the duration of a year. To circumvent this issue, `microclimf` has the functionality to run the model in tiles using functions `runmicro_big` (climate data supplied as a data.frame) or `runmimicro_biga` (climate data supplied as arrays). Here terrain-shading and topographic wetness are first calculated over the entire study area as here it is necessary account for terrain effects that extend beyond the boundaries of a single tile. Subsequently, the study area is automatically tiled and the model run over each tile in turn, saving the outputs to a specified directory. By default, the model is run in daily time-increments and results saved as .R data files. Function `expandtonc` has the functionality to expand daily to daily and save the outputs as netcdf4 files. MOre details are provided in the associated help files. 
