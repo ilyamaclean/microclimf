@@ -109,7 +109,8 @@
   return(ll)
 }
 .unpackpai <- function(pai,n) {
-  i<-floor((12/n)*c(0:(n-1))+1)
+  x<-dim(pai)[3]
+  i<-floor((x/n)*c(0:(n-1))+1)
   pai<-pai[,,i]
   pai
 }
