@@ -181,7 +181,7 @@
 .solalt <- function(localtime, lat, long, jd, merid = 0, dst = 0) {
   st<-.soltime(localtime,long,jd,merid,dst)
   tt<-0.261799*(st-12)
-  d<-(pi*23.5/180)*cos(2*pi*((jd-171)/365.25))
+  d<-(pi*23.5/180)*cos(2*pi*((jd-159.5)/365.25))
   sh<-sin(d)*sin(lat*pi/180)+cos(d)*cos(lat*pi/180)*cos(tt)
   sa<-(180*atan(sh/sqrt(1-sh^2)))/pi
   sa
@@ -190,7 +190,7 @@
 .solazi <- function(localtime, lat, long, jd, merid = 0, dst = 0) {
   st<-.soltime(localtime,long,jd,merid,dst)
   tt<-0.261799*(st-12)
-  d<-(pi*23.5/180)*cos(2*pi*((jd-171)/365.25))
+  d<-(pi*23.5/180)*cos(2*pi*((jd-159.5)/365.25))
   sh<-sin(d)*sin(lat*pi/180)+cos(d)*cos(lat*pi/180)*cos(tt)
   hh<-0.5*pi-acos(sh)
   sazi<-cos(d)*sin(tt)/cos(hh)
@@ -655,9 +655,10 @@
   rad_dir<-trdi*micro$dirr*micro$radm
   rad_dif<-trdf*micro$difr*micro$svfa
   rad_ref<-.radref(micro,pai_a,pai_b,reqhgt)
-  radzsw<-(1-micro$lref)*(rad_dir+rad_dif)+rad_ref
+  radzsw<-0.5*((1-micro$lref)*(rad_dir+rad_dif)+rad_ref)
   # LW radiation
-  radzlw<-0.97*(trlw*micro$lwsky+(1-trlw)*0.97*5.67*10^-8*tcan)
+  radzlw<-0.5*0.97*(trlw*micro$lwsky+(1-trlw)*0.97*5.67*10^-8*(tcan+273.15)^4)+ # above
+          0.5*0.97*5.67*10^-8*(micro$T0+273.15)^4  # ground
   return(list(radzsw=radzsw,radzlw=radzlw,rad_dir=rad_dir,rad_dif=rad_dif,rad_ref=rad_ref,trdf=trdf))
 }
 # Convert hourly weather to daily
