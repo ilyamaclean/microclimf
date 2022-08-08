@@ -22,7 +22,7 @@
   Tn
 }
 #' Performs Langrangian simulation (temperature)
-.LangrangianSimT<-function(reqhgt,micro,TH,pai_a=NA,folden=NA) {
+.LangrangianSimT<-function(reqhgt,micro,TH) {
   # Calculate d and zh of ground-layer
   n<-dim(micro$tc)[3]
   hgt<-.rta(micro$hgt,n)
@@ -36,11 +36,10 @@
   Tzfl<-micro$T0-(reqhgt/hgt)*(micro$T0-micro$Tz)
   Tzfo[sel]<-Tzfl[sel]
   # Partition according to canopy cover
-  Tf<-micro$trlw*Tzfo+(1-micro$trdi)*Tzfl
+  Tf<-micro$trd*Tzfo+(1-micro$trb)*Tzfl
   # Compute Source Density
-  ldp<-foliageden(reqhgt,micro$vha,micro$pai)
-  if (class(pai_a)[1]=="logical") pai_a<-ldp$pai_a
-  if (class(folden)[1]=="logical") folden<-ldp$leafden
+  pai_a<-micro$pai_a
+  folden<-micro$leafden
   cd<-micro$climdata
   R0<-.vta(cd$swrad,micro$gsmax)
   S<-.SourceD(reqhgt,R0,micro$tc,micro$skyem,TH$HR,pai_a,folden,
@@ -56,13 +55,19 @@
   To[sel]<-tmx[sel]
   sel<-which(micro$vha<=reqhgt)
   To[sel]<-micro$Tz[sel]
-  return(list(To=To,pai_a=pai_a,folden=folden,R0=R0))
+  return(list(To=To,R0=R0))
 }
 # Calculates leaf temperature
-.leaftemp<-function(micro,pai_a,gs,reqhgt,tcan) {
+.leaftemp<-function(micro,gs,reqhgt,tcan) {
   # Calculate radiation absorption
-  rad<-.radabs(micro,pai_a,reqhgt,tcan)
-  radabs<-rad$radzsw+rad$radzlw
+  # ** longwave
+  n<-reqhgt/micro$vha
+  n[n<1]<-1
+  pai_a<-micro$pai_a/(1-micro$clump^n)
+  micro$trlw<-(1-micro$clump^(2*n))*exp(-pai_a)+micro$clump^(2*n)
+  micro$Rlup<-0.97*5.67*10^-8*(tcan+273.15)^4
+  micro$Rldown<-micro$skyem*micro$lwout*micro$trlw+(1-micro$trlw)*micro$Rlup
+  radabs<-micro$radLsw+0.5*0.97*(micro$Rlup+micro$Rldown)
   Rem<-0.97*5.67*10^-8*(micro$tc+273.15^4)
   # Calculate conductivity
   n<-dim(Rem)[3]
@@ -74,11 +79,12 @@
   gh[sel]<-gmn[sel]
   TH<-PenMont(micro$Tz,micro$pk,micro$ea,radabs,gh,
               gs,0,NA,micro$tdew,1)
-  tleaf<-TH$tcan
-  return(list(tleaf=tleaf,gh=gh,rad=rad))
+  micro$tleaf<-TH$tcan
+  micro$gh<-gh
+  return(micro)
 }
 # Calculates relative humidity
-.LangrangianSimV<-function(reqhgt,micro,folden,ez,tlg) {
+.LangrangianSimV<-function(reqhgt,micro,ez,surfwet) {
   # Calculate soil surface effective vapour pressure
   n<-dim(ez)[3]
   rhs<-.soilrh(micro$theta,
@@ -102,13 +108,11 @@
   # Partition according to canopy cover
   ef<-micro$trlw*efo+(1-micro$trlw)*efl
   # Compute near field vapour pressure
-  gh<-tlg$gh
-  radp<-tlg$rad
-  gs<-.layercond(radp$rad_dir+radp$rad_dif,micro$gsmax)
-  gv<-1/(1/gs+1/gh)
-  es<-.satvap(tlg$tleaf)
+  gs<-.layercond(micro$Rbdown+micro$Rddown,micro$gsmax)
+  gv<-1/(1/gs+1/micro$gh)
+  es<-.satvap(micro$tleaf)*surfwet
   L<-44526*gv/micro$pk*(es-micro$ea)
-  S<-L*folden
+  S<-L*micro$leafden
   Cn<-.Cnear(S,micro$uf,micro$vha)*29.3*43
   Cn[Cn>2500]<-2500
   # Vapour pressure

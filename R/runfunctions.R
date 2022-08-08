@@ -162,7 +162,6 @@ checkinputs <- function(weather, precip, vegp, soilc, dtm, merid = 0, dst = 0, d
   vegp$x<-check.unpack(vegp$x,"vegp$x")
   vegp$gsmax<-check.unpack(vegp$gsmax,"vegp$gsmax")
   vegp$leafr<-check.unpack(vegp$leafr,"vegp$leafr")
-  vegp$clump<-check.unpack(vegp$clump,"vegp$clump")
   vegp$leafd<-check.unpack(vegp$leafd,"vegp$leafd")
   if (dim(vegp$x)[1] != xy[1]) stop("y dimension of vegp$x does not match dtm")
   if (dim(vegp$x)[2] != xy[2]) stop("x dimension of vegp$x does not match dtm")
@@ -177,8 +176,10 @@ checkinputs <- function(weather, precip, vegp, soilc, dtm, merid = 0, dst = 0, d
   if (dim(vegp$x)[3]>1) stop("time variant vegp$x not supported")
   if (dim(vegp$gsmax)[3]>1) stop("time variant vegp$x not supported")
   if (dim(vegp$leafr)[3]>1) stop("time variant vegp$leafr not supported")
-  if (dim(vegp$clump)[3]>1) stop("time variant vegp$clump not supported")
   if (dim(vegp$leafd)[3]>1) stop("time variant vegp$leafd not supported")
+  if (length(vegp$clump) > 1) {
+    if (length(vegp$clump) != length(vegp$pai)) stop("clump must be a single numeric value or have the same dimensions as vegp$pai")
+  }
   # Check soil data
   soilc$soiltype<-check.unpack(soilc$soiltype,"soilc$soiltype")
   soilc$groundr<-check.unpack(soilc$groundr,"soilc$groundr")
@@ -304,13 +305,14 @@ modelin <- function(weather, precip, vegp, soilc, dtm, windhgt = 2, merid = 0, d
   tdew<-.vta(tdew,r)
   vegx<-.rta(vegp$x,h)
   lref<-.rta(vegp$leafr,h)
+  ltra<-.rta(vegp$leaft,h)
   pk<-.vta(weather$pres,r)
   gref<-.rta(soilc$groundr,h)
-  pai=.unpackpai(vegp$pai,h)
-  clump<-.rta(vegp$clump,h)
+  pai<- .unpackpai(vegp$pai,h)
+  if (length(vegp$clump) > 1) clump<- .unpackpai(vegp$clump,h)
   soilp<-.soilinit(soilc)
   out<-list(tme=tme,tc=tc,difr=difr,dirr=dirr,dp=dp,skyem=skyem,
-            estl=estl,ea=ea,tdew=tdew,pk=pk,pai=pai,vegx=vegx,lref=lref,veghgt=vegp$hgt,
+            estl=estl,ea=ea,tdew=tdew,pk=pk,pai=pai,vegx=vegx,lref=lref,ltra=ltra,veghgt=vegp$hgt,
             gsmax=vegp$gsmax,clump=clump,gref=gref,rho=soilp$rho,Vm=soilp$Vm,leafd=vegp$leafd,
             Vq=soilp$Vq,Mc=soilp$Mc,soilb=soilp$soilb,psi_e=soilp$psi_e,Smax=soilp$Smax,
             dtm=dtm,lat=ll$lat,long=ll$long,merid=merid, dst=dst,
@@ -443,9 +445,10 @@ modelina<-function(climarray,precarray,tme,r,altcorrect = 0, vegp, soilc, dtm, w
   tdew<-suppressWarnings(.resa(tdew,r,dtm))
   vegx<-.rta(vegp$x,n)
   lref<-.rta(vegp$leafr,n)
+  ltra<-.rta(vegp$leaft,n)
   gref<-.rta(soilc$groundr,n)
   pai<-.unpackpai(vegp$pai,n)
-  clump<-.rta(vegp$clump,n)
+  if (length(vegp$clump) > 1) clump<-.unpackpai(vegp$clump,n)
   soilp<-.soilinit(soilc)
   # Elevation correction
   # ~~ Fix lapse rate
@@ -467,7 +470,7 @@ modelina<-function(climarray,precarray,tme,r,altcorrect = 0, vegp, soilc, dtm, w
   }
   ll<-.latlongfromraster(dtm)
   out<-list(tme=tme,tc=tc,difr=difr,dirr=dirr,dp=dp,skyem=skyem,
-            estl=estl,ea=ea,tdew=tdew,pk=pk,pai=pai,vegx=vegx,lref=lref,veghgt=vegp$hgt,
+            estl=estl,ea=ea,tdew=tdew,pk=pk,pai=pai,vegx=vegx,lref=lref,ltra=ltra,veghgt=vegp$hgt,
             gsmax=vegp$gsmax,clump=clump,gref=gref,rho=soilp$rho,Vm=soilp$Vm,leafd=vegp$leafd,
             Vq=soilp$Vq,Mc=soilp$Mc,soilb=soilp$soilb,psi_e=soilp$psi_e,Smax=soilp$Smax,
             dtm=dtm,lat=ll$lat,long=ll$long,merid=merid, dst=dst,
@@ -650,24 +653,30 @@ modelina_dy <- function(climarray, precarray, tme, r, altcorrect = 0, vegp, soil
 #' NA if `reqhgt` <= 0.
 #' @return `windspeed` Array of wind speeds at height `reqhgt` (m/s).
 #' NA if `reqhgt` <= 0.
-#' @return `raddir` Array of direct shortwave radiation received on horizontal
-#' surface (W/m^2). NA if `reqhgt` <= 0.
-#' @return `raddif` Array of direct shortwave radiation received on horizontal
-#' surface (W/m^2). NA if `reqhgt` <= 0.
-#' @return `radlw` Array of downward longwave radiation received on horizontal
-#' surface (W/m^2). NA if `reqhgt` <= 0.
+#' @return `Rdirdown` Array of downward direct shortwave radiation incident on
+#' horizontal surface (W/m^2)
+#' @return `Rdifdown` Array of downward diffuse shortwave radiation incident on
+#' horizontal surface (W/m^2)
+#' @return `Rlwdown` Array of downward longwave radiation incident on horizontal
+#' surface (W/m^2)
+#' @return `Rswup` Array of upward shortwave radiation (assumed diffuse) incident
+#' on underside of horizontal surface (W/m^2)
+#' @return `Rlwup` Array of upward longwave radiation incident on underside of
+#' horizontal surface (W/m^2)
 #'
 #' @seealso [runmicro_dy()] for faster running microclimate model in daily time-steps,
 #' including the option to expand daily outputs to hourly using the input diurnal
 #' temperature cycle and [runmicro_big()] for running the microclimate model over large areas
 #' as tiles.
 #'
-#' @details `pai_a` is used to calaculate the radiation incercepted by leaves at `reqhgt` if
-#' below canopy. If not supplied it is calaculated from total plant area index by
-#' assuming leaf density within the canopy is uniformly vertically distributed. If suuplied
-#' it must have the same dimensions as micro$pai. I.e. with the same x and y dims as the
-#' the supplied dtm and values for each hour as the z dimension. The paramater `surfwet`
-#' determines how much of the canopy should be treated as wet surface when calaculating
+#' @details `pai_a` is used to calculate the radiation intercepted by leaves at `reqhgt` if
+#' below canopy. If not supplied it is calculated from total plant area index by
+#' assuming leaf density within the canopy is uniformly vertically distributed. Wind speed and
+#' radiation values are only returned when `reqhgt > 0`. To derive radiation values when
+#' `reqhgt = 0`, set `pai_a` to `micro$pai`. If supplied, `pai_a` must have the
+#' same dimensions as micro$pai. I.e. with the same x and y dims as the the
+#' supplied dtm and values for each hour as the z dimension. The parameter `surfwet`
+#' determines how much of the canopy should be treated as wet surface when calculating
 #' latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
 #' is such that `surfwet` ~ 1.
 #' @import terra
@@ -698,7 +707,7 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
                         tfact = 1.5, surfwet = 1, slr = NA, apr = NA, hor = NA, wsa = NA,
                         maxhgt = NA, twi = NA) {
   # Calculate soil surface temperature and soil moisture
-  micro<-soiltemp_hr(micro,reqhgt,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
+  micro<-soiltemp_hr(micro,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
   # Run above ground
   if (reqhgt > 0) {
     mout<-temphumE(micro,reqhgt,pai_a,folden,xyf,zf,soilinit,tfact,surfwet,slr,apr,hor,wsa,maxhgt,twi)
@@ -706,14 +715,16 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
   # Run at ground level
   if (reqhgt == 0) {
     mout<-list(Tz=micro$T0,tleaf=NA,T0=micro$T0,soilm=micro$theta,
-               relhum=NA,windspeed=NA,raddir=NA,raddif=NA,radlw=NA)
+               relhum=NA,windspeed=NA,Rdirdown=NA,Rdifdown=NA,Rlwdown=NA,
+               Rswup=NA,Rlwup=NA)
     class(mout)<-"microout"
   }
   # Run below ground
   if (reqhgt < 0) {
     Tz<-below_hr(micro,reqhgt,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
     mout<-list(Tz=Tz,tleaf=NA,T0=micro$T0,soilm=micro$theta,
-               relhum=NA,windspeed=NA,raddir=NA,raddif=NA,radlw=NA)
+               relhum=NA,windspeed=NA,Rdirdown=NA,Rdifdown=NA,Rlwdown=NA,
+               Rswup=NA,Rlwup=NA)
     class(mout)<-"microout"
   }
   return(mout)
@@ -757,12 +768,16 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
 #' NA if `reqhgt` <= 0.
 #' @return `windspeed` Array of wind speeds at height `reqhgt` (m/s).
 #' NA if `reqhgt` <= 0.
-#' @return `raddir` Array of direct shortwave radiation received on horizontal
-#' surface (W/m^2). NA if `reqhgt` <= 0.
-#' @return `raddif` Array of direct shortwave radiation received on horizontal
-#' surface (W/m^2). NA if `reqhgt` <= 0.
-#' @return `radlw` Array of downward longwave radiation received on horizontal
-#' surface (W/m^2). NA if `reqhgt` <= 0.
+#' @return `Rdirdown` Array of downward direct shortwave radiation incident on
+#' horizontal surface (W/m^2)
+#' @return `Rdifdown` Array of downward diffuse shortwave radiation incident on
+#' horizontal surface (W/m^2)
+#' @return `Rlwdown` Array of downward longwave radiation incident on horizontal
+#' surface (W/m^2)
+#' @return `Rswup` Array of upward shortwave radiation (assumed diffuse) incident
+#' on underside of horizontal surface (W/m^2)
+#' @return `Rlwup` Array of upward longwave radiation incident on underside of
+#' horizontal surface (W/m^2)
 #' @return if expand = FALSE, an object of class microutdaily, list with the following components:
 #' @return mout_mn an object of class microut for minimum daily temperatures
 #' @return mout_mx an object of class microut for maximum daily temperatures
@@ -771,14 +786,7 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
 #'
 #' @details
 #' If expand = TRUE, daily minima and maxima are expanded to hourly using values in the hourly
-#' weather dataset. The parmater `pai_a` is used to calaculate the radiation incercepted by leaves at `reqhgt` if
-#' below canopy. If not supplied it is calaculated from total plant area index by
-#' assuming leaf density within the canopy is uniformly vertically distributed. If suuplied
-#' it must have the same dimensions as micro$pai. I.e. with the same x and y dims as the
-#' the supplied dtm and values for each hour as the z dimension. The paramater `surfwet`
-#' determines how much of the canopy should be treated as wet surface when calaculating
-#' latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
-#' is such that `surfwet` ~ 1.
+#' weather dataset. See also details for [runmicro_hr()].
 #'
 #' @import terra
 #' @export
@@ -808,7 +816,7 @@ runmicro_dy <- function(microd, reqhgt, expand = TRUE, pai_a = NA, folden = NA, 
                         soilinit = c(NA, NA), tfact = 1.5, surfwet = 1, slr = NA,
                         apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
   # Calculate soil surface temperature and soil moisture
-  microd<-soiltemp_dy(microd,reqhgt,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
+  microd<-soiltemp_dy(microd,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
   climdata<-microd$climdata
   climd<-.climtodaily(climdata)
   # Run above ground

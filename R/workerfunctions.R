@@ -17,10 +17,6 @@
   a<-array(va,dim=c(dim(m),length(v)))
   a
 }
-#' convert radians to degrees
-.ad <-function(r) {
-  r*(180/pi)
-}
 #' convert degrees to radians
 .ar <- function(d) {
   d*(pi/180)
@@ -40,7 +36,7 @@
   if (class(vegp$x)[1] == "PackedSpatRaster") vegp$x<-rast(vegp$x)
   if (class(vegp$gsmax)[1] == "PackedSpatRaster") vegp$gsmax<-rast(vegp$gsmax)
   if (class(vegp$leafr)[1] == "PackedSpatRaster") vegp$leafr<-rast(vegp$leafr)
-  if (class(vegp$clump)[1] == "PackedSpatRaster") vegp$clump<-rast(vegp$clump)
+  if (class(vegp$leaft)[1] == "PackedSpatRaster") vegp$leaft<-rast(vegp$leaft)
   if (class(vegp$leafd)[1] == "PackedSpatRaster") vegp$leafd<-rast(vegp$leafd)
   if (class(soilc$soiltype)[1] == "PackedSpatRaster") soilc$soiltype<-rast(soilc$soiltype)
   if (class(soilc$groundr)[1] == "PackedSpatRaster") soilc$groundr<-rast(soilc$groundr)
@@ -48,7 +44,6 @@
   crs(vegp$x)<-crs(dtm)
   crs(vegp$gsmax)<-crs(dtm)
   crs(vegp$leafr)<-crs(dtm)
-  crs(vegp$clump)<-crs(dtm)
   crs(vegp$leafd)<-crs(dtm)
   crs(soilc$soiltype)<-crs(dtm)
   crs(soilc$groundr)<-crs(dtm)
@@ -239,42 +234,24 @@
   # Raw k
   zen<-pi/2-sa
   k<-sqrt((x^2+(tan(zen)^2)))/(x+1.774*(x+1.182)^(-0.733))
+  k0<-sqrt(x^2)/(x+1.774*(x+1.182)^(-0.733))
   # k dash
   kd<-k*cos(zen)/si
   sel<-which(si==0)
   kd[sel]<-1
-  return(list(k=k,kd=kd))
-}
-#' Calculates direct radiation transmission through canopy
-.cantransdir <- function(l, k, ref = 0.23, clump = 0) {
-  f<-1/(1-clump)
-  s<-sqrt(1-ref)
-  ks<-k*s
-  tr<-(1-clump)*exp(-ks*l*f)+clump
-  tr
-}
-#' Calculates diffuse radiation transmission through canopy
-.cantransdif <- function(l, ref = 0.23, clump = 0) {
-  f<-1/(1-clump)
-  s<-sqrt(1-ref)
-  tr<-(1-clump)*exp(-s*l*f)+clump
-  tr
+  return(list(k=k,kd=kd,k0=k0))
 }
 #' Calculates proportion of sunlight leaves in canopy
-.psunlit <- function(l, k, clump = 0) {
-  f <- 1/(1-clump)
-  Ls<-(1-exp(-k*l*f))/k
-  Lp <- Ls/l
-  Lp<-(1-clump)*Lp+clump
+.psunlit <- function(l, k, kc, clump) {
+  f<-l/(1-clump)
+  Lp<-(1-clump^kc)*exp(-k*f)+clump^kc
   Lp[is.na(Lp)]<-1
   Lp
 }
 #' Calculates equivelent of proportion of sunlight leaves for diffuse radiation
 .psunlitd <- function(l, clump = 0) {
-  f <- 1/(1-clump)
-  Ls<-(1-exp(-l*f))
-  Lp <- Ls/l
-  Lp<-(1-clump)*Lp+clump
+  f<-l/(1-clump)
+  Lp<-(1-clump^2)*exp(-f)+clump^2
   Lp[is.na(Lp)]<-1
   Lp
 }
@@ -464,49 +441,6 @@
   ez[sel]<-.satvap(TH$tcan[sel])
   return(list(Tz=Ta,ez=ez))
 }
-#' Calculate temperature profile below canopy
-.tleaf <- function(tair,tground,es,eref,pk,gtt,gt0,gHa,gv,gL,Rabsl,leafdens,surfwet,soilrh=1) {
-  # Air temperature expressed as leaf temperature
-  aL<-(gtt*(tair+273.15)+gt0*(tground+273.15))/(gtt+gt0)
-  bL<-(leafdens*gL)/(gtt+gt0)
-  # Vapour pressures
-  esoil<-.satvap(tground)*soilrh
-  sb<-5.67*10^-8
-  Rnet<-Rabsl-0.97*sb*(tair+273.15)^4
-  delta<-.delta(tair,Rabsl)
-  ae<-(gtt*eref+gt0*esoil+gv*es)/(gtt+gt0+gv)
-  be<-(gv*delta)/(gtt+gt0+gv)
-  # Sensible heat
-  bH<-gHa*29.3
-  # Latent heat
-  aX<-((44526*gv)/pk)*(surfwet*es-ae)
-  bX<-((44526*gv)/pk)*(surfwet*delta-be)
-  aX[aX<0]<-0
-  bX[bX<0]<-0
-  # Emmited radiation
-  aR<-sb*0.97*aL^4
-  bR<-4*0.97*sb*(aL^3*bL+(tair+273.15)^3)
-  # Leaf temperature
-  dTL<-(Rabsl-aR-aX)/(1+bR+bX+bH)
-  # tz pass 1
-  tn<-aL-273.15+bL*dTL
-  tleaf<-tn+dTL
-  # new vapour pressure
-  eanew<-ae+be*dTL
-  tmin<-.dewpoint(eanew,tn)
-  esnew<-.satvap(tn)
-  eanew<-.lim(eanew,esnew,up=TRUE)
-  eanew<-.lim(eanew,0.01)
-  rh<-(eanew/esnew)*100
-  # Set both tair and tleaf so as not to drop below dewpoint
-  tleaf<-.lim(tleaf,tmin)
-  tleaf<-.lim(tleaf,tair+20,up=TRUE)
-  tleaf<-.lim(tleaf,80,up=TRUE)
-  tn<-.lim(tn,tmin)
-  tn<-.lim(tn,tair+20,up=TRUE)
-  tn<-.lim(tn,80,up=TRUE)
-  return(list(tleaf=tleaf,tn=tn,rh=rh))
-}
 #' Caclulates flow direction
 .flowdir <- function(md) {
   fd <- md * 0
@@ -579,35 +513,6 @@
   }
   smout
 }
-#' Calculates canopy boundary layer conductivity and conductivity to ground
-.conductivityE<-function(micro,reqhgt,xyf=1,zf=NA,slr=NA,apr=NA,hor=NA,wsa=NA,maxhgt=NA) {
-  if (micro$progress<2) {
-    micro<-canopyrad(micro,slr,apr,hor)
-  }
-  if (micro$progress<3) {
-    micro<-wind(micro,xyf=xyf,zf=zf,slr=slr,apr=apr,hor=hor,wsa=wsa,maxhgt=maxhgt)
-  }
-  # Calculate approximate H
-  Hest<-0.5*(micro$canabs-micro$lwout)
-  # Calculate approximate diabatic correction
-  dbm<-.diabatic(micro$tc,micro$uf,micro$d,micro$zm,micro$maxhgt,Hest)
-  # Calculate boundary layer conductivity
-  pai<-micro$pai
-  pai[pai<1]<-1
-  lwi<-.rta(micro$leafd,dim(pai)[3])
-  gmin<-.gfree(lwi,Hest)*2*pai
-  gHa<-.gturb(micro$uf,micro$d,micro$zm,micro$maxhgt,psi_h=dbm$psi_h,gmin=gmin)
-  # Calculate g0
-  micro<-wind(micro,xyf,zf,dbm$psi_m,reqhgt,slr=slr,apr=apr,hor=hor,wsa=wsa,maxhgt=maxhgt)
-  micro$gHa<-gHa
-  micro$dbm<-dbm
-  micro$progress<-4
-  # Clean micro
-  micro$vegx<-NULL
-  micro$veghgt<-NULL
-  micro$si<-NULL
-  return(micro)
-}
 #' expand daily array to hourly array
 .ehr<-function(a) {
   n<-dim(a)[1]*dim(a)[2]
@@ -626,40 +531,6 @@
   hr<-exp((0.018*matric)/(8.31*(tc+273.15)))
   hr[hr>1]<-1
   hr
-}
-# Calculate absorbed reflected radiation
-.radref<-function(micro,pai_a,pai_b,reqhgt) {
-  # canopy reflected
-  a<- (-sqrt(1-micro$lref)*micro$pai*(micro$k*micro$dirr+micro$difr))/
-    (micro$vha*(micro$dirr+micro$difr))
-  b<-micro$lref*(micro$pai/micro$vha)*(1-micro$lref)*0.5*micro$lref*(micro$dirr+micro$difr)
-  rcan<-b*(exp(a*(micro$vha-reqhgt))*((exp(2*a*reqhgt-1)/(2*a))+(micro$vha-reqhgt)))
-  rcan[is.na(rcan)]<-0
-  rcan[rcan<0]<-0
-  # ground reflected
-  trdi<-.cantransdir(pai_b,micro$k,micro$lref,micro$clump)
-  trdf<-.cantransdif(pai_b,micro$lref,micro$clump)
-  rgr<-(1-micro$lref)*trdf*micro$gref*(trdi*micro$radm*micro$dirr+trdf*micro$svfa*micro$difr)
-  # both
-  rref<-rcan+rgr
-  rref
-}
-# Calculate leaf absorbed radiation
-.radabs<-function(micro,pai_a,reqhgt,tcan) {
-  pai_b<-micro$pai-pai_a
-  #' Calculate radiation absorbed below PAI
-  trdi<-.cantransdir(pai_a,micro$k,micro$lref,micro$clump)
-  trdf<-.cantransdif(pai_a,micro$lref,micro$clump)
-  trlw<-.cantransdif(pai_a,0.03,micro$clump)
-  # SW radiation
-  rad_dir<-trdi*micro$dirr*micro$radm
-  rad_dif<-trdf*micro$difr*micro$svfa
-  rad_ref<-.radref(micro,pai_a,pai_b,reqhgt)
-  radzsw<-0.5*((1-micro$lref)*(rad_dir+rad_dif)+rad_ref)
-  # LW radiation
-  radzlw<-0.5*0.97*(trlw*micro$lwsky+(1-trlw)*0.97*5.67*10^-8*(tcan+273.15)^4)+ # above
-          0.5*0.97*5.67*10^-8*(micro$T0+273.15)^4  # ground
-  return(list(radzsw=radzsw,radzlw=radzlw,rad_dir=rad_dir,rad_dif=rad_dif,rad_ref=rad_ref,trdf=trdf))
 }
 # Convert hourly weather to daily
 .climtodaily<-function(climdata) {
@@ -692,6 +563,23 @@
   ao<-.vta(mu,r)*ame
   ao
 }
+.radtohour<-function(amn,amx,v) {
+  rd<-matrix(v,ncol=24,byrow=TRUE)
+  smn<-apply(rd,1,which.min)
+  smx<-apply(rd,1,which.max)
+  ra<-(c(1:dim(rd)[1])-1)*24
+  smn<-smn+ra
+  smx<-smx+ra
+  r<-rast(amn[,,1])
+  dtm<-rep(v[smn],each=24)
+  dtx<-rep(v[smx],each=24)
+  dtr<-dtx-dtm
+  hfr<-.vta((v-dtm)/dtr,r)
+  adtr<-.ehr(amx-amn)
+  amnh<-.ehr(amn)
+  ao<-hfr*adtr+amnh
+  ao
+}
 #' Expand daily climate variables to hourly (all)
 .expandclim<-function(mout_mn,mout_mx,climdata) {
   climd<-.climtodaily(climdata)
@@ -713,20 +601,14 @@
   # Expand windspeed
   windspeed<-.expandtohour2(mout_mn$windspeed,mout_mx$windspeed,climdata$windspeed)
   # Expand shortwave radiation
-  tr<-.ehr(mout_mn$trdf)
-  r<-rast(tr[,,1])
-  rdi<-climdata$swrad-climdata$difrad
-  raddir<-.vta(rdi,r)*tr
-  raddif<-.vta(climdata$difrad,r)*tr
-  # Expand longwave radiation
-  sb<-5.67*10^-8
-  em_mn<-mout_mn$radlw/(sb*(mout_mn$Tz+273.15)^4)
-  em_mx<-mout_mx$radlw/(sb*(mout_mx$Tz+273.15)^4)
-  em<-.expandtohour2(em_mn,em_mx,climdata$skyem)
-  em[em>1]<-1
-  radlw<-em*sb*(Tz+273.15)^4
+  Rdirdown<-.radtohour(mout_mn$Rdirdown,mout_mx$Rdirdown,climdata$swrad-climdata$difrad)
+  Rdifdown<-.radtohour(mout_mn$Rdifdown,mout_mx$Rdifdown,climdata$difrad)
+  Rswup<-.radtohour(mout_mn$Rswup,mout_mx$Rswup,climdata$swrad)
+  lwu<-0.97*5.67*10^-8*(climdata$temp+273.15)^4
+  Rlwup<-.radtohour(mout_mn$Rlwup,mout_mx$Rlwup,lwu)
+  Rlwdown<-.radtohour(mout_mn$Rlwup,mout_mx$Rlwup,lwu*climdata$skyem)
   out<-list(Tz=Tz,tleaf=tleaf,T0=T0,soilm=soilm,relhum=relhum,windspeed=windspeed,
-            raddir=raddir,raddif=raddif,radlw=radlw)
+            Rdirdown=Rdirdown,Rdifdown=Rdifdown,Rlwdown=Rlwdown,Rswup=Rswup,Rlwup=Rlwup)
   return(out)
 }
 # Crop SpatRaster object for running runmicro_big
@@ -760,13 +642,15 @@
 # Crop vegp for running runmicro_big
 .vegpcrop<-function(vegp,rw,cl) {
   pai<-.croparray(vegp$pai,rw,cl)
+  clump<-.croparray(vegp$clump,rw,cl)
   hgt<-.cropraster(vegp$hgt,rw,cl)
   x<-.cropraster(vegp$x,rw,cl)
   gsmax<-.cropraster(vegp$gsmax,rw,cl)
   leafr<-.cropraster(vegp$leafr,rw,cl)
+  leaft<-.cropraster(vegp$leaft,rw,cl)
   clump<-.cropraster(vegp$clump,rw,cl)
   leafd<-.cropraster(vegp$leafd,rw,cl)
-  vegp2<-list(pai=pai,hgt=hgt,x=x,gsmax=gsmax,leafr=leafr,clump=clump,leafd=leafd)
+  vegp2<-list(pai=pai,hgt=hgt,x=x,gsmax=gsmax,leafr=leafr,clump=clump,leafd=leafd,leaft=leaft)
   class(vegp2)<-"vegparams"
   vegp2
 }

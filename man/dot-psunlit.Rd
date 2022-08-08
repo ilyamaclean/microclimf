@@ -4,7 +4,7 @@
 \alias{.psunlit}
 \title{Calculates proportion of sunlight leaves in canopy}
 \usage{
-.psunlit(l, k, clump = 0)
+.psunlit(l, k, kc, clump)
 }
 \description{
 Calculates proportion of sunlight leaves in canopy

@@ -6,10 +6,10 @@
 \usage{
 wind(
   micro,
+  reqhgt,
+  pai_a = NA,
   xyf = 1,
   zf = NA,
-  psi_m = 0,
-  reqhgt = NA,
   slr = NA,
   apr = NA,
   hor = NA,
@@ -20,15 +20,14 @@ wind(
 \arguments{
 \item{micro}{object of class microin as returned by [modelin()]}
 
+\item{reqhgt}{height above ground for which wind speeds are wanted. If negative (below ground) wind friction velocity only is returned}
+
+\item{pai_a}{plant area index above `reqhgt`. Determined from total `pai` if not supplied.}
+
 \item{xyf}{optional spatial smoothing factor applied in calculation of wind speeds (see details)}
 
 \item{zf}{optional integer used to calculate how frequently to sample the plant area index array
 when calculating smoothed wind speed (see details)}
-
-\item{psi_m}{an optional diabatic correction factor accounting for the strength of surface heating}
-
-\item{reqhgt}{option height above ground for which wind speeds are wanted. If ommited only the surface wind
-frictian velocity is returned.}
 
 \item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
@@ -65,16 +64,16 @@ so doing, it is necessary to accomodate the fact the wind speed is not just affe
 the surface roughness at each point location, but also by vegetation surrounding the
 location. This is accomodated for by applying `xyf` which effectively smooths though surface roughness
 using `terra::aggregate` where `xyf` is the aggregation factor. Because surface roughness
-also depends on the plant area index (PAI), which is time-varient, and is computationally intensive
+also depends on the plant area index (PAI), which is time-variant, and is computationally intensive
 to perform aggregations on PAI at each hourly time increment, `zf` determines the time at
 what frequency to aggregate PAI. E.g. where `zf` is 100, PAI at every 100th time increment is aggregated.
 By default 'xyf' is set to 10 m or the pixel resolution, which ever is greater and `zf`
 is set to aggregate PAI at monthly intervals. A second complication arises in that the maximum
-vegetation height witin the study area may exceed the height at which input wind speeds are
+vegetation height within the study area may exceed the height at which input wind speeds are
 measured (by default assumed measured at a height of 2 m). For this reason, the wind
-speed at the maximum height of vegetation within the study is calaculated using a standard height
+speed at the maximum height of vegetation within the study is calculated using a standard height
 profile adjustment for an open area typical of those at which weather stations are sighted
 prior to adjusting for the effects of local vegetation and terrain on wind speed. Terrain effects
-are calaculated by applying the topographic shelter coefficient described in Maclean et al
+are calculated by applying the topographic shelter coefficient described in Maclean et al
 (2019) Methods in Ecology and Evolution, 10:280-290.
 }

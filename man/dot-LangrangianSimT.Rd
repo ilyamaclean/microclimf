@@ -4,7 +4,7 @@
 \alias{.LangrangianSimT}
 \title{Performs Langrangian simulation (temperature)}
 \usage{
-.LangrangianSimT(reqhgt, micro, TH, pai_a = NA, folden = NA)
+.LangrangianSimT(reqhgt, micro, TH)
 }
 \description{
 Performs Langrangian simulation (temperature)

@@ -81,14 +81,20 @@ NA if `reqhgt` <= 0.
 `windspeed` Array of wind speeds at height `reqhgt` (m/s).
 NA if `reqhgt` <= 0.
 
-`raddir` Array of direct shortwave radiation received on horizontal
-surface (W/m^2). NA if `reqhgt` <= 0.
+`Rdirdown` Array of downward direct shortwave radiation incident on
+horizontal surface (W/m^2)
 
-`raddif` Array of direct shortwave radiation received on horizontal
-surface (W/m^2). NA if `reqhgt` <= 0.
+`Rdifdown` Array of downward diffuse shortwave radiation incident on
+horizontal surface (W/m^2)
 
-`radlw` Array of downward longwave radiation received on horizontal
-surface (W/m^2). NA if `reqhgt` <= 0.
+`Rlwdown` Array of downward longwave radiation incident on horizontal
+surface (W/m^2)
+
+`Rswup` Array of upward shortwave radiation (assumed diffuse) incident
+on underside of horizontal surface (W/m^2)
+
+`Rlwup` Array of upward longwave radiation incident on underside of
+horizontal surface (W/m^2)
 
 if expand = FALSE, an object of class microutdaily, list with the following components:
 
@@ -102,14 +108,7 @@ time increments, with the option to expand to hourly
 }
 \details{
 If expand = TRUE, daily minima and maxima are expanded to hourly using values in the hourly
-weather dataset. The parmater `pai_a` is used to calaculate the radiation incercepted by leaves at `reqhgt` if
-below canopy. If not supplied it is calaculated from total plant area index by
-assuming leaf density within the canopy is uniformly vertically distributed. If suuplied
-it must have the same dimensions as micro$pai. I.e. with the same x and y dims as the
-the supplied dtm and values for each hour as the z dimension. The paramater `surfwet`
-determines how much of the canopy should be treated as wet surface when calaculating
-latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
-is such that `surfwet` ~ 1.
+weather dataset. See also details for [runmicro_hr()].
 }
 \examples{
 library(terra)

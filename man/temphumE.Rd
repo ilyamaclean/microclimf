@@ -66,7 +66,7 @@ an object of class microout with the following components:
 
 `Tz` Array of air temperatures at height `reqhgt` (deg C)
 
-`tleaf` Array of leaf temperatures at height `reqhgt` (deg C). NA if `reqhgt` greater than canopy height
+`tleaf` Array of leaf temperatures at height `reqhgt` (deg C). if `reqhgt` greater than canopy height, the returned temperatures are those that would be attained by an unshaded leaf with average reflectance
 
 `T0` Array of ground surface temperatures (deg C)
 
@@ -74,22 +74,26 @@ an object of class microout with the following components:
 
 `windspeed` Array of wind speeds at height `reqhgt` (m/s)
 
-`raddir` Array of direct shortwave radiation received on horizontal surface (W/m^2)
+`Rdirdown` Array of downward direct shortwave radiation received on horizontal surface at height `reqhgt` (W/m^2 - per unit one-sided area)
 
-`raddif` Array of direct shortwave radiation received on horizontal surface (W/m^2)
+`Rdifdown` Array of downward diffuse shortwave radiation received on horizontal surface at height `reqhgt` (W/m^2 - per unit one-sided area)
 
-`radlw` Array of downward longwave radiation received on horizontal surface (W/m^2)
+`Rlwdown` Array of downward longwave radiation received on horizontal surface at height `reqhgt` (W/m^2 - per unit one-sided area)
+
+`Rswup` Array of upward shortwave radiation received on the underside of a horizontal surface at height `reqhgt` (W/m^2 - per unit one-sided area). Upward shortwave radiation is assumed to be diffuse.
+
+`Rlwup` Array of upward longwave radiation received on the underside of a horizontal surface at height `reqhgt` (W/m^2 - per unit one-sided area).
 }
 \description{
 The function `temphumE` runs the above ground component of
 the microclimate model.
 }
 \details{
-`pai_a` is used to calaculate the radiation incercepted by leaves at `reqhgt` if
-below canopy. If not supplied it is calaculated from total plant area index by
-assuming leaf density within the canopy is uniformly vertically distributed. If suuplied
+`pai_a` is used to calculate the radiation intercepted by leaves at `reqhgt` if
+below canopy. If not supplied it is calculated from total plant area index by
+assuming leaf density within the canopy is uniformly vertically distributed. If supplied
 it must have the same dimensions as micro$pai. I.e. with the same x and y dims as the
-the supplied dtm and values for each hour as the z dimension. The paramater `surfwet`
+the supplied dtm and values for each hour as the z dimension. The parameter `surfwet`
 determines how much of the canopy should be treated as wet surface when calaculating
 latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
 is such that `surfwet` ~ 1.

@@ -7,6 +7,7 @@
 soiltemp_hr(
   micro,
   reqhgt = 0.05,
+  pai_a = NA,
   xyf = 1,
   zf = NA,
   soilinit = c(NA, NA),
@@ -25,6 +26,8 @@ soiltemp_hr(
 \item{micro}{an object of class `microin` as returned by [modelin()] (see details)}
 
 \item{reqhgt}{height above ground at which model outputs are needed (m).}
+
+\item{pai_a}{plant area index above `reqhgt`. Determined from total `pai` if not supplied.}
 
 \item{xyf}{optional input for called function [wind()]}
 

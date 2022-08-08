@@ -531,3 +531,92 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme) {
   class(vegp)<-"vegparams"
   return(vegp)
 }
+#' Estimate canopy clumpiness
+#'
+#' The function `clumpestimate` estimates how clumpy a canopy is based on height and
+#' plant area index
+#'
+#' @param hgt vegetation height (m).
+#' @param pai plant area index value(s).
+#' @param leafd mean leaf width (m).
+#' @param maxclump optional parameter indicating maximum clumpiness
+#' @return `clump` parameter indicating the fraction of radiation passing directly through larger gaps in the canopy.
+#' @export
+#' @details `hgt`, `pai` and `leafd` must all be sinle numeric values or arrays with identical dimensions
+clumpestimate <- function(hgt, leafd, pai, maxclump = 0.95) {
+  pai[pai>1]<-1
+  sel<-which(leafd>hgt)
+  leafd[sel]<-hgt[sel]
+  clump<-(1-pai)^(hgt/leafd)
+  sel<-which(clump>maxclump)
+  clump[sel]<-maxclump
+  clump
+}
+#' Derives leaf reflectance from albedo
+#' @param pai a SpatRaster of plant area index values
+#' @param gref a SpatRaster of ground reflectance values
+#' @param x a SpatRaster of the ratio of vertical to horizontal projections of leaf foliage
+#' @param ltrr an optional numeric value giving an approximate estimate of the ratio of leaf transmittance to leaf reflectance (e.g. value of 1 makes leaf transmittance equal to reflectance). See details
+#' @return leaf reflectance in the range 0 to 1,
+#' @import terra
+#' @export
+#' @details the microclimate model is not unduly sensitive to `lttr` so if unknown, an apprxoimate
+#' value or the default can be used.
+#' @examples
+#' pai <- .rast(vegp$pai[,,9],rast(dtmcaerth)) # Plant Area Index in Sep (month in whihc albedo image was flow)
+#' gref <- rast(soilc$groundr)
+#' x <- rast(vegp$x)
+#' alb <- rast(albedo)
+#' leafr <- leafrfromalb(pai, gref, x, alb)
+#' plot(leafr)
+leafrfromalb<-function(pai, gref, x, alb, ltrr = 1, out = "lref") {
+  .Solveforlref <- function(pai,albin,x=1,gref=0.15,ltrr=0.5) {
+    fun <- function(om,pai,gref,albin,x,ltrr) {
+      # Base parameters
+      lref<-om/(ltrr+1)
+      ltr<-ltrr*lref
+      lref<-om-ltr # need to change this
+      del<-lref-ltr
+      mla<-(9.65*(3+x)^(-1.65))
+      mla[mla>pi/2]<-pi/2
+      J<-cos(mla)^2
+      # Two two-stream parameters
+      a<-1-om
+      gma<-0.5*(om+J*del)
+      # Intermediate parameters
+      h<-sqrt(a^2+2*a*gma)
+      S1<-exp(-h*pai)
+      u1<-a+gma*(1-1/gref)
+      D1<-(a+gma+h)*(u1-h)*1/S1-(a+gma-h)*(u1+h)*S1
+      # p parameters (diffuse)
+      p1<-gma/(D1*S1)*(u1-h)
+      p2<-(-gma*S1/D1)*(u1+h)
+      # albedo
+      albw<-p1+p2
+      albw-albin
+    }
+    uniroot(fun, c(0.0001,0.9999),pai,gref,albin,x,ltrr,f.lower=-1,f.upper=1)$root
+  }
+  .Solveforlref2<-function(pai,albin,x,gref,ltrr) {
+    out<-tryCatch(.Solveforlref(pai,albin,x,gref,ltrr),error=function(cond) -999)
+  }
+  lai<-as.matrix(pai,wide=TRUE)
+  gref<-as.matrix(gref,wide=TRUE)
+  x<-as.matrix(x,wide=TRUE)
+  albi<-as.matrix(alb,wide=TRUE)
+  lref<-array(NA,dim=dim(lai))
+  # Calculate leaf reflectance
+  l<-dim(lref)[1]*dim(lref)[2]
+  for (i in 1:dim(gref)[1]) {
+    for (j in 1:dim(gref)[2]) {
+      if (lai[i,j]>0 & is.na(lai[i,j]) == FALSE) {
+        lref[i,j]<-.Solveforlref2(lai[i,j],albi[i,j],x[i,j],gref[i,j],ltrr)
+      }
+    }
+  }
+
+  if (out!="omega") lref<-lref/(ltrr+1)
+  lref<-.rast(lref,alb)
+  return(lref)
+}
+

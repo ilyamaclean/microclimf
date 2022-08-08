@@ -1,3 +1,11 @@
+#' A one m resolution dataset of white sky albedos
+#'
+#' A spatial dataset of white sky albedos for Caerthillean Cove: an area bounded by 169475, 169525, 12475, 12525
+#' (xmin, xmax, ymin, ymax) using the Ordance Survey GB Grid Reference system (CRS: 27700).
+#'
+#' @format A PackedSpatRaster object with 50 rows and 50 columns
+#' @source derived using aerial imagery from \url{https://digimap.edina.ac.uk/}
+"albedo"
 #' A data frame of hourly weather
 #'
 #' A data frame of hourly weather in 2017 at Caerthillean Cove, Lizard, Cornwall (49.96807N, 5.215668W)
@@ -100,7 +108,7 @@
 #' A dataset of vegetation parameters.
 #'
 #' An object of class vegparams for the area for the area bounded by 169475, 169525, 12475, 12525
-#' (xmin, xmax, ymin, ymax) using the Ordance Survey GB Grid Reference system (CRS: 27700).
+#' (xmin, xmax, ymin, ymax) using the Ordnance Survey GB Grid Reference system (CRS: 27700).
 #'
 #' @format A list of  the following objects:
 #' \describe{
@@ -109,8 +117,9 @@
 #'   \item{x}{a PackedSpatRaster object of the ratio of vertical to horizontal projections of leaf foliage}
 #'   \item{gsmax}{a PackedSpatRaster object maximum stomatal conductances (mol / m^2 / s)}
 #'   \item{leafr}{a PackedSpatRaster object of leaf reflectance values}
-#'   \item{clump}{a PackedSpatRaster object of values between 0 and 1 indicating the degree of canopy clumpiness}
+#'   \item{clump}{an array of monthly values between 0 and 1 indicating the fraction of radiation passing through larger gaps in the canopy, here esyimated using [clumpestimate()]}
 #'   \item{leafd}{a PackedSpatRaster object of leaf diameters (m)}
+#'   \item{leaft}{a PackedSpatRaster object of leaf transmittance}
 #'}
 "vegp"
 
