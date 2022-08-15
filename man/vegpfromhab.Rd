@@ -4,7 +4,7 @@
 \alias{vegpfromhab}
 \title{Generate vegpetation paramaters form habitat type}
 \usage{
-vegpfromhab(habitats, hgts = NA, pai = NA, lat, long, tme)
+vegpfromhab(habitats, hgts = NA, pai = NA, lat, long, tme, clump0 = TRUE)
 }
 \arguments{
 \item{habitats}{a SpatRaster object of habitat types expressed as integers (see details)}
@@ -19,6 +19,8 @@ from habitat type, with seasonal variation dtermined form location and date if n
 \item{long}{longitude in decimal degrees. Only needed if `pai` not provided.}
 
 \item{tme}{POSIXlt object of dates. Only needed if `pai` not provided (see details).}
+
+\item{clump0}{optional logical, which if TRUE sets the canopy clumping factor to 0, and if false, estimates it using [clumpestimate()]}
 }
 \value{
 an object of class vegparams - a list with the following elements:
@@ -33,9 +35,11 @@ an object of class vegparams - a list with the following elements:
 
 `leafr` a SpatRaster object of leaf reflectance values (to shortwave radiation)
 
-`clump` a SpatRaster object indicating the degree of canopy clumpiness, here set to 0 (vegetation not clumped)
+`clump` an array of monthly values indicating the degree of canopy clumpiness, by default set to 0 (vegetation not clumped)
 
 `leafd` a SpatRaster object of mean leaf widths (m)
+
+`leaft` a SpatRaster object of mean leaf transmittance (m)
 }
 \description{
 The function `vegpfromhab` generates an object of class vegparams from
@@ -79,6 +83,7 @@ plot(veg$hgt, main = "Vegetation height")
 plot(veg$x, main = "Leaf angle coefficient")
 plot(veg$gsmax, main = "Maximum stomatal conductance")
 plot(veg$leafr, main = "Leaf reflectance")
-plot(veg$clump, main = "Canopy clumping factor")
-plot(veg$leafd, main = "Leaf diamater")
+plot(rast(veg$clump[,,1]), main = "Canopy clumping factor")
+plot(veg$leafd, main = "Leaf diameter")
+plot(veg$leaft, main = "Leaf transmittance")
 }

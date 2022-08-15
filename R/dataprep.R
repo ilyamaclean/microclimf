@@ -430,14 +430,16 @@ globalVariables("globclim")
 #' @param lat latitude in decimal degrees. Only needed if `pai` not provided.
 #' @param long longitude in decimal degrees. Only needed if `pai` not provided.
 #' @param tme POSIXlt object of dates. Only needed if `pai` not provided (see details).
+#' @param clump0 optional logical, which if TRUE sets the canopy clumping factor to 0, and if false, estimates it using [clumpestimate()]
 #' @return an object of class vegparams - a list with the following elements:
 #' @return `pai` an array of monthly plant area index values (see details).
 #' @return `hgt` a SpatRaster object if vegetation heights (m)
 #' @return `x` a SpatRaster object of ratios of vertical to horizontal projections of leaf foliage
 #' @return `gsmax` a SpatRaster object of maximum stomatal conductances (mol / m^2 / s)
 #' @return `leafr` a SpatRaster object of leaf reflectance values (to shortwave radiation)
-#' @return `clump` a SpatRaster object indicating the degree of canopy clumpiness, here set to 0 (vegetation not clumped)
+#' @return `clump` an array of monthly values indicating the degree of canopy clumpiness, by default set to 0 (vegetation not clumped)
 #' @return `leafd` a SpatRaster object of mean leaf widths (m)
+#' @return `leaft` a SpatRaster object of mean leaf transmittance (m)
 #'
 #' @details
 #' This function estimates the vegetation parameters needed to run microclimf from habitat types.
@@ -480,9 +482,10 @@ globalVariables("globclim")
 #' plot(veg$x, main = "Leaf angle coefficient")
 #' plot(veg$gsmax, main = "Maximum stomatal conductance")
 #' plot(veg$leafr, main = "Leaf reflectance")
-#' plot(veg$clump, main = "Canopy clumping factor")
-#' plot(veg$leafd, main = "Leaf diamater")
-vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme) {
+#' plot(rast(veg$clump[,,1]), main = "Canopy clumping factor")
+#' plot(veg$leafd, main = "Leaf diameter")
+#' plot(veg$leaft, main = "Leaf transmittance")
+vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme, clump0 = TRUE) {
   .poparray<-function(a,sel,v) {
     for (i in 1:length(v)) {
       m<-a[,,i]
@@ -504,7 +507,7 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme) {
     pai<-array(NA,dim=c(dim(m),length(paii)))
   }
   # Create blank rasters
-  x<-m; gsmax<-m; leafr<-m; leafd<-m; hgt<-m;
+  x<-m; gsmax<-m; leafr<-m; leafd<-m; hgt<-m
   for (i in uh) {
     sel<-which(m==i)
     if (is.na(pte)) {
@@ -518,6 +521,11 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme) {
     leafd[sel]<-vegi$leafd
     hgt[sel]<-vegi$hgt
   }
+  leaft<-0.5*leafr
+  clump<-pai*0
+  if (clump0 == F) {
+    for (i in 1:dim(pai)[3]) clump[,,i]<-clumpestimate(hgt, leafd, pai[,,i])
+  }
   # Convert to rasters
   if (class(hgts)=="logical") {
     hgt<-.rast(hgt,habitats)
@@ -525,9 +533,9 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme) {
   x<-.rast(x,habitats)
   gsmax<-.rast(gsmax,habitats)
   leafr<-.rast(leafr,habitats)
-  clump<-habitats*0
+  leaft<-.rast(leaft,habitats)
   leafd<-.rast(leafd,habitats)
-  vegp<-list(pai=pai,hgt=hgt,x=x,gsmax=gsmax,leafr=leafr,clump=clump,leafd=leafd)
+  vegp<-list(pai=pai,hgt=hgt,x=x,gsmax=gsmax,leafr=leafr,clump=clump,leafd=leafd,leaft=leaft)
   class(vegp)<-"vegparams"
   return(vegp)
 }
