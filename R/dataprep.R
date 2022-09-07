@@ -1,5 +1,5 @@
 globalVariables("globclim")
-.PAIforayear <- function(habitat, lat, long) {
+.PAIforayear <- function(habitat, lat, long, yr) {
   laigaus <- function(minlai, maxlai, pkday, dhalf, yr) {
     diy <- 365
     sdev <- 0.0082 * dhalf^2 + 0.0717 * dhalf + 13.285
@@ -25,6 +25,8 @@ globalVariables("globclim")
     y <- y + minlai - min(y)
     return(y)
   }
+  diy<-365
+  if (yr%%4 == 0) diy<-366
   long<- ifelse(long > 180.9375, long - 360, long)
   long<- ifelse(long < -179.0625, long + 360, long)
   lat<- ifelse(lat< -89.49406, -89.49406, lat)
@@ -408,7 +410,7 @@ globalVariables("globclim")
 .paifromhabitat <- function(habitat, lat, long, tme) {
   yr<-unique(tme$year+1900)
   pai<-0
-  lai<-.PAIforayear(habitat, lat, long)
+  lai<-.PAIforayear(habitat, lat, long, yr)
   for (i in yr) {
     sel<-which(tme$year+1900==i)
     tme2<-tme[sel]
