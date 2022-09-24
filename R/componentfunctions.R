@@ -683,7 +683,7 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, so
                t6=array(soiltcoefs$t3,dim=d),
                t7=array(soiltcoefs$t3,dim=d))
   }
-  # Calculate wind
+  # Calculate wind speed
   w2_mn<-(micro_mn$uf/0.4)*(log((micro_mn$maxhgt-micro_mn$d)/micro_mn$zm)+micro_mn$psi_m)
   w2_mx<-(micro_mx$uf/0.4)*(log((micro_mn$maxhgt-micro_mx$d)/micro_mx$zm)+micro_mx$psi_m)
   w2_mn[w2_mn<0]<-0
