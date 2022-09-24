@@ -686,6 +686,8 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, so
   # Calculate wind
   w2_mn<-(micro_mn$uf/0.4)*(log((micro_mn$maxhgt-micro_mn$d)/micro_mn$zm)+micro_mn$psi_m)
   w2_mx<-(micro_mx$uf/0.4)*(log((micro_mn$maxhgt-micro_mx$d)/micro_mx$zm)+micro_mx$psi_m)
+  w2_mn[w2_mn<0]<-0
+  w2_mx[w2_mx<0]<-0
   w2_mn<-log(w2_mn+1)
   w2_mx<-log(w2_mx+1)
   # Predict soil surface temperature
