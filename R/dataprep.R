@@ -566,6 +566,7 @@ clumpestimate <- function(hgt, leafd, pai, maxclump = 0.95) {
 #' @param pai a SpatRaster of plant area index values
 #' @param gref a SpatRaster of ground reflectance values
 #' @param x a SpatRaster of the ratio of vertical to horizontal projections of leaf foliage
+#' @param alb a SpatRaster of white-sky albedo
 #' @param ltrr an optional numeric value giving an approximate estimate of the ratio of leaf transmittance to leaf reflectance (e.g. value of 1 makes leaf transmittance equal to reflectance). See details
 #' @return leaf reflectance in the range 0 to 1,
 #' @import terra

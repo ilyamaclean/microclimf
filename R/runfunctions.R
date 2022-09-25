@@ -721,7 +721,7 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
   }
   # Run below ground
   if (reqhgt < 0) {
-    Tz<-below_hr(micro,reqhgt,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
+    Tz<-below_hr(micro,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
     mout<-list(Tz=Tz,tleaf=NA,T0=micro$T0,soilm=micro$theta,
                relhum=NA,windspeed=NA,Rdirdown=NA,Rdifdown=NA,Rlwdown=NA,
                Rswup=NA,Rlwup=NA)
@@ -849,7 +849,7 @@ runmicro_dy <- function(microd, reqhgt, expand = TRUE, pai_a = NA, folden = NA, 
   }
   # Run below ground
   if (reqhgt < 0) {
-    Tz<-below_dy(microd,reqhgt,expand,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
+    Tz<-below_dy(microd,reqhgt,expand,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
     if (expand) {
       T0<-.expandtohour(mout_mn$T0,mout_mx$T0,climd$smn,climd$smx,climdata$temp)
       mout<-list(Tz=Tz,tleaf=NA,T0=T0,soilm=.ehr(mout_mn$theta),

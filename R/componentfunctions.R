@@ -995,11 +995,11 @@ temphumE<-function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA, soi
 #' @import terra zoo abind
 #' @importFrom stats filter
 #' @export
-below_hr<-function(micro, reqhgt, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact =1.5,
+below_hr<-function(micro, reqhgt, pai_a = NA, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact =1.5,
                    slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
   xx <- function(x,y) as.numeric(stats::filter(c(x,x),rep(1/y,y), sides = 2))
   if (is.null(micro$T0[1])) {
-    micro<-soiltemp_hr(micro,reqhgt,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
+    micro<-soiltemp_hr(micro,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
   }
   hiy<-length(micro$tme)
   Tav<-apply(micro$T0,c(1,2),mean)
@@ -1046,12 +1046,12 @@ below_hr<-function(micro, reqhgt, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact 
 #' @import terra zoo abind
 #' @importFrom stats filter
 #' @export
-below_dy<-function(microd, reqhgt, expand = TRUE, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
+below_dy<-function(microd, reqhgt, expand = TRUE, pai_a = NA, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
                    slr = NA, apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
   xx <- function(x,y) as.numeric(stats::filter(c(x,x),rep(1/y,y), sides = 2))
   micro_mn<-microd$micro_mn
   if (micro_mn$progress<5) {
-    microd<-soiltemp_dy(microd,reqhgt,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
+    microd<-soiltemp_dy(microd,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
     micro_mn<-microd$micro_mn
   }
   micro_mx<-microd$micro_mx

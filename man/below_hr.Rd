@@ -7,6 +7,7 @@
 below_hr(
   micro,
   reqhgt,
+  pai_a = NA,
   xyf = 1,
   zf = NA,
   soilinit = c(NA, NA),

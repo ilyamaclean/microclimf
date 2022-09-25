@@ -13,6 +13,8 @@ leafrfromalb(pai, gref, x, alb, ltrr = 1, out = "lref")
 
 \item{x}{a SpatRaster of the ratio of vertical to horizontal projections of leaf foliage}
 
+\item{alb}{a SpatRaster of white-sky albedo}
+
 \item{ltrr}{an optional numeric value giving an approximate estimate of the ratio of leaf transmittance to leaf reflectance (e.g. value of 1 makes leaf transmittance equal to reflectance). See details}
 }
 \value{
