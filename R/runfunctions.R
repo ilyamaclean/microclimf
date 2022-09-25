@@ -918,17 +918,23 @@ writetonc <- function(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0) {
                       missval=-9999,compression=9,prec="integer")
     radlw<-ncvar_def(name="Downward longwave radiation",units="W/m^2",dim=list(east,north,times),
                      missval=-9999,compression=9,prec="integer")
+    radusw<-ncvar_def(name="Upward shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    radulw<-ncvar_def(name="Upward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
     # Create nc file
     nc.name<-fileout
-    ncnew<-nc_create(filename=nc.name,list(airtemp,leaftemp,relhum,windspeed,raddir,raddif,radlw))
+    ncnew<-nc_create(filename=nc.name,list(airtemp,leaftemp,relhum,windspeed,raddir,raddif,radlw,radusw,radulw))
     # Put variables in
     ncvar_put(ncnew,airtemp,vals=atonc(mout$Tz,100))
     ncvar_put(ncnew,leaftemp,vals=atonc(mout$tleaf,100))
     ncvar_put(ncnew,relhum,vals=atonc(mout$relhum,1))
     ncvar_put(ncnew,windspeed,vals=atonc(mout$windspeed,100))
-    ncvar_put(ncnew,raddir,vals=atonc(mout$raddir,1))
-    ncvar_put(ncnew,raddif,vals=atonc(mout$raddif,1))
-    ncvar_put(ncnew,radlw,vals=atonc(mout$radlw,1))
+    ncvar_put(ncnew,raddir,vals=atonc(mout$Rdirdown,1))
+    ncvar_put(ncnew,raddif,vals=atonc(mout$Rdifdown,1))
+    ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))
+    ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))
+    ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))
     ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
     ncatt_put(ncnew,0,"Longitude of timezone meridian",merid)
     ncatt_put(ncnew,0,"Time difference from the timezone meridian",dst)

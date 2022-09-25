@@ -648,7 +648,6 @@
   gsmax<-.cropraster(vegp$gsmax,rw,cl)
   leafr<-.cropraster(vegp$leafr,rw,cl)
   leaft<-.cropraster(vegp$leaft,rw,cl)
-  clump<-.cropraster(vegp$clump,rw,cl)
   leafd<-.cropraster(vegp$leafd,rw,cl)
   vegp2<-list(pai=pai,hgt=hgt,x=x,gsmax=gsmax,leafr=leafr,clump=clump,leafd=leafd,leaft=leaft)
   class(vegp2)<-"vegparams"
@@ -682,14 +681,16 @@
     mout_mx$relhum<-asa(mout_mx$relhum,1)
     mout_mn$windspeed<-asa(mout_mn$windspeed,100)
     mout_mx$windspeed<-asa(mout_mx$windspeed,100)
-    mout_mn$raddir<-asa(mout_mn$raddir,1)
-    mout_mx$raddir<-asa(mout_mx$raddir,1)
-    mout_mn$raddif<-asa(mout_mn$raddif,1)
-    mout_mx$raddif<-asa(mout_mx$raddif,1)
-    mout_mn$radlw<-asa(mout_mn$radlw,1)
-    mout_mx$radlw<-asa(mout_mx$radlw,1)
-    mout_mn$soilm<-NULL
-    mout_mx$soilm<-NULL
+    mout_mn$Rdirdown<-asa(mout_mn$Rdirdown,1)
+    mout_mx$Rdirdown<-asa(mout_mx$Rdirdown,1)
+    mout_mn$Rdifdown<-asa(mout_mn$Rdifdown,1)
+    mout_mx$Rdifdown<-asa(mout_mx$Rdifdown,1)
+    mout_mn$Rlwdown<-asa(mout_mn$Rlwdown,1)
+    mout_mx$Rlwdown<-asa(mout_mx$Rlwdown,1)
+    mout_mn$Rswup<-asa(mout_mn$Rswup,1)
+    mout_mx$Rswup<-asa(mout_mx$Rswup,1)
+    mout_mn$Rlwup<-asa(mout_mn$Rlwup,1)
+    mout_mx$Rlwup<-asa(mout_mx$Rlwup,1)
   }
   if (reqhgt == 0) {
     mout_mn$soilm<-asa(mout_mn$soilm,100)
