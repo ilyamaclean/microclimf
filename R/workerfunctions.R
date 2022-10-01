@@ -742,7 +742,6 @@
     crs(b) <- crs(r)
     if (as.character(crs(b)) != as.character(crs(dtm))) {
       b <- project(b,dtm, method = 'near')
-      b <- projectRaster(from = b, crs = crs(dtm), method = 'ngb')
     }
     b<-resample(b,dtm)
     a<-as.array(b)

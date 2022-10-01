@@ -920,7 +920,7 @@ temphumE<-function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA, soi
                    maxhgt = NA, twi = NA) {
   # run soiltemp function if not run
   if (micro$progress<3) {
-      micro<-soiltemp_hr(micro,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
+    micro<-soiltemp_hr(micro,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
   }
   # Calculate boundary layer conductivity
   pai<-micro$pai
