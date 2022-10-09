@@ -716,21 +716,23 @@
   relhum[relhum>100]<-100
   # Expand windspeed
   windspeed<-.expandtohour2(mout_mn$windspeed,mout_mx$windspeed,climdata$windspeed)
-  # Expand shortwave radiation
-  tr<-.ehr(mout_mn$trdf)
-  r<-rast(tr[,,1])
-  rdi<-climdata$swrad-climdata$difrad
-  raddir<-.vta(rdi,r)*tr
-  raddif<-.vta(climdata$difrad,r)*tr
-  # Expand longwave radiation
-  sb<-5.67*10^-8
-  em_mn<-mout_mn$radlw/(sb*(mout_mn$Tz+273.15)^4)
-  em_mx<-mout_mx$radlw/(sb*(mout_mx$Tz+273.15)^4)
-  em<-.expandtohour2(em_mn,em_mx,climdata$skyem)
-  em[em>1]<-1
-  radlw<-em*sb*(Tz+273.15)^4
+  # Rdirdown
+  dirad<-climdata$swrad-climdata$difrad
+  lwdn<-climdata$skyem*(climdata$temp+273.15)^4
+  lwup<-(climdata$temp+273.15)^4
+  Rdirdown<-.expandtohour2(mout_mn$Rdirdown,mout_mx$Rdirdown,dirad)
+  # Rdifdown
+  Rdifdown<-.expandtohour2(mout_mn$Rdifdown,mout_mx$Rdifdown,climdata$difrad)
+  # Rlwdown
+  Rlwdown<-.expandtohour2(mout_mn$Rlwdown,mout_mx$Rlwdown,lwdn)
+  # Rswup
+  Rswup<-.expandtohour2(mout_mn$Rswup,mout_mx$Rswup,climdata$swrad)
+  # Rlwup
+  Rlwup<-.expandtohour2(mout_mn$Rlwup,mout_mx$Rlwup,lwup)
+  # output
   out<-list(Tz=Tz,tleaf=tleaf,relhum=relhum,windspeed=windspeed,
-            raddir=raddir,raddif=raddif,radlw=radlw)
+            Rdirdown=Rdirdown,Rdifdown=Rdifdown,Rlwdown=Rlwdown,
+            Rswup=Rswup,Rlwup=Rlwup)
   return(out)
 }
 #' Resample array
