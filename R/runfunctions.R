@@ -621,7 +621,7 @@ modelina_dy <- function(climarray, precarray, tme, r, altcorrect = 0, vegp, soil
 #' time increments
 #'
 #' @param micro object of class microin as returned by [modelin()]
-#' @param reqhgt height above ground at which model outputs are needed (m).
+#' @param reqhgt height above (or below) ground at which model outputs are needed (m). Negative values indicate below ground surface.
 #' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
 #' @param folden an optional array of foliage densities at the height `reqhgt` (m^3/m^3)
 #' @param xyf optional input for called function [wind()]
@@ -640,7 +640,7 @@ modelina_dy <- function(climarray, precarray, tme, r, altcorrect = 0, vegp, soil
 #' @param wsa an optional array of wind shelter coefficients in 8 directions.
 #' Calculated from dtm if not supplied, but outer cells will be NA.
 #' @param maxhgt an optional height (m) for which wind speed is needed. Determined
-#' from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.
+#' from height of tallest vegetation or as 2 m, whichever is greater, if not supplied (see wind()]).
 #' @param twi optional SpatRaster object of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
 #' @return an object of class microout with the following components:
@@ -671,7 +671,7 @@ modelina_dy <- function(climarray, precarray, tme, r, altcorrect = 0, vegp, soil
 #'
 #' @details `pai_a` is used to calculate the radiation intercepted by leaves at `reqhgt` if
 #' below canopy. If not supplied it is calculated from total plant area index by
-#' assuming leaf density within the canopy is uniformly vertically distributed. Wind speed and
+#' assuming a realistic shape to the vertical profile foliage within the canopy. Wind speed and
 #' radiation values are only returned when `reqhgt > 0`. To derive radiation values when
 #' `reqhgt = 0`, set `pai_a` to `micro$pai`. If supplied, `pai_a` must have the
 #' same dimensions as micro$pai. I.e. with the same x and y dims as the the

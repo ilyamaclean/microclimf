@@ -318,19 +318,19 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
 #' @export
 #' @details In downscaling wind, two processes are accounted for. Firstly the drag effects
 #' of vegetation on wind , which ultimately dictate the wind height profile. In
-#' so doing, it is necessary to accomodate the fact the wind speed is not just affected by
+#' so doing, it is necessary to accommodate the fact the wind speed is not just affected by
 #' the surface roughness at each point location, but also by vegetation surrounding the
-#' location. This is accomodated for by applying `xyf` which effectively smooths though surface roughness
+#' location. This is accommodated for by applying `xyf` which effectively smooths though surface roughness
 #' using `terra::aggregate` where `xyf` is the aggregation factor. Because surface roughness
 #' also depends on the plant area index (PAI), which is time-variant, and is computationally intensive
 #' to perform aggregations on PAI at each hourly time increment, `zf` determines the time at
 #' what frequency to aggregate PAI. E.g. where `zf` is 100, PAI at every 100th time increment is aggregated.
-#' By default 'xyf' is set to 10 m or the pixel resolution, which ever is greater and `zf`
-#' is set to aggregate PAI at monthly intervals. A second complication arises in that the maximum
+#' By default 'xyf' is set to 1 and `zf` to aggregate PAI at monthly intervals. A second complication arises in that the maximum
 #' vegetation height within the study area may exceed the height at which input wind speeds are
-#' measured (by default assumed measured at a height of 2 m). For this reason, the wind
-#' speed at the maximum height of vegetation within the study is calculated using a standard height
-#' profile adjustment for an open area typical of those at which weather stations are sighted
+#' measured (by default assumed measured at a height of 2 m). The issue here is that wind speed
+#' measurements are normally taken in open areas where wind is unimpeded by vegetation.
+#' For this reason, the wind speed at `maxhgt` is calculated
+#' using a standard height profile adjustment for an open area typical of those at which weather stations are sighted
 #' prior to adjusting for the effects of local vegetation and terrain on wind speed. Terrain effects
 #' are calculated by applying the topographic shelter coefficient described in Maclean et al
 #' (2019) Methods in Ecology and Evolution, 10:280-290.
