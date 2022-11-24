@@ -21,6 +21,7 @@ LazyData: true
 RoxygenNote: 7.1.2
 Imports: ncdf4,
     sf,
+    sp,
     terra,
     stats,
     abind,
