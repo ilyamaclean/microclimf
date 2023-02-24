@@ -532,6 +532,7 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, soi
   }
   # Calculate wind
   w2<-(micro$uf/0.4)*(log((micro$maxhgt-micro$d)/micro$zm)+micro$psi_m)
+  w2[w2<0]<-0
   w2<-log(w2+1)
   # Predict soil surface temperature
   T0<-.rta(rast(scfs$int),hiy)+
