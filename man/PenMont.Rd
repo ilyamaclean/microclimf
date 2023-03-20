@@ -15,6 +15,7 @@ PenMont(
   es = NA,
   tdew = NA,
   surfwet = 1,
+  T_est = NA,
   allout = TRUE
 )
 }
@@ -39,6 +40,9 @@ PenMont(
 
 \item{surfwet}{proportion of leaf or canopy acting as wet surface}
 
+\item{T_est}{optional initial estimate of canopy heat exchange surface temperature.
+Reduces error in linearisation when applying Penman-Monteith equation.}
+
 \item{allout}{optional logical indicating whether to return Latent, Sensible and
 Ground heat flux in addition to canopy temperature}
 }
@@ -57,8 +61,8 @@ Optionally `G` The ground heat flux (W/m^2)
 }
 \description{
 The function `PenMont` applies a varient of the Penman-Monteith
-equation, with G calculated from ground temperatures, to calculate latent
-heat exchange
+equation, to calculate latent heat and canopy heat exchange surface
+temperature
 }
 \details{
 `Latent` can be used to calaculate either the latent heat of

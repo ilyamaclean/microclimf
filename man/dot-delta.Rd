@@ -4,7 +4,7 @@
 \alias{.delta}
 \title{Calculates slope of the saturated vapour pressure curve}
 \usage{
-.delta(tc, radabs)
+.delta(tc)
 }
 \description{
 Calculates slope of the saturated vapour pressure curve

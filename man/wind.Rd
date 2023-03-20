@@ -6,19 +6,29 @@
 \usage{
 wind(
   micro,
-  reqhgt,
+  climdata,
+  reqhgt = 0.05,
   pai_a = NA,
   xyf = 1,
   zf = NA,
+  soilinit = c(NA, NA),
+  tfact = 1.5,
   slr = NA,
   apr = NA,
   hor = NA,
   wsa = NA,
-  maxhgt = NA
+  twi = NA,
+  soilmcoefs = NA,
+  soiltcoefs = NA,
+  backweight = 2,
+  maxiter = 100,
+  gmn = 0.3
 )
 }
 \arguments{
 \item{micro}{object of class microin as returned by [modelin()]}
+
+\item{climdata}{an array of hourly weather (see details)}
 
 \item{reqhgt}{height above ground for which wind speeds are wanted. If negative (below ground) wind friction velocity only is returned}
 
@@ -28,6 +38,11 @@ wind(
 
 \item{zf}{optional integer used to calculate how frequently to sample the plant area index array
 when calculating smoothed wind speed (see details)}
+
+\item{soilinit}{initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])}
+
+\item{tfact}{coefficient determining sensitivity of soil moisture to variation
+in topographic wetness (see [soilmdistribute()])}
 
 \item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
@@ -41,24 +56,48 @@ dtm if not supplied, but outer cells will be NA.}
 \item{wsa}{an optional array of wind shelter coefficients in 8 directions.
 Calculated from dtm if not supplied, but outer cells will be NA.}
 
-\item{maxhgt}{an optional height (m) for which wind speed is needed. Determined
-from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.}
+\item{twi}{optional SpatRast object of topographic wetness index values.
+Calculated from `dtm` of not supplied, but outer cells will be NA.}
+
+\item{soilmcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilm()]}
+
+\item{soiltcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilt()]}
+
+\item{backweight}{an optional parameter used for iteratively deriving diabatic
+coefficients by running a point microclimate model until stable results are
+obtained (default 2). A higher value ensured the model is more likely to
+converge, but `maxiter` may then need to be increased.}
+
+\item{maxiter}{an optional number of iterations used to derive diabatic
+coefficients by running a point microclimate model until stable results are
+obtained (default 100). There is a moderate time penality by increasing
+the number.}
+
+\item{gmn}{optional minimum convective conductance value (mol/m^2/s). Lower values are more
+physically realistic, but can reduce the chance the point microclimate model will
+converge and may result in implausably high estimates of temperature.}
 }
 \value{
 an object of class microin with the following components added:
 
-`uf` wind fricion velocities (m/s)
-
 `uz` optionally wind speed at height `reqhgt` (m/s)
 
-aditional terms required for subsequent modelling
+`gHa` convective conductance (mol/m^2/s)
+
+`Test` initial estimates of canopy heat exchange surface temperatures (deg C)
+used to derive improve subsequent estimates.
 }
 \description{
 The function `wind` downscales wind speed accounting for
 vegetation and terrain
 }
 \details{
-In downscaling wind, two processes are accounted for. Firstly the drag effects
+The data.frame `climdata` is used to run a point model iteratively to
+get diabatic correction coefficients and to derive initial estimates of temperature.
+This point model must be run in hourly time-steps. Thus, when the whole microclimate
+model is run in hourly timesteps, `climdata` = `micro$climdata`, but when run in daily mode
+this is not the case, hence a seperate function input is requested. In
+downscaling wind, two processes are accounted for. Firstly the drag effects
 of vegetation on wind , which ultimately dictate the wind height profile. In
 so doing, it is necessary to accommodate the fact the wind speed is not just affected by
 the surface roughness at each point location, but also by vegetation surrounding the
@@ -67,13 +106,18 @@ using `terra::aggregate` where `xyf` is the aggregation factor. Because surface 
 also depends on the plant area index (PAI), which is time-variant, and is computationally intensive
 to perform aggregations on PAI at each hourly time increment, `zf` determines the time at
 what frequency to aggregate PAI. E.g. where `zf` is 100, PAI at every 100th time increment is aggregated.
-By default 'xyf' is set to 1 and `zf` to aggregate PAI at monthly intervals. A second complication arises in that the maximum
+By default 'xyf' is set to `NA`, in which case the wind profile is averaged across the entire
+study area. This is appropriate for microclimate models run at very high (<10m) resolution.
+For models run at coarse resoution (e.g. >= 1km) xyf should be set to one, for intermediate
+resolutions (10-1000m) xyf values should range for about 2 to 10.  The parameter `zf`
+is ignored if `xyf` is `NA` or `1` but by default is set to aggregate PAI at
+monthly intervals. Note also that to circumvent the issue that the maximum
 vegetation height within the study area may exceed the height at which input wind speeds are
-measured (by default assumed measured at a height of 2 m). The issue here is that wind speed
-measurements are normally taken in open areas where wind is unimpeded by vegetation.
-For this reason, the wind speed at `maxhgt` is calculated
-using a standard height profile adjustment for an open area typical of those at which weather stations are sighted
-prior to adjusting for the effects of local vegetation and terrain on wind speed. Terrain effects
-are calculated by applying the topographic shelter coefficient described in Maclean et al
-(2019) Methods in Ecology and Evolution, 10:280-290.
+measured (by default assumed measured at a height of 2 m). [modelin()] and related functions
+adjust the wind profile to 2m above the height of tallest vegetation making the
+assumption that wind speed  measurements are normally taken in open areas where wind is unimpeded
+by vegetation. A standard height profile adjustment for an open area typical of those at which
+weather stations are sighted is undertaken. Additionally, the effects of local vegetation
+and terrain on wind speed. Terrain effects are calculated by applying the topographic
+shelter coefficient described in Maclean et al (2019) Methods in Ecology and Evolution, 10:280-290.
 }

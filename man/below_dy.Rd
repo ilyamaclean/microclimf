@@ -9,16 +9,15 @@ below_dy(
   reqhgt,
   expand = TRUE,
   pai_a = NA,
-  xyf = 1,
-  zf = NA,
   soilinit = c(NA, NA),
   tfact = 1.5,
   slr = NA,
   apr = NA,
   hor = NA,
   wsa = NA,
-  maxhgt = NA,
-  twi = NA
+  twi = NA,
+  soilmcoefs = NA,
+  soiltcoefs = NA
 )
 }
 \arguments{
@@ -27,10 +26,6 @@ below_dy(
 \item{reqhgt}{height above ground at which model outputs are needed (m). Must be negative.}
 
 \item{expand}{optional logical indicating whethet to expand daily values to hourly}
-
-\item{xyf}{optional input for called function [wind()]}
-
-\item{zf}{optional input for called function [wind()]}
 
 \item{soilinit}{initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])}
 
@@ -49,11 +44,12 @@ dtm if not supplied, but outer cells will be NA.}
 \item{wsa}{an optional array of wind shelter coefficients in 8 directions.
 Calculated from dtm if not supplied, but outer cells will be NA.}
 
-\item{maxhgt}{an optional height (m) for which wind speed is needed. Determined
-from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.}
-
-\item{twi}{optional SpatRaster object of topographic wetness index values.
+\item{twi}{optional SpatRast object of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
+
+\item{soilmcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilm()]}
+
+\item{soiltcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilt()]}
 }
 \value{
 `Tz` Array of air temperatures at height `reqhgt` below ground (deg C)

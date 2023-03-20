@@ -23,10 +23,15 @@ runmicro_biga(
   zf = NA,
   soilinit = c(NA, NA),
   tfact = 1.5,
-  surfwet = 1,
+  surfwet = 0.75,
   merid = 0,
   dst = 0,
-  runchecks = TRUE
+  runchecks = TRUE,
+  soilmcoefs = NA,
+  soiltcoefs = NA,
+  backweight = 2,
+  maxiter = 100,
+  gmn = 0.3
 )
 }
 \arguments{

@@ -8,18 +8,21 @@ runmicro_hr(
   micro,
   reqhgt,
   pai_a = NA,
-  folden = NA,
   xyf = 1,
   zf = NA,
   soilinit = c(NA, NA),
   tfact = 1.5,
-  surfwet = 1,
+  surfwet = 0.75,
   slr = NA,
   apr = NA,
   hor = NA,
   wsa = NA,
-  maxhgt = NA,
-  twi = NA
+  twi = NA,
+  soilmcoefs = NA,
+  soiltcoefs = NA,
+  backweight = 2,
+  maxiter = 100,
+  gmn = 0.3
 )
 }
 \arguments{
@@ -28,8 +31,6 @@ runmicro_hr(
 \item{reqhgt}{height above (or below) ground at which model outputs are needed (m). Negative values indicate below ground surface.}
 
 \item{pai_a}{an optional array of plant area index values above `reqhgt` (see details)}
-
-\item{folden}{an optional array of foliage densities at the height `reqhgt` (m^3/m^3)}
 
 \item{xyf}{optional input for called function [wind()]}
 
@@ -55,11 +56,21 @@ dtm if not supplied, but outer cells will be NA.}
 \item{wsa}{an optional array of wind shelter coefficients in 8 directions.
 Calculated from dtm if not supplied, but outer cells will be NA.}
 
-\item{maxhgt}{an optional height (m) for which wind speed is needed. Determined
-from height of tallest vegetation or as 2 m, whichever is greater, if not supplied (see wind()]).}
-
 \item{twi}{optional SpatRaster object of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
+
+\item{soilmcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilm()]}
+
+\item{soiltcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilt()]}
+
+\item{backweight}{an optional parameter used for iteratively deriving diabatic
+coefficients. See [wind()])}
+
+\item{maxiter}{an optional number of iterations used to derive diabatic
+coefficients by running a point microclimate model until stable results are
+obtained (default 100). See [wind()])}
+
+\item{gmn}{optional minimum convective conductance value (mol/m^2/s). See [wind()])}
 }
 \value{
 an object of class microout with the following components:

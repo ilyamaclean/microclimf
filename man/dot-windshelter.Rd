@@ -2,20 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.windshelter}
 \alias{.windshelter}
-\title{Calculate wind speeds accounting for topographic sheltering}
+\title{Calculate shelter coefficient for all wind directions}
 \usage{
-.windshelter(
-  u2,
-  wdir,
-  dsm,
-  whgt = 2,
-  wdct = 8,
-  xyf = 10,
-  hs = TRUE,
-  wsa = NA,
-  cors = NA
-)
+.windshelter(wdir, dtm, whgt, s, wsa = NA)
 }
 \description{
-Calculate wind speeds accounting for topographic sheltering
+Calculate shelter coefficient for all wind directions
 }
