@@ -170,8 +170,8 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
     } else micro$pai_a<-0
   }
   # === (1g) Adjust paramaters for gap fraction and inclined surface
-  n<-reqhgt/micro$vha
-  n[n<1]<-1
+  n<-(micro$vha-reqhgt)/micro$vha
+  n[n<0]<-0
   pai_a<-micro$pai_a/(1-micro$clump^n)
   pai_t<-micro$pai/(1-micro$clump)
   sk<-si/sin(alt)
