@@ -730,7 +730,7 @@ wind <- function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, s
   # Calculate mean roughness lengths
   hgtm<-mean(as.vector(micro$veghgt),na.rm=T)
   pai<-apply(micro$pai,3,mean,na.rm=T)
-  dm<-.roughtlength(hgtm,pai)
+  dm<-.zeroplanedis(hgtm,pai)
   zmm<-0.01*hgtm
   zmm[zmm<0.0001]<-0.0001
   # Iteratively solve point microclimate model
@@ -746,7 +746,7 @@ wind <- function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, s
       hgt[hgt<0.01]<-0.01
       pai<-micro$pai
       pai[pai<0.01]<-0.01
-      d<-.roughtlength(hgt,pai)
+      d<-.zeroplanedis(hgt,pai)
       zm<-0.01*hgt
       zm[zm<0.0001]<-0.0001
     } else {
@@ -756,7 +756,7 @@ wind <- function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, s
         hgt[hgt<0.01]<-0.01
         pai<-.sma(micro$pai,xyf,zf,crs(micro$dtm))
         pai[pai<0.01]<-0.01
-        d<-.roughtlength(hgt,pai)
+        d<-.zeroplanedis(hgt,pai)
         zm<-0.01*hgt
         zm[zm<0.0001]<-0.0001
       } else xyf<-NA

@@ -290,8 +290,8 @@
   delta<-es2-es1
   delta
 }
-#' Calculate roughness length governing momentum transfer
-.roughtlength<-function(h,pai) {
+#' Calculate zero plane displacement height
+.zeroplanedis<-function(h,pai) {
   h[h<=0]<-0.001
   a<-pai/h
   Lc<-(0.25*a)^-1
@@ -382,15 +382,6 @@
   phi_h[phi_h< -5]<- -5
   phi_h
 }
-
-# Calculates below canopy mixing length
-.mixinglength <- function(hgt, pai, zm0 = 0.003, mnlm = 0.04) {
-  d<-.zeroplanedis(hgt,pai)
-  zm<-.roughlength(hgt,pai,zm0)
-  l_m<-(0.32*(hgt-d))/log((hgt-d)/zm)
-  l_m[l_m<mnlm]<-mnlm
-  l_m
-}
 # Ensures uz above canopy cannot drop below friction velocity
 .minwind <- function(uz, uf) {
   sel<-which(uz<uf)
@@ -421,7 +412,7 @@
   # Temperature
   hgt<-micro$vha
   hgt[hgt<0.001]<-0.001
-  d<-.roughtlength(hgt,micro$pai)
+  d<-.zeroplanedis(hgt,micro$pai)
   zm<-0.01*hgt
   lnr<-log((z-d)/zm)/log((micro$maxhgt-d)/zm)
   dH<-TH$tcan-micro$tc
