@@ -6,42 +6,44 @@
 \usage{
 temphumE(
   micro,
-  reqhgt,
+  climdata,
+  reqhgt = 0.05,
   pai_a = NA,
-  folden = NA,
   xyf = 1,
   zf = NA,
   soilinit = c(NA, NA),
   tfact = 1.5,
-  surfwet = 1,
   slr = NA,
   apr = NA,
   hor = NA,
   wsa = NA,
-  maxhgt = NA,
-  twi = NA
+  twi = NA,
+  soilmcoefs = NA,
+  soiltcoefs = NA,
+  backweight = 2,
+  maxiter = 100,
+  gmn = 0.3,
+  surfwet = 0.75
 )
 }
 \arguments{
 \item{micro}{object of class microin as returned by [modelin()]}
 
-\item{reqhgt}{height above ground at which model outputs are needed (m). Must be positive}
+\item{climdata}{an array of hourly weather (see [wind()])}
 
-\item{pai_a}{an optional array of plant area index values above `reqhgt` (see details)}
+\item{reqhgt}{height above ground for which wind speeds are wanted. If negative (below ground) wind friction velocity only is returned}
 
-\item{folden}{an optional array of foliage densities at height `reqhgt` (m^3/m^3)}
+\item{pai_a}{plant area index above `reqhgt`. Determined from total `pai` if not supplied.}
 
-\item{xyf}{optional input for called function [wind()]}
+\item{xyf}{optional spatial smoothing factor applied in calculation of wind speeds (see details)}
 
-\item{zf}{optional input for called function [wind()]}
+\item{zf}{optional integer used to calculate how frequently to sample the plant area index array
+when calculating smoothed wind speed (see details)}
 
 \item{soilinit}{initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])}
 
 \item{tfact}{coefficient determining sensitivity of soil moisture to variation
 in topographic wetness (see [soilmdistribute()])}
-
-\item{surfwet}{an optional single numeric value of array of values specifying the proportion
-of the canopy surface that should be treated as wet surface (see details)}
 
 \item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
@@ -55,11 +57,25 @@ dtm if not supplied, but outer cells will be NA.}
 \item{wsa}{an optional array of wind shelter coefficients in 8 directions.
 Calculated from dtm if not supplied, but outer cells will be NA.}
 
-\item{maxhgt}{an optional height (m) for which wind speed is needed. Determined
-from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.}
-
-\item{twi}{optional SpatRaster object of topographic wetness index values.
+\item{twi}{optional SpatRast object of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
+
+\item{soilmcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilm()]}
+
+\item{soiltcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilt()]}
+
+\item{backweight}{an optional parameter used for iteratively deriving diabatic
+coefficients. See [wind()])}
+
+\item{maxiter}{an optional number of iterations used to derive diabatic
+coefficients by running a point microclimate model until stable results are
+obtained (default 100). See [wind()])}
+
+\item{gmn}{optional minimum convective conductance value (mol/m^2/s). See [wind()])}
+
+\item{surfwet}{an optional coefficient describing the fraction of the
+vegetation surface that acts like a free water surface. Reduce if relative
+humidity estimates seem too high.}
 }
 \value{
 an object of class microout with the following components:

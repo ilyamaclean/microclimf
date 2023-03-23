@@ -2,10 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.zeroplanedis}
 \alias{.zeroplanedis}
-\title{Calculate zero plane displacement}
+\title{Calculate zero plane displacement height}
 \usage{
-.zeroplanedis(hgt, pai)
+.zeroplanedis(h, pai)
 }
 \description{
-Calculate zero plane displacement
+Calculate zero plane displacement height
 }

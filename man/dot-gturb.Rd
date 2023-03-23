@@ -4,7 +4,7 @@
 \alias{.gturb}
 \title{Calculates turbulent molar conductivity above canopy}
 \usage{
-.gturb(uf, d, zm, z1, z0 = NA, psi_h = 0, gmin)
+.gturb(uf, d, zm, z, psi_h = 0, gmin)
 }
 \description{
 Calculates turbulent molar conductivity above canopy

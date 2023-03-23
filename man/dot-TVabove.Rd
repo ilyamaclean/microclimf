@@ -4,7 +4,7 @@
 \alias{.TVabove}
 \title{Calculates temperature and vapour above canopy}
 \usage{
-.TVabove(TH, micro, z)
+.TVabove(TH, micro, z, surfwet)
 }
 \description{
 Calculates temperature and vapour above canopy

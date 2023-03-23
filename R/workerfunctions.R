@@ -284,27 +284,21 @@
   gs
 }
 #' Calculates slope of the saturated vapour pressure curve
-.delta <- function(tc, radabs) {
-  ta<-2.685+0.0006664*radabs
-  tc<-tc+0.5*ta
+.delta <- function(tc) {
   es1<-.satvap(tc-0.5)
   es2<-.satvap(tc+0.5)
   delta<-es2-es1
   delta
 }
-#' Calculate zero plane displacement
-.zeroplanedis <- function(hgt, pai) {
-  d<-(1-(1-exp(-sqrt(7.5*pai)))/sqrt(7.5*pai))*hgt
+#' Calculate zero plane displacement height
+.zeroplanedis<-function(h,pai) {
+  h[h<=0]<-0.001
+  a<-pai/h
+  Lc<-(0.25*a)^-1
+  Be<-0.2048476*pai^0.4454644+0.1
+  d<- h-(Be^2*Lc)
+  d[d<0.0009]<-0.0009
   d
-}
-#' Calculate roughness length governing momentum transfer
-.roughlength <- function(hgt, pai, zm0 = 0.003) {
-  d<-.zeroplanedis(hgt,pai)
-  ur<-sqrt(zm0+(0.3*pai)/2)
-  ur[ur>0.3]<-0.3
-  zm<-(hgt-d)*exp(-0.4*(1/ur)-0.193)
-  zm[zm<zm0]<-zm0
-  zm
 }
 #' Calculates wind shelter coefficient in specified direction
 .windcoef <- function(dsm, direction, hgt = 1, res = 1) {
@@ -328,72 +322,65 @@
   index
 }
 #' Calculates array of wind shelter coefficients in wdct directions
-.windsheltera <- function(dsm, wdct = 8, whgt = 2, xyf = 10, hs = TRUE, cors=NA) {
-  if (hs) {
-    dct2<-2*wdct
-  } else dct2<-wdct
-  drs <- c(0:(dct2-1))*360/dct2
-  a<-array(NA,dim=c(dim(dsm)[1:2],dct2))
-  for (i in 1:dct2) {
-    r<-.windcoef(dsm,drs[i],whgt,res(dsm)[1])
-    if (xyf > 1) {
-      a[,,i]<-.is(.smr(rast(r),xyf,cors))
-    } else a[,,i]<-r
+.windsheltera<-function(dtm, whgt, s) {
+  if (is.na(s)) {
+    s<-min(dim(dtm)[1:2])
+    s<-ifelse(s>10,10,s)
   }
-  if (hs) {
-    a2<-array(NA,dim=c(dim(dsm)[1:2],wdct))
-    for (i in 1:wdct) {
-      if (i == 1) {
-        m<-0.5*a[,,1]+0.25*a[,,2]+0.25*a[,,dct2]
-      } else m<-0.5*a[,,(i*2-1)]+0.25*a[,,i*2]+0.25*a[,,(i*2)-2]
-      a2[,,i]<-m
-    }
-  } else a2<-a
+  dct2<-16
+  drs<-c(0:(dct2-1))*360/dct2
+  a<-array(NA,dim=c(dim(dtm)[1:2],dct2))
+  for (i in 1:dct2) {
+    r<-.rast(.windcoef(dtm,drs[i],whgt,res(dtm)[1]),dtm)
+    r<-resample(aggregate(r,fact=s,fun="mean"),dtm)
+    a[,,i]<-as.matrix(r,wide=T)
+  }
+  a2<-array(NA,dim=c(dim(dtm)[1:2],8))
+  for (i in 1:8) {
+    if (i == 1) {
+      m<-0.5*a[,,1]+0.25*a[,,2]+0.25*a[,,dct2]
+    } else m<-0.5*a[,,(i*2-1)]+0.25*a[,,i*2]+0.25*a[,,(i*2)-2]
+    a2[,,i]<-m
+  }
   a2
 }
-#' Calculate wind speeds accounting for topographic sheltering
-.windshelter <- function(u2, wdir, dsm, whgt = 2, wdct = 8, xyf = 10, hs = TRUE, wsa = NA, cors = NA) {
+#' Calculate shelter coefficient for all wind directions
+.windshelter <- function(wdir,dtm,whgt,s,wsa = NA) {
   # Create array of wind shelter coefficients
-  if (class(wsa)[1] == "logical") wsa<-.windsheltera(dsm,wdct,whgt,xyf,hs,cors)
+  if (class(wsa)[1] == "logical") wsa<-.windsheltera(dtm,whgt,s)
   # Apply array of wind shelter coefficients
   i<-360/dim(wsa)[3]
   sel<-(round(wdir/i,0))+1
   sel[sel==(dim(wsa)[3])+1]<-1
   sel[sel==0]<-dim(wsa)[3]
   wa<-wsa[,,sel]
-  # Calculate wind speed at two metres above tallest vegetation
-  if (whgt!=2) u2 <- u2*log(67.8*whgt-5.42)/4.87
-  # Apply shelter coefficient
-  uz<-.vta(u2,dsm)
-  uz<-uz*wa
-  uz
+  wa
 }
-#' Calculates diabatic correction factors
-.diabatic<-function(tc,uf,d,zm,maxhgt,H) {
-  hes<-d+zm
-  r<-rast(H[,,1])
-  Tk<-tc+273.15
-  st<- -(0.4*9.81*(2+maxhgt-d)*H)/(1241*Tk*uf^3)
-  # H>0
-  psi_h <- -2*log(1+((1-16*st)^0.5)/2)
-  psi_m <- 0.6*psi_h
-  # H < 0
-  sel<-which(H<0)
-  psi_h[sel]<-6*log(1+st[sel])
-  psi_m[sel]<-psi_h[sel]
-  psi_m<-.lim(psi_m,4,up=TRUE)
-  psi_m<-.lim(psi_m,-4)
-  psi_h<-.lim(psi_h,4,up=TRUE)
-  psi_h<-.lim(psi_h,-4)
-  return(list(psi_h=psi_h,psi_m=psi_m))
+#' Calculates diabatic correction for momentum
+.dphim<-function(ze) {
+  # unstable
+  x<-(1-15*ze)^0.25
+  phi_m<-log(((1+x)/2)^2*(1+x^2)/2)-2*atan(x)+pi/2
+  # stable
+  s<-which(ze>=0)
+  p2<- -4.7*ze
+  phi_m[s]<-p2[s]
+  phi_m[phi_m>5]<-5
+  phi_m[phi_m< -5]<- -5
+  phi_m
 }
-# Calculates below canopy mixing length
-.mixinglength <- function(hgt, pai, zm0 = 0.003, mnlm = 0.04) {
-  d<-.zeroplanedis(hgt,pai)
-  zm<-.roughlength(hgt,pai,zm0)
-  l_m<-(0.32*(hgt-d))/log((hgt-d)/zm)
-  l_m[l_m<mnlm]<-mnlm
-  l_m
+#' Calculates diabatic correction for heat
+.dphih<-function(ze) {
+  # unstable
+  y<-(1-9*ze)^0.25
+  phi_h<-log(((1+y)/2)^2)
+  # stable
+  s<-which(ze>=0)
+  p2<- -(4.7*ze)/0.74
+  phi_h[s]<-p2[s]
+  phi_h[phi_h>5]<-5
+  phi_h[phi_h< -5]<- -5
+  phi_h
 }
 # Ensures uz above canopy cannot drop below friction velocity
 .minwind <- function(uz, uf) {
@@ -412,34 +399,30 @@
   gha
 }
 #' Calculates turbulent molar conductivity above canopy
-.gturb<-function(uf,d,zm,z1,z0=NA,psi_h=0,gmin) {
+.gturb<-function(uf,d,zm,z,psi_h=0,gmin) {
   zh<-0.2*zm
-  if (is.na(z0)[1]) {
-    z0<-d+zh
-  }
-  xx<-(z1-d)/(z0-d)
-  xx[xx<0.001]<-0.001
-  ln<-log(xx)
-  lnr<-ln*log((z1-d)/zh)
-  psx<-lnr*psi_h
-  g<-(0.4*43*uf)/(ln+psx)
-  sel<-which(g<gmin)
-  g[sel]<-gmin[sel]
-  sel<-which(g>1e10)
-  g[sel]<-1e10
+  ln<-log((z-d)/zm)
+  g<-(0.4*43*uf)/(ln+psi_h)
+  g<-.lim(g,gmin)
+  g<-.lim(g,0.0001)
   g
 }
 #' Calculates temperature and vapour above canopy
-.TVabove<-function(TH,micro,z) {
+.TVabove<-function(TH,micro,z,surfwet) {
   # Temperature
-  lnr<-suppressWarnings(log((micro$maxhgt-micro$d)/(z-micro$d)))
-  sel<-which(is.na(lnr))
-  Ta<-micro$tc+(TH$H/(0.4*43*29.3))*lnr
-  Ta[sel]<-TH$tcan[sel]
+  hgt<-micro$vha
+  hgt[hgt<0.001]<-0.001
+  d<-.zeroplanedis(hgt,micro$pai)
+  zm<-0.01*hgt
+  lnr<-log((z-d)/zm)/log((micro$maxhgt-d)/zm)
+  dH<-TH$tcan-micro$tc
+  dZ<-dH*(1-lnr)
+  Tz<-dZ+micro$tc
   # Vapour pressure
-  ez<-micro$ea+((TH$L*micro$pk)/(765847.2*micro$uf))*lnr
-  ez[sel]<-.satvap(TH$tcan[sel])
-  return(list(Tz=Ta,ez=ez))
+  dH<-(.satvap(TH$tcan)*surfwet)-micro$ea
+  dZ<-dH*(1-lnr)
+  ez<-micro$ea+dZ
+  return(list(Tz=Tz,ez=ez))
 }
 #' Caclulates flow direction
 .flowdir <- function(md) {
@@ -813,7 +796,6 @@
 .windcorrect <- function(uz, windhgt, maxhgt) {
   d<-0.08
   zm<-0.01476
-  zh<-0.1*zm
   uf<-(0.4*uz)/log((windhgt-d)/zm)
   uo<-(uf/0.4)*log((maxhgt+2-d)/zm)
   uo
@@ -853,3 +835,89 @@
               winddir=climarray$winddir[,,sel])
   climo
 }
+#' Iteratively uns a point microclimate model for heat exchange surface of canopy
+.solvemicro<-function(micro,climdata,d,zm,reqhgt,backweight=2,maxiter=100,gmn=0.3,ti) {
+  # Extract variables
+  if (ti == 1) {
+    Rabs<-apply(micro$radCsw+micro$radClw,3,mean,na.rm=T)
+    G<-apply(micro$G,3,mean,na.rm=T)
+  } else {
+    alb<-apply(micro$albedo,3,mean,na.rm=T)
+    alb<-spline(alb,n=length(climdata$temp))$y
+    Rem<-0.97*5.67*10^-8*(climdata$temp+273.15)^4
+    Rabs<-(1-alb)*climdata$swrad+Rem*climdata$skyem
+    G<-apply(micro$G,3,mean,na.rm=T)
+    G<-spline(G,n=length(climdata$temp))$y
+  }
+  maxhgt<-max(as.vector(micro$veghgt),na.rm=T)+2
+  mws<-mean(as.vector(micro$ws),na.rm=T)
+  wdspd<-climdata$windspeed*mws
+  tc<-climdata$temp
+  Rsw<-climdata$swrad
+  gsmax<-mean(as.vector(micro$gsmax),na.rm=T)
+  ea<-.satvap(tc)*climdata$relhum/100
+  pk<-climdata$pres
+  tdew<-.dewpoint(ea, tc)
+  leafd<-mean(as.vector(micro$leafd),na.rm=T)
+  ld<-0.71*leafd
+  pai<-apply(micro$pai,3,mean,na.rm=T)
+  pai[pai<0.5]<-0.5
+  # Initial uf estimate
+  uf<-(0.4*wdspd)/log((maxhgt-d)/zm)
+  gmin<-gmn
+  Rem<-apply(micro$lwout,3,mean,na.rm=T)
+  H<-0.5*(Rabs-Rem)
+  T0<-tc
+  dT<-0
+  Tmx<-max(tc)+30
+  count<-0
+  tst<-1
+  while (tst > 0) {
+    # Stability
+    Tk<-273.15+(T0+tc)/2
+    LL<-(43*29.3*uf^3*Tk)/(-0.4*9.81*H)
+    phim<-.dphim(zm/LL)-.dphim((maxhgt-d)/LL)
+    phih<-.dphih(zm/LL)-.dphih((maxhgt-d)/LL)
+    # Convective conductances
+    gHa<-.gturb(uf,d,zm,maxhgt,phih,gmin)
+    gs<-(gsmax*4.6*Rsw)/(4.6*Rsw+100)
+    gv<-1/(1/gs+1/gHa)
+    # Latent heat
+    es<-.satvap(T0)
+    L<-44526*(gv/pk)*(es-ea)
+    L[L<0]<-0
+    Rnet<-Rabs-Rem
+    s<-which(Rnet>0 & L>Rnet)
+    L[s]<-Rnet[s]
+    # Sensible
+    H<-Rabs-Rem-L-G
+    # Temperature
+    dT1<-H/(29.3*gHa)
+    dT<-(dT*backweight+dT1)/(backweight+1)
+    dif<-abs(dT1-dT)
+    T0<-tc+dT
+    T0<-.lim(T0,tdew)
+    T0[T0>Tmx]<-Tmx
+    # Recalculate
+    uf<-(0.4*wdspd)/(log((maxhgt-d)/zm)+phim)
+    gmin<-0.0375*2*pai*(abs(dT)/ld)^0.25
+    gmin[gmin<gmn]<-gmn
+    Rem<-0.97*5.67*10^-8*(T0+273.15)^4
+    count<-count+1
+    if (max(dif)<0.5) tst<-0
+    if (count>=maxiter) tst<-0
+  }
+  txt<-paste0("Microclimate iteration model didn't convege. Max difference: ",
+              round(max(dif),2),". Try a higher backweight and maxiter or gmn")
+  if (max(dif) > 5) warning(txt)
+  if (ti != 1) {
+    td<-matrix(climdata$temp,ncol=24,byrow=TRUE)
+    tc1<-mean(micro$tc,na.rm=T)
+    tc2<-mean(weather$temp,na.rm=T)
+    if (tc2 > tc1) {
+      sm<-apply(td,1,which.min)
+    } else sm<-apply(td,1,which.max)
+  } else sm<-c(1:length(climdata$temp))
+  return(list(H=H[sm],dT=dT[sm],uf=uf[sm],LL=LL[sm],gHa=gHa[sm],mws=mws))
+}
+

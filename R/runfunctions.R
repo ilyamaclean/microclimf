@@ -272,7 +272,7 @@ modelin <- function(weather, precip, vegp, soilc, dtm, windhgt = 2, merid = 0, d
   vegp<-up$vegp
   soilc<-up$soilc
   # correct wind height
-  mxhgt<-max(.is(vegp$hgt),na.rm=T)
+  mxhgt<-max(.is(vegp$hgt),na.rm=T)+2
   weather$windspeed<-.windcorrect(weather$windspeed,windhgt,mxhgt)
   r<-dtm
   ll<-.latlongfromraster(r)
@@ -398,7 +398,7 @@ modelin <- function(weather, precip, vegp, soilc, dtm, windhgt = 2, merid = 0, d
 #' plot(rast(mout$T0[,,4091]))
 modelina<-function(climarray,precarray,tme,r,altcorrect = 0, vegp, soilc, dtm, windhgt = 2, merid = 0, dst = 0, runchecks = FALSE, daily = FALSE) {
   # Correct wind speed
-  mxhgt<-max(.is(vegp$hgt),na.rm=T)
+  mxhgt<-max(.is(vegp$hgt),na.rm=T)+2
   climarray$windspeed<-.windcorrect(climarray$windspeed,windhgt,mxhgt)
   # Create weather and precipitation dataset
   weather<-.catoweather(climarray,tme)
@@ -623,7 +623,6 @@ modelina_dy <- function(climarray, precarray, tme, r, altcorrect = 0, vegp, soil
 #' @param micro object of class microin as returned by [modelin()]
 #' @param reqhgt height above (or below) ground at which model outputs are needed (m). Negative values indicate below ground surface.
 #' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
-#' @param folden an optional array of foliage densities at the height `reqhgt` (m^3/m^3)
 #' @param xyf optional input for called function [wind()]
 #' @param zf optional input for called function [wind()]
 #' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
@@ -639,10 +638,16 @@ modelina_dy <- function(climarray, precarray, tme, r, altcorrect = 0, vegp, soil
 #' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
 #' @param wsa an optional array of wind shelter coefficients in 8 directions.
 #' Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param maxhgt an optional height (m) for which wind speed is needed. Determined
-#' from height of tallest vegetation or as 2 m, whichever is greater, if not supplied (see wind()]).
 #' @param twi optional SpatRaster object of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
+#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
+#' @param backweight an optional parameter used for iteratively deriving diabatic
+#' coefficients. See [wind()])
+#' @param maxiter an optional number of iterations used to derive diabatic
+#' coefficients by running a point microclimate model until stable results are
+#' obtained (default 100). See [wind()])
+#' @param gmn optional minimum convective conductance value (mol/m^2/s). See [wind()])
 #' @return an object of class microout with the following components:
 #' @return `Tz` Array of air temperatures at height `reqhgt` (deg C). Identical to `T0`
 #' if `reqhgt` = 0.
@@ -703,14 +708,16 @@ modelina_dy <- function(climarray, precarray, tme, r, altcorrect = 0, vegp, soil
 #' # Extract and plot mean soil temperatures
 #' msoilt<-apply(mout$Tz,c(1,2),mean)
 #' plot(rast(msoilt))
-runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA, soilinit = c(NA, NA),
-                        tfact = 1.5, surfwet = 1, slr = NA, apr = NA, hor = NA, wsa = NA,
-                        maxhgt = NA, twi = NA) {
+runmicro_hr <- function(micro, reqhgt, pai_a = NA, xyf = 1, zf = NA, soilinit = c(NA, NA),
+                        tfact = 1.5, surfwet = 0.75, slr = NA, apr = NA, hor = NA, wsa = NA,
+                        twi = NA, soilmcoefs = NA, soiltcoefs = NA, backweight = 2,
+                        maxiter = 100, gmn = 0.3) {
   # Calculate soil surface temperature and soil moisture
-  micro<-soiltemp_hr(micro,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
+  micro<-soiltemp_hr(micro,reqhgt,pai_a,soilinit,tfact,slr,apr,hor,wsa,twi,soilmcoefs,soiltcoefs)
   # Run above ground
   if (reqhgt > 0) {
-    mout<-temphumE(micro,reqhgt,pai_a,folden,xyf,zf,soilinit,tfact,surfwet,slr,apr,hor,wsa,maxhgt,twi)
+    mout<-temphumE(micro,micro$climdata,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,
+                   apr,hor,wsa,twi,soilmcoefs,soiltcoefs,backweight,maxiter,gmn,surfwet)
   }
   # Run at ground level
   if (reqhgt == 0) {
@@ -721,7 +728,8 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
   }
   # Run below ground
   if (reqhgt < 0) {
-    Tz<-below_hr(micro,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
+    Tz<-below_hr(micro,reqhgt,pai_a,soilinit,tfact,slr,apr,hor,wsa,twi,soilmcoefs,
+                 soiltcoefs)
     mout<-list(Tz=Tz,tleaf=NA,T0=micro$T0,soilm=micro$theta,
                relhum=NA,windspeed=NA,Rdirdown=NA,Rdifdown=NA,Rlwdown=NA,
                Rswup=NA,Rlwup=NA)
@@ -738,7 +746,6 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
 #' @param reqhgt height above ground at which model outputs are needed (m).
 #' @param expand optional logical indicating whether to expand daily values to hourly (see details).
 #' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
-#' @param folden an optional array of foliage densities at the height `reqhgt` (m^3/m^3)
 #' @param xyf optional input for called function [wind()]
 #' @param zf optional input for called function [wind()]
 #' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
@@ -754,10 +761,16 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
 #' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
 #' @param wsa an optional array of wind shelter coefficients in 8 directions.
 #' Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param maxhgt an optional height (m) for which wind speed is needed. Determined
-#' from height of tallest vegetation or as 2 m, whichever is greater, if not supplied.
 #' @param twi optional SpatRaster object of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
+#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
+#' @param backweight an optional parameter used for iteratively deriving diabatic
+#' coefficients. See [wind()])
+#' @param maxiter an optional number of iterations used to derive diabatic
+#' coefficients by running a point microclimate model until stable results are
+#' obtained (default 100). See [wind()])
+#' @param gmn optional minimum convective conductance value (mol/m^2/s). See [wind()])
 #' @return if expand = TRUE, an object of class microout with the following components:
 #' @return `Tz` Array of air temperatures at height `reqhgt` (deg C). Identical to `T0`
 #' if `reqhgt` = 0.
@@ -812,19 +825,20 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, folden = NA, xyf = 1, zf = NA
 #' # Extract and plot mean soil temperatures
 #' msoilt<-apply(mout$Tz,c(1,2),mean)
 #' plot(rast(msoilt))
-runmicro_dy <- function(microd, reqhgt, expand = TRUE, pai_a = NA, folden = NA, xyf = 1, zf = NA,
-                        soilinit = c(NA, NA), tfact = 1.5, surfwet = 1, slr = NA,
-                        apr = NA, hor = NA, wsa = NA, maxhgt = NA, twi = NA) {
+runmicro_dy <- function(microd, reqhgt, expand = TRUE, pai_a = NA, xyf = 1, zf = NA, soilinit = c(NA, NA),
+                        tfact = 1.5, surfwet = 0.75, slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA, soilmcoefs = NA,
+                        soiltcoefs = NA, backweight = 2, maxiter = 100, gmn = 0.3) {
   # Calculate soil surface temperature and soil moisture
-  microd<-soiltemp_dy(microd,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
-  climdata<-microd$climdata
-  climd<-.climtodaily(climdata)
+  microd<-soiltemp_dy(microd,reqhgt,pai_a,soilinit,tfact,slr,apr,hor,wsa,twi,soilmcoefs,soiltcoefs)
+  climd<-.climtodaily(microd$climdata)
   # Run above ground
   if (reqhgt > 0) {
-    mout_mn<-temphumE(microd$micro_mn,reqhgt,pai_a,folden,xyf,zf,soilinit,tfact,surfwet,slr,apr,hor,wsa,maxhgt,twi)
-    mout_mx<-temphumE(microd$micro_mx,reqhgt,pai_a,folden,xyf,zf,soilinit,tfact,surfwet,slr,apr,hor,wsa,maxhgt,twi)
+    mout_mn<-temphumE(microd$micro_mn,microd$climdata,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,twi,
+                      soilmcoefs,soiltcoefs,backweight,maxiter,gmn,surfwet)
+    mout_mx<-temphumE(microd$micro_mx,microd$climdata,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,twi,
+                      soilmcoefs,soiltcoefs,backweight,maxiter,gmn,surfwet)
     if (expand) {
-      mout<-.expandclim(mout_mn,mout_mx,climdata)
+      mout<-.expandclim(mout_mn,mout_mx,microd$climdata)
       class(mout)<-"microout"
     } else {
       mout<-list(mout_mn=mout_mn,mout_mx=mout_mx)
@@ -849,7 +863,7 @@ runmicro_dy <- function(microd, reqhgt, expand = TRUE, pai_a = NA, folden = NA, 
   }
   # Run below ground
   if (reqhgt < 0) {
-    Tz<-below_dy(microd,reqhgt,expand,pai_a,xyf,zf,soilinit,tfact,slr,apr,hor,wsa,maxhgt,twi)
+    Tz<-below_dy(microd,reqhgt,expand,pai_a,soilinit,tfact,slr,apr,hor,wsa,twi,soilmcoefs,soiltcoefs)
     if (expand) {
       T0<-.expandtohour(mout_mn$T0,mout_mx$T0,climd$smn,climd$smx,climdata$temp)
       mout<-list(Tz=Tz,tleaf=NA,T0=T0,soilm=.ehr(mout_mn$theta),
@@ -994,6 +1008,15 @@ writetonc <- function(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0) {
 #' of the canopy surface that should be treated as wet surface (see details)
 #' @param merid optionally, longitude of local time zone meridian (decimal degrees)
 #' @param dst optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).
+#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
+#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
+#' @param backweight an optional parameter used for iteratively deriving diabatic
+#' coefficients. See [wind()])
+#' @param maxiter an optional number of iterations used to derive diabatic
+#' coefficients by running a point microclimate model until stable results are
+#' obtained (default 100). See [wind()])
+#' @param gmn optional minimum convective conductance value (mol/m^2/s). See [wind()])
+
 #' @seealso [runmicro_biga()] for running the microclimate model over large areas
 #' as tiles with climate input data provided as arrays.
 #' @return if `hourly` = TRUE, ncdf4 files of hourly values for each 100 x 100 grid cell tiles of
@@ -1020,7 +1043,8 @@ writetonc <- function(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0) {
 #' is such that `surfwet` ~ 1.
 runmicro_big <- function(weather, precip, reqhgt, vegp, soilc, dtm, pathout, hourly = FALSE,
                          windhgt = 2, pai_a = NA, folden = NA, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
-                         surfwet = 1, merid = 0, dst = 0, runchecks = TRUE) {
+                         surfwet = 0.75, merid = 0, dst = 0, runchecks = TRUE, soilmcoefs = NA,
+                         soiltcoefs = NA, backweight = 2, maxiter = 100, gmn = 0.3) {
   # Calculate universal variables
   path2<-paste0(pathout,"microut/")
   dir.create(path2,showWarnings = FALSE)
@@ -1035,10 +1059,7 @@ runmicro_big <- function(weather, precip, reqhgt, vegp, soilc, dtm, pathout, hou
   hor<-array(NA,dim=c(dim(dtm)[1:2],24))
   for (i in 1:24) hor[,,i]<-.horizon(dtm,(i-1)*15)
   dsm<-dtm+vegp$hgt
-  maxhgt<-max(.is(vegp$hgt),na.rm=T)
-  maxhgt<-ifelse(maxhgt<2,2,maxhgt)
-  if (is.na(xyf)) xyf<-trunc(pmax(10/res(dtm)[1],10))
-  wsa<-.windsheltera(dsm,8,maxhgt,xyf)
+  wsa<-.windsheltera(dsm,8,NA)
   dms<-dim(dtm)[1:2]
   rws<-ceiling(dms[1]/100)
   cls<-ceiling(dms[2]/100)
@@ -1060,8 +1081,9 @@ runmicro_big <- function(weather, precip, reqhgt, vegp, soilc, dtm, pathout, hou
         if (hourly) {
           expand = TRUE
         } else expand = FALSE
-        mout<-runmicro_dy(microd,reqhgt,expand,NA,NA,xyf,zf,soilinit,tfact,surfwet,
-                          slri,apri,hori,wsai,maxhgt,twii)
+        mout<-runmicro_dy(microd,reqhgt,expand,NA,xyf,zf,soilinit,tfact,surfwet,
+                          slri,apri,hori,wsai,twii,soilmcoefs,soiltcoefs,
+                          backweight,maxiter,gmn)
         rwt<-ifelse(rw<10,paste0("0",rw),paste0("",rw))
         clt<-ifelse(cl<10,paste0("0",cl),paste0("",cl))
         cat(paste0("Writing model outputs for tile ",rw," ",cl,"\n"))
@@ -1176,7 +1198,8 @@ expandtonc <- function(filein, fileout) {
 #' is such that `surfwet` ~ 1.
 runmicro_biga <- function(climarray, precarray, tme, r, altcorrect, reqhgt, vegp, soilc, dtm, pathout, hourly = FALSE,
                           windhgt = 2, pai_a = NA, folden = NA, xyf = 1, zf = NA, soilinit = c(NA, NA), tfact = 1.5,
-                          surfwet = 1, merid = 0, dst = 0, runchecks = TRUE) {
+                          surfwet = 0.75, merid = 0, dst = 0, runchecks = TRUE, soilmcoefs = NA,
+                          soiltcoefs = NA, backweight = 2, maxiter = 100, gmn = 0.3) {
   # Calculate universal variables
   path2<-paste0(pathout,"microut/")
   dir.create(path2,showWarnings = FALSE)
@@ -1191,10 +1214,7 @@ runmicro_biga <- function(climarray, precarray, tme, r, altcorrect, reqhgt, vegp
   hor<-array(NA,dim=c(dim(dtm)[1:2],24))
   for (i in 1:24) hor[,,i]<-.horizon(dtm,(i-1)*15)
   dsm<-dtm+vegp$hgt
-  maxhgt<-max(.is(vegp$hgt),na.rm=T)
-  maxhgt<-ifelse(maxhgt<2,2,maxhgt)
-  if (is.na(xyf)) xyf<-trunc(pmax(10/res(dtm)[1],10))
-  wsa<-.windsheltera(dsm,8,maxhgt,xyf)
+  wsa<-.windsheltera(dsm,8,NA)
   dms<-dim(dtm)[1:2]
   rws<-ceiling(dms[1]/100)
   cls<-ceiling(dms[2]/100)
@@ -1217,8 +1237,9 @@ runmicro_biga <- function(climarray, precarray, tme, r, altcorrect, reqhgt, vegp
         if (hourly) {
           expand = TRUE
         } else expand = FALSE
-        mout<-runmicro_dy(microd,reqhgt,expand,NA,NA,xyf,zf,soilinit,tfact,surfwet,
-                          slri,apri,hori,wsai,maxhgt,twii)
+        mout<-runmicro_dy(microd,reqhgt,expand,NA,xyf,zf,soilinit,tfact,surfwet,
+                          slri,apri,hori,wsai,twii,soilmcoefs,soiltcoefs,
+                          backweight,maxiter,gmn)
         rwt<-ifelse(rw<10,paste0("0",rw),paste0("",rw))
         clt<-ifelse(cl<10,paste0("0",cl),paste0("",cl))
         cat(paste0("Writing model outputs for tile ",rw," ",cl,"\n"))

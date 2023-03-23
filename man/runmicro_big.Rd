@@ -20,10 +20,15 @@ runmicro_big(
   zf = NA,
   soilinit = c(NA, NA),
   tfact = 1.5,
-  surfwet = 1,
+  surfwet = 0.75,
   merid = 0,
   dst = 0,
-  runchecks = TRUE
+  runchecks = TRUE,
+  soilmcoefs = NA,
+  soiltcoefs = NA,
+  backweight = 2,
+  maxiter = 100,
+  gmn = 0.3
 )
 }
 \arguments{
@@ -63,6 +68,19 @@ of the canopy surface that should be treated as wet surface (see details)}
 \item{merid}{optionally, longitude of local time zone meridian (decimal degrees)}
 
 \item{dst}{optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).}
+
+\item{soilmcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilm()]}
+
+\item{soiltcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilt()]}
+
+\item{backweight}{an optional parameter used for iteratively deriving diabatic
+coefficients. See [wind()])}
+
+\item{maxiter}{an optional number of iterations used to derive diabatic
+coefficients by running a point microclimate model until stable results are
+obtained (default 100). See [wind()])}
+
+\item{gmn}{optional minimum convective conductance value (mol/m^2/s). See [wind()])}
 }
 \value{
 if `hourly` = TRUE, ncdf4 files of hourly values for each 100 x 100 grid cell tiles of

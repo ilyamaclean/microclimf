@@ -21,6 +21,7 @@ knitr::opts_chunk$set(
   + [Meteorological data](#meteorological-data)
   + [Vegetation parameters](#vegetation-parameters)
   + [Soil parameters](#soil-parameters)
+  + [Additional optional parameters](#additional-optional-parameters)
 * [Fitting soil temperature and moisture data](#fitting-soil-temperature-and-moisture-data)
   + [Fitting soil moisture](#fitting-soil-moisture)
   + [Fitting soil temperature](#fitting-soil-temperature)
@@ -39,17 +40,17 @@ knitr::opts_chunk$set(
   + [Running the model over large areas](#running-the-model-over-large-areas)
 
 ## Overview
-This vignette describes the R package ‘microclimf’. The package contains a series of functions for predicting above and below canopy or below-ground microclimatic conditions, founded on the principles of energy conservation. It is assumed that energy cannot be destroyed or created through ordinary means. Opaque surfaces in the environment, namely the canopy and the ground, absorb radiation from the sun, but also emit radiation as thermal energy. These surfaces also exchange sensible heat with the surrounding air and undergo latent heat fluxes, namely evaporative and evapotranspirative cooling. The temperature of the environment is calculated by assuming that these various components of the energy budget always remain in balance, such that: 
+This vignette describes the R package ‘microclimf’. The package contains a series of functions for predicting above and below canopy or below-ground microclimatic conditions, founded on the principles of energy conservation. In line with standard approaches for mechanistic microclimate modelling, it is assumed that energy cannot be destroyed or created through ordinary means. Opaque surfaces in the environment, namely the canopy and the ground, absorb radiation from the sun, but also emit radiation as thermal energy. These surfaces also exchange sensible heat with the surrounding air and undergo latent heat fluxes, namely evaporative and evapotranspirative cooling. The temperature of the environment is calculated by assuming that these various components of the energy budget always remain in balance, such that: 
 
 $R - H - L = G$
 
 where R is the net flux density of radiation absorbed by the surface (the total absorbed, less that emitted), H is the rate of sensible heat exchange, L is the rate of latent heat exchange and G is the rate of heat storage by the ground. 
 
-These terms all have a dependence on temperature. The computational efficiency of microclimf is founded on the principle that these fluxes are in steady-state such that temperatures can be estimated by rearranging the equations to solve for temperature using the Penman-Monteith method (Penman 1948; Monteith 1965), with calculations performed simultaneously on all grid cells and for all-periods, thus circumventing need for a model that is run in time-steps. This necessitates some simplifying assumptions about the rate of heat storage in the soil, as described below. It also necessitates some simplifying assumptions about the natue of vegetated canopies to avoid the need to describe vertical variation in leaf foliage density in detail. Each of the terms is also assumed to be determined by properties of the environment, as described below.
+These terms all have a dependence on temperature. The computational efficiency of microclimf is founded on the principle that these fluxes are in steady-state such that temperatures can be estimated by rearranging the equations to solve for temperature using the Penman-Monteith method (Penman 1948; Monteith 1965), with calculations performed simultaneously on all grid cells and for all-periods, thus circumventing need for a model that is run in time-steps. This necessitates some simplifying assumptions about the rate of heat storage in the soil, as described below. It also necessitates some simplifying assumptions about the nature of vegetated canopies to avoid the need to describe vertical variation in leaf foliage density in detail. Each of the terms is also assumed to be determined by properties of the environment, as described below.
 
 ## Quick start
 Here I provide brief instructions for how to run `microclimf` for those broadly familiar with microclimate modelling. Five sets of input variables are needed: (1) a dataset of hourly weather, (2) a vector of daily rainfall, (3) a digital elevation dataset, (4) a dataset of vegetation parameters and (5) a dataset of soil properties. The datasets should have exactly the same format and units as the example datasets included with the package. The spatial resolution and extent of outputs is determined by the spatial resolution of the digital elevation dataset, and the spatial datasets of vegetation parameters and soil properties should also match the digital elevation dataset in terms of resolution and extent. 
-The model can be run in two modes: either in hourly time increments or, more computationally efficiently, in daily time increments (for hours corresponding to the maximum and minimum daily temperatures). If run in the latter mode, there is also the also the option to return hourly values derived by fitting the same diurnal cycle to temperatures as are present in the input climate dataset.
+The model can be run in two modes: either in hourly time increments or, more computationally efficiently, in daily time increments (for hours corresponding to the maximum and minimum daily temperatures). If run in the latter mode, there is also the also the option to return hourly values, derived by fitting the same diurnal cycle to temperatures and radiation as are present in the input climate dataset.
 
 In the code below, the model is run in hourly time increments. An object of class `microin` is first created using function `modelin`, in effect combining the datasets needed to drive the model into the right format for running the model. Function `runmicro_hr` then runs the model in hourly time-steps, deriving microclimatic conditions 5 cm above ground. The model returns temperatures (leaf, ground and air), relative humidity, wind speed, and components of the radiation budget, all as 3D arrays, representing values for each pixel and time-period. In the final lines of codes, selected outputs are plotted
 
@@ -73,7 +74,7 @@ plot(rast(mout$T0[,,991])) # coldest hour
 plot(rast(mout$T0[,,4094])) # hottest hour
 ```
 
-The locations with the highest maximum temperatures are those where the vegetation surface lies just above or at 5cm. Heat absorbed by the vegetation and the air warmed significantly in proximity to the vegetation. The locations with the lowest maximum temperatures are those shaded topographically or by vegetation.
+The model takes a few minutes to run. Locations with the highest maximum temperatures are south-facing slopes  where the vegetation surface lies just above below 5cm. The locations with the lowest maximum temperatures are those shaded topographically or by vegetation, but inline with physical reality, the model caps minimum temperatures at dewpoint so there is not much spatial variability (when temperaturs drop below dewpoint, the latent heat of condensation warms the surface).
 
 
 The model can also be run in daily  time increments. The default when so doing, as in the example, below, is to use the diurnal cycles in the hourly input data to expand the daily outputs to hourly values. Alternatively, the expand option in `runmicro_dy` can be set to FALSE. 
@@ -91,7 +92,7 @@ plot(rast(mairt))
 ```
 
 ## Model inputs
-Three sets of parameters are needed to run the model: (i) standard hourly meterological climate-forcing variables representative of macroclimatic conditions across the study site, usually in the form of a data.frame with single values for each hour (though the option to include an array of coarse-gridded values is also available). (ii) A suite of parameters describing properties of the canopy in the form of high-resolution gridded values. (iii) A suite of parameters describing properties of the soil in the form of high-resolution gridded values. A raster of digital elevation data is also required. 
+Three sets of parameters are needed to run the model: (i) standard hourly meterological climate-forcing variables representative of macroclimatic conditions across the study site, usually in the form of a data.frame with single values for each hour (though the option to include an array of coarse-gridded values is also available - see below). (ii) A suite of parameters describing properties of the canopy in the form of high-resolution gridded values. (iii) A suite of parameters describing properties of the soil in the form of high-resolution gridded values. A raster of digital elevation data is also required. Optionally, some additional parameters can be set when running the models, as detailed below.
 
 ### Meteorological data
 The inbuilt data,frame `climdata` gives an example of the hourly meteorological variables needed to run the model:
@@ -102,7 +103,7 @@ head(climdata)
 ```
 The data frame contains the following columns: `obs_time` – POSIXlt object of observation times for each climate variable, `temp` – temperatures (deg C), `relhum` - relative humidity (percentage), `pres` - atmospheric pressure (kPa), `swrad` - total shortwave radiation received by a horizontal surface (W/m^2), `difrad` - diffuse radiation (W/m^2), `skyem` sky emissivity (range 0 to 1), `windspeed` - wind speed at reference height (m/s) and `winddir` - wind direction in degrees. 
 
-Any input weather dataset provided, must use the same format, column names and units as in this example dataset. Most of these are standard meteorology variables that are readily available globally. If unknown for the study area, users may wish to explore the `mcera5` package on github (https://github.com/dklinges9/mcera5) or the `hourlyNCEP` function available in the microclima package (https://github.com/ilyamaclean/microclima).  Diffuse radiation, is sometimes harder to come by as many standard weather stations only estimate total radiation. If unknown, it can be estimated using the `difprop` function in the microctools package (https://github.com/ilyamaclean/microctools). The microctools package, also contains a function `converthumidity`, for converting absolute or specific humidity or vapour pressure to relative humidity.  
+Any input weather dataset provided must use the same format, column names and units as in this example dataset. Most of these are standard meteorology variables that are readily available globally. If unknown for the study area, users may wish to explore the `mcera5` package on github (https://github.com/dklinges9/mcera5) or the `hourlyNCEP` function available in the microclima package (https://github.com/ilyamaclean/microclima).  Diffuse radiation, is sometimes harder to come by as many standard weather stations only estimate total radiation. If unknown, it can be estimated using the `difprop` function in the microctools package (https://github.com/ilyamaclean/microctools). The microctools package, also contains a function `converthumidity`, for converting absolute or specific humidity or vapour pressure to relative humidity.  
 
 In addition to the above data frame of hourly weather variables, a vector of daily precipitation values is also required. 
 
@@ -175,7 +176,7 @@ The model is most sensitive to `pai`. The plant area index is the total one side
 
 The model is less sensitive to other parameters. The parameter `x` represents how vertically or horizontally the leaves of the canopy are orientated and controls how much direct radiation is transmitted through the canopy at a given solar angle (when the sun is low above the horizon, less radiation is transmitted through vertically orientated leaves). Users may refer to Campbell (1986) Agric For Meteorol, 36: 317-321 for a detailed explanation. Values for deciduous woodland are typically around 1, but for grassland may be closer to 0.2. The parameter ‘gsmax’ is the maximum stomatal conductance (mol / m^2 / s) of leaves and is needed for evapotranspiration calculations. Values typically range from 0.23 for deciduous broadleaf forest to 0.55 for wetland vegetation. Körner (1995) https://link.springer.com/chapter/10.1007/978-3-642-79354-7_22 gives values for major vegetation types of the world. The parameter ‘leafr’ is the leaf reflectance to shortwave radiation, with typical values around 0.4. 
 
-The parameter ‘clump’ dictates how much radiation passes through gaps in the canopy, and therefore represents the sub-pixel canopy clumpiness, with values ranging from 0 (uniform) to 1 (highly clumped). In general, it varies with vegetation height and plant area index. The function `clumpestimate` can be used to derive an approximate estimate, but by default it is set to zero. The parameter ‘leafd’ is the mean diameter of leaves. 
+The parameter ‘clump’ dictates how much radiation passes through gaps in the canopy, and therefore represents the sub-pixel canopy clumpiness, with values ranging from 0 (uniform) to 1 (highly clumped). In general, it varies with vegetation height and plant area index. The function `clumpestimate` can be used to derive an approximate estimate. The parameter ‘leafd’ is the mean diameter of leaves. 
 
 The vegpfromhab function assigns approximate values for leaf reflectance accordance to habitat type. However, it can also be estimated from surface albedo using function `leafrfromalb`. In applying this function, leaf transmittance is assumed proportional to leaf reflectance and a proportionality coefficient can be specified. In general, model outputs are not sensitive to this coefficient,  
 
@@ -199,6 +200,20 @@ Soil type 7 corresponds to Clay loam. A full list of which numeric values corres
 ```{r}
 soilparameters
 ```
+
+### Additional optional parameters
+In addition to specifying `reqhgt` the required height (m) above (positive) or below (negative) for which microclimate estimates are required, there are also a set of optional parameters that can be provided to the run functions that control model behaviour. These are detailed below where various component functions are described, but in brief, these are:
+
+(1) `pai_a` an array of plant area index values above `reqhgt`. Estimated by assuming a plausible vertical distribution of leaf foliage density if lefts as 'NA`
+(2) `xyf` an optional input for that controls how the wind profile is calculated (see details under wind).
+(3) 'zf' optional integer used to calculate how frequently to sample the plant area index array when calculating smoothed wind speed (see details under wind)
+(4) `soilinit - initial soil moisture fractions in surface and subsurface layer (see details under soil moisture).
+(5) `tfact` - a coefficient determining the sensitivity of soil moisture to variation in topographic wetness (see details under soil moisture).
+(6) `surfwet` - the fraction of the vegetation surface acting as a saturated water surface (controls evapotranspiration).
+(7) `slr`, `apr` and `twi` - optional SpatRaster objects of slope, aspect, and topographic wetness. If not supplied, these are calculated from the provided `dtm`, but users may wish to provide their own values to avoid edge effects.
+(8) `hor` and `wsa` - optional array of the tangent of the angle to the horizon in 24 directions (used for calculating terrain shading) and wind shelter coefficients in 8 directions (used for determining wind speed). As for (7), if not supplied, these are calculated from the provided `dtm`, but users may wish to provide their own values to avoid edge effects.
+(9) `soilmcoefs` and `soiltcoefs` a set of parameters derived by fitting the soil temperature and moisture models (see below). If not supplied the values from the `soilparameters` table are used.
+(10) `backweight`, `maxiter` and `gmn` a set of parameters that control the behaviour of the iteratively-fitted point microclimate model (see details under wind below).
 
 ## Fitting soil temperature and moisture data
 If users do not have their own empirical soil temperature and moisture data, and wish instead to use relationships inbuilt into `microclimf` then they can skip straight to the preparing model inputs section. 
@@ -225,7 +240,7 @@ soilmcoefs<-fitsoilm(weather, rainfall, soilm, "Clay loam")
 soilmcoefs
 ```
 
-Here, the red lines are values form NicheMapR and the black  lines those from the simple model. As can be seen, the simple two-layer soil model approximates near surface soil moisture relatively well.
+Here, the red lines are values from NicheMapR and the black lines those from the simple model. As can be seen, the simple two-layer soil model approximates near surface soil moisture relatively well.
 
 ![](images/plot1.png)\
 
@@ -270,7 +285,9 @@ By default `modelin` calls function `checkinputs`. This performs some basic chec
 In the second case, the function `modelin_dy` is used in place of `modelin` and in the third and fourth cases `modelina` and `modelina_dy` are used. The help files associated with these functions give examples of their use.
 
 ## Running the model
-The model can be run in its entirety using functions `runmicro_hr` or `runmicro_dy` as in quick start examples above. However, to illustrate the workings of the model, we here run each component of the model in stages. The process is illustrated for the model run in hourly time-increments. However, the equivalent functions for running components of the model in daily time increments are referred to.
+The model can be run in its entirety using functions `runmicro_hr` or `runmicro_dy` as in quick start examples above. However, a  bi-product if performing calculations on all grid cells and time-periods is that all datasets are loaded into internal memory, meaning that the model cannot be run over large areas in one go. The functions `runmicro_big` (weather data provided as a data,frame) and `runmicro_biga` (weather data provided as arrays) aid with this, by automatically running the microclimate models in tiles. Prior to doing so, datasets such as slope, aspect, topographic wetness are automatically calculated for the the entire area to avoid edge effects within each tile.    
+
+To illustrate the workings of the model, we here run each component of the model in stages. The process is illustrated for the model run in hourly time-increments. However, the equivalent functions for running components of the model in daily time increments are referred to.
 
 ### Soil moisture
 The first step is to measure temporal changes in average soil moisture across the study area. This is achieved using function `soilmpredict`, either with inbuilt coefficients as in the example below, or using outputs from ` fitsoilm`
@@ -333,21 +350,23 @@ Sensible heat is the form of heat exchanged between the ground surface or the ca
 
 In still air, such as within the stomatal cavities of leaves, heat is transferred by a process of molecular diffusion. Immediately adjacent to the object, at the so-called boundary layer, surface drag results in slow and smooth layered movement of fluid particles in which layers slide past one another rather like playing cards. In this so called ‘laminar’ flow, conduction between the surface and the air is simultaneously accompanied by heat transfer across streamlines in the air by molecular diffusion. The orderly nature of these laminar flows depends on the length of surface in the direction of flow. Thus convective conductance between the leaves of a canopy the air surrounding the leaf typically diminishes as leaf size increases. As one moves further away from the object, the orderly layered movement breaks down and flow regimes are characterized by turbulent movements, and rapidly fluctuating eddies. These small whirlpools or vortices transport heat efficiently across the fluid in proportion to the size of the eddies. Higher wind speeds result in larger eddies. However, vegetation can itself affect wind speeds – immediately adjacent to the surface, wind speeds are lower. Below canopy, the wind profile is assumed in ‘microclimf’ to be affected foliage density (determined from plant area and vegetation height). Above canopy, the wind profile is assumed to be governed as the roughness of the surface, in turn dependent on vegetation height and leaf area. 
 
-The key step in computing the sensible heat flux is thus computing wind speeds. In `microclimf`, the effects of terrain on wind speed is also accounted for by applying a topographic shelter coefficient. Wind calculations are performed using function `wind`. Since the wind profile at any given location may not just depend on the surface roughness at a point location, but also on surface upwind, the function contains an optional input parameter `xyf` controlling the number of pixels, and hence the distance over which surface roughness is averaged. However, the default is not to average the surface roughness. The degree of averaging has a strong influence on the outputs of the model. In future versions of the model, it is anticipated that the degree of smoothing will be handled automatically.
+The key step in computing the sensible heat flux is thus computing wind speeds. In `microclimf`, the effects of terrain on wind speed is also accounted for by applying a topographic shelter coefficient. Wind calculations are performed using function `wind`. Since the wind profile at any given location may not just depend on the surface roughness at a point location, but also on surface upwind, the function contains an optional input parameter `xyf` controlling the number of pixels, and hence the distance over which surface roughness is averaged. By setting this parameter to `NA` the wind profile is averaged across the entire study area. The degree of averaging has a moderate influence on the outputs of the model. 
 
-In the example below wind speed is calculated for 5 cm above ground. The default of no smoothing is assumed, so `xyf` is not specified.
+In the example below wind speed is calculated for 5 cm above ground. As our study area is quite small, `xyf` is set to NA, so that wind profiles are averaged across the study area and variation is thus caused by terrain and vegetation sheltering. Users can explore the influence that changing `xyf` has.
 
 ```{r eval=FALSE}
 rm(list = ls()) # so that inbuilt vegp etc are used
 library(microclimf)
 micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
-micro<-wind(micro, reqhgt = 0.05, xyf = 10)
+micro<-wind(micro, micro$climdata, reqhgt = 0.05, xyf = NA)
 mypal <- colorRampPalette(c("darkblue","blue","green","yellow","orange","red"))(255)
 plot(rast(micro$uz[,,1]),col=mypal)
 ```
 ![](images/plot5.png)\
 
-The calculation of wind profiles within and above canopies, assumes that the height at which wind is measured is higher than the height at which wind is modelled. Typically standard meteorological datasets assume that provide data for 2 m above ground, the default assumption in in the `modelin` function where `windhgt` is set to 2. In `microclimf' this issue is handled automatically by adjusting the wind speed to derive values for 2 m above the tallest vegetation in the study area. This is achieved by assuming the wind measurement is obtained, in accordance with standard WMO guidelines, over a short grass surface not subject to topographic sheltering. It is therefore height-adjusted assuming a  surface roughness equivalent to that of a short grass surface.  
+A complexity of wind and heat-exchange modelling is that the degree of turbulence controlling heat exchange is strongly influenced by the degree of surface heating, but to appropriately quantify this, one must also know the degree of turbulence. The is handled in 'microclimf' by iteratively running a point microclimate model to convergence to derive so called diabatic correction coefficients. Hourly data are needed for this irrespective of whether the model is run in daily mode, and in consequence a data.frame of hourly weather is supplied as an input separately. The input parameters `backweight`, `maxiter` and `gmn` control the behaviour of this iteration process. Higher values of `backweight` improve the likelihood of convergence, but more iterations are required for convergence to be achieved. Convergence is most likely with `gmn`, the minimum conductance, set to a value greater than zero, though values of less than >0.5 are physically unrealistic. 
+
+The calculation of wind profiles within and above canopies, assumes that the height at which wind is measured is higher than the height at which wind is modelled. Typically standard meteorological datasets provide data for 2 m above ground, and this is the default assumption in in the `modelin` function where `windhgt` is set to 2. In `microclimf' this issue is handled automatically by adjusting the wind speed to derive values for 2 m above the tallest vegetation in the study area. This is achieved by assuming the wind measurement is obtained, in accordance with standard WMO guidelines, over a short grass surface not subject to topographic sheltering. It is therefore height-adjusted assuming a  surface roughness equivalent to that of a short grass surface.  
 
 ### Latent heat
 Latent heat is the form of heat energy released or absorbed by a surface as a result of evaporation, transpiration, condensation or sublimation or deposition. Latent heat exchange can be quantified using an equation analogous to Fourier’s law of heat transport, except that instead of being determined by a temperature gradient, latent heat is controlled by a water vapour concentration gradient. As water evaporates from a wet surface, the concentration of water molecules in the gas increases until an equilibrium is reached such that the number of molecules escaping equals the number being recaptured. When the temperature of the surface increases, the random kinetic energy of the molecules increases and more water escapes. The equilibrium reached in a closed system is known as the saturated vapour pressure and follows a predictable relationship with temperature. The water potential of leaves and the soil surface, except under strong drought conditions, is generally such that they can be treated as wet surfaces, and the vapour concentration at the evaporating surface is thus equal to the saturated vapour concentration at surface temperature. The air, however, is not necessarily saturated, and the term ‘relative humidity’ is used to describe the vapour pressure of the air relative to saturated.
@@ -376,12 +395,11 @@ Below canopy, latent and sensible heat emanate from the entire canopy and a deta
 The air temperature at any specified height `reqhgt`, whether below or above canopy, can be derived using function `temphumE`, which also derives the relative humidity in a similar fashion to temperature.  
 
 ```{r eval=FALSE}
-micro<-temphumE(micro, reqhgt = 0.05)
+micro<-temphumE(micro, mico$climdata, reqhgt = 0.05)
 # Plot temperature of hottest hour
 mypal <- colorRampPalette(c("darkblue","blue","green","yellow","orange","red"))(255)
 plot(rast(micro$Tz[,,4094]),col=mypal)
 ```
-
 ![](images/plot7.png)\
 
 Leaf temperatures are also derived using function `temphumE`. It can be seen that air temperatures close the ground, get pretty hot, sometimes close to the same temperature as the ground surface. This is particularly the case for heights close to the top of  short vegetation, where the influenced by high heat exchange with surface of the vegetation where much of the radiation is absorbed.   
