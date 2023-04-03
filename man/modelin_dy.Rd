@@ -36,7 +36,7 @@ modelin_dy(
 \item{runchecks}{optional logical indicating whether to call [checkinputs()] to run}
 }
 \description{
-The function `modelin` creates an object of class microindaily
+The function `modelin_dy` creates an object of class microindaily
 which unpacks various component inputs and reformats as required
 for running the model in daily timesteps
 }

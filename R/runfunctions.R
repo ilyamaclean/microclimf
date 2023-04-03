@@ -314,7 +314,7 @@ modelin <- function(weather, precip, vegp, soilc, dtm, windhgt = 2, merid = 0, d
   out<-list(tme=tme,tc=tc,difr=difr,dirr=dirr,dp=dp,skyem=skyem,
             estl=estl,ea=ea,tdew=tdew,pk=pk,pai=pai,vegx=vegx,lref=lref,ltra=ltra,veghgt=vegp$hgt,
             gsmax=vegp$gsmax,clump=clump,gref=gref,rho=soilp$rho,Vm=soilp$Vm,leafd=vegp$leafd,
-            Vq=soilp$Vq,Mc=soilp$Mc,soilb=soilp$soilb,psi_e=soilp$psi_e,Smax=soilp$Smax,
+            Vq=soilp$Vq,Mc=soilp$Mc,soilb=soilp$soilb,psi_e=soilp$psi_e,Smax=soilp$Smax,Smin=soilp$Smin,
             dtm=dtm,lat=ll$lat,long=ll$long,merid=merid, dst=dst,
             climdata=weather,prec=precip,soilc=soilc,progress=0)
   class(out) <-"microin"
@@ -472,7 +472,7 @@ modelina<-function(climarray,precarray,tme,r,altcorrect = 0, vegp, soilc, dtm, w
   out<-list(tme=tme,tc=tc,difr=difr,dirr=dirr,dp=dp,skyem=skyem,
             estl=estl,ea=ea,tdew=tdew,pk=pk,pai=pai,vegx=vegx,lref=lref,ltra=ltra,veghgt=vegp$hgt,
             gsmax=vegp$gsmax,clump=clump,gref=gref,rho=soilp$rho,Vm=soilp$Vm,leafd=vegp$leafd,
-            Vq=soilp$Vq,Mc=soilp$Mc,soilb=soilp$soilb,psi_e=soilp$psi_e,Smax=soilp$Smax,
+            Vq=soilp$Vq,Mc=soilp$Mc,soilb=soilp$soilb,psi_e=soilp$psi_e,Smax=soilp$Smax,Smin=soilp$Smin,
             dtm=dtm,lat=ll$lat,long=ll$long,merid=merid, dst=dst,
             climdata=weather,prec=precip,soilc=soilc,progress=0)
   class(out) <-"microin"
@@ -480,7 +480,7 @@ modelina<-function(climarray,precarray,tme,r,altcorrect = 0, vegp, soilc, dtm, w
 }
 #' Create object of class microindaily
 #'
-#' @description The function `modelin` creates an object of class microindaily
+#' @description The function `modelin_dy` creates an object of class microindaily
 #' which unpacks various component inputs and reformats as required
 #' for running the model in daily timesteps
 #'

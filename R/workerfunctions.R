@@ -115,7 +115,7 @@
   u<-u[is.na(u)==F]
   rho<-array(NA,dim=dim(soiltype)[1:2])
   Vm<-rho; Vq<-rho; Mc<-rho;
-  Smax<-rho; Smax<-rho
+  Smax<-rho; Smin<-rho
   psi_e<-rho; soilb<-rho
   for (i in 1:length(u)) {
     sel<-which(soilparameters$Number==u[i])
@@ -128,8 +128,9 @@
     psi_e[sel]<-sop$psi_e
     soilb[sel]<-sop$b
     Smax[sel]<-sop$Smax
+    Smin[sel]<-sop$Smin
   }
-  return(list(rho=rho,Vm=Vm,Vq=Vq,Mc=Mc,psi_e=psi_e,soilb=soilb,Smax=Smax))
+  return(list(rho=rho,Vm=Vm,Vq=Vq,Mc=Mc,psi_e=psi_e,soilb=soilb,Smax=Smax,Smin=Smin))
 }
 # Get soil coefficients for temperature model
 .soilcoefs <- function(soilc) {
@@ -290,15 +291,18 @@
   delta<-es2-es1
   delta
 }
-#' Calculate zero plane displacement height
+#' Calculate zero plane displacement
 .zeroplanedis<-function(h,pai) {
-  h[h<=0]<-0.001
-  a<-pai/h
-  Lc<-(0.25*a)^-1
-  Be<-0.2048476*pai^0.4454644+0.1
-  d<- h-(Be^2*Lc)
-  d[d<0.0009]<-0.0009
+  pai[pai<0.001]<-0.001
+  d<-(1-(1-exp(-sqrt(7.5*pai)))/sqrt(7.5*pai))*h
   d
+}
+#' Calculate roughness length
+.roughlength<-function(h,pai,d=NA,psi_h=0) {
+  if (class(d)=="logical") d<-.zeroplanedis(h,pai)
+  Be<-sqrt(0.003+(0.2*pai)/2)
+  zm<-(h-d)*exp(-0.4/Be)*exp(psi_h)
+  zm
 }
 #' Calculates wind shelter coefficient in specified direction
 .windcoef <- function(dsm, direction, hgt = 1, res = 1) {
@@ -836,22 +840,18 @@
   climo
 }
 #' Iteratively uns a point microclimate model for heat exchange surface of canopy
-.solvemicro<-function(micro,climdata,d,zm,reqhgt,backweight=2,maxiter=100,gmn=0.3,ti) {
+.solvemicro<-function(micro,climdata,hgtm,pai,reqhgt,backweight=2,maxiter=100,gmn=0.3,ti) {
   # Extract variables
   if (ti == 1) {
     Rabs<-apply(micro$radCsw+micro$radClw,3,mean,na.rm=T)
-    G<-apply(micro$G,3,mean,na.rm=T)
   } else {
     alb<-apply(micro$albedo,3,mean,na.rm=T)
     alb<-spline(alb,n=length(climdata$temp))$y
     Rem<-0.97*5.67*10^-8*(climdata$temp+273.15)^4
     Rabs<-(1-alb)*climdata$swrad+Rem*climdata$skyem
-    G<-apply(micro$G,3,mean,na.rm=T)
-    G<-spline(G,n=length(climdata$temp))$y
   }
   maxhgt<-max(as.vector(micro$veghgt),na.rm=T)+2
-  mws<-mean(as.vector(micro$ws),na.rm=T)
-  wdspd<-climdata$windspeed*mws
+  wdspd<-climdata$windspeed
   tc<-climdata$temp
   Rsw<-climdata$swrad
   gsmax<-mean(as.vector(micro$gsmax),na.rm=T)
@@ -860,14 +860,17 @@
   tdew<-.dewpoint(ea, tc)
   leafd<-mean(as.vector(micro$leafd),na.rm=T)
   ld<-0.71*leafd
-  pai<-apply(micro$pai,3,mean,na.rm=T)
-  pai[pai<0.5]<-0.5
   # Initial uf estimate
+  d<-.zeroplanedis(hgtm,pai)
+  zm<-.roughlength(hgtm,pai,d)
   uf<-(0.4*wdspd)/log((maxhgt-d)/zm)
   gmin<-gmn
   Rem<-apply(micro$lwout,3,mean,na.rm=T)
   H<-0.5*(Rabs-Rem)
+  gCa<-0.4*43*uf*(hgtm-d)/(hgtm*log(d/0.0122))
   T0<-tc
+  TG<-apply(micro$T0,3,mean,na.rm=T)
+  G<-29.3*gCa*(T0-TG)
   dT<-0
   Tmx<-max(tc,na.rm=T)+30
   count<-0
@@ -899,10 +902,14 @@
     T0<-.lim(T0,tdew)
     T0[T0>Tmx]<-Tmx
     # Recalculate
+    zm<-.roughlength(hgtm,pai,d,phih)
     uf<-(0.4*wdspd)/(log((maxhgt-d)/zm)+phim)
     gmin<-0.0375*2*pai*(abs(dT)/ld)^0.25
     gmin[gmin<gmn]<-gmn
     Rem<-0.97*5.67*10^-8*(T0+273.15)^4
+    gCa<-0.4*43*uf*(hgtm-d)/(hgtm*log(d/0.0122))
+    G1<-29.3*gCa*(T0-TG)
+    G<-(G*backweight+G1)/(backweight+1)
     count<-count+1
     if (max(dif,na.rm=T)<0.5) tst<-0
     if (count>=maxiter) tst<-0
@@ -918,6 +925,12 @@
       sm<-apply(td,1,which.min)
     } else sm<-apply(td,1,which.max)
   } else sm<-c(1:length(climdata$temp))
-  return(list(H=H[sm],dT=dT[sm],uf=uf[sm],LL=LL[sm],gHa=gHa[sm],mws=mws))
+  return(list(H=H[sm],dT=dT[sm],uf=uf[sm],LL=LL[sm],gHa=gHa[sm]))
 }
-
+#' Adjust canopy temperature by gorund temperature
+.TGadjust<-function(dT,gHr,m,delta,tc,T0,gCa) {
+  x<-29.3*gHr+m*delta
+  y<-dT+tc
+  TH<-(y*x+29.3*gCa*T0)/(x+29.3*gCa)
+  TH
+}

@@ -7,8 +7,8 @@
 .solvemicro(
   micro,
   climdata,
-  d,
-  zm,
+  hgtm,
+  pai,
   reqhgt,
   backweight = 2,
   maxiter = 100,

@@ -172,12 +172,10 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
   # === (1g) Adjust paramaters for gap fraction and inclined surface
   n<-(micro$vha-reqhgt)/micro$vha
   n[n<0]<-0
-  pai_a<-micro$pai_a/(1-micro$clump^n)
+  pai_a<-micro$pai_a/(1-micro$clump*n)
   pai_t<-micro$pai/(1-micro$clump)
-  sk<-si/sin(alt)
-  sk[sk>1]<-1
-  sk[sk==0]<-1
-  gref2<-micro$gref/sk
+  sk<-(1-(1-micro$gref)*si)/(1-(1-micro$gref)*sin(salt))
+  gref2<-micro$gref*sk
   # === (1f) Calculate two stream base parameters
   om<-micro$lref+micro$ltra
   a<-1-om
@@ -224,7 +222,7 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
   sel<-which(is.na(albb))
   albb[sel]<-gref2[sel]
   albb[albb>0.95]<-0.95
-  albedo<-(micro$dirr*sin(alt)*albb+micro$difr*albd)/(micro$dirr*si+micro$difr)
+  albedo<-(micro$dirr*si*albb+micro$difr*albd)/(micro$dirr*si+micro$difr)
   albedo[is.na(albedo)]<-0.23
   albedo[albedo>0.99]<-0.99
   albedo[albedo<0.01]<-0.01
@@ -243,34 +241,38 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
   micro$radGsw<-(1-micro$gref)*(micro$dirr*si*Rbgm+micro$dirr*sin(alt)*Rdbm+micro$difr*svfa*Rddm)
   # Longwave
   trd<-(1-micro$clump^2)*exp(-pai_t)+micro$clump^2
+  trd[trd<0]<-0
+  trd[trd>1]<-1
   micro$lwout<-0.97*5.67*10^-8*(micro$tc+273.15)^4 # Longwave emitted
   lwsky<-micro$skyem*micro$lwout # Longwave radiation down from sky
   micro$radGlw<-0.97*(trd*svfa*lwsky+(1-trd)*micro$lwout+(1-svfa)*micro$lwout)
   # === (1l) Calculate canopy and ground combined absorbed radiation
   trb<-(1-micro$clump^Kc)*exp(-kkd$kd*pai_t)+micro$clump^Kc
+  trb[trb<0]<-0
+  trb[trb>1]<-1
   micro$radCsw<-(1-albedo)*(micro$dirr*sin(alt)*(1-trb)+svfa*micro$difr*(1-trd))+micro$radGsw
   micro$radClw<-svfa*lwsky
   if (reqhgt > 0) {
     # === (1m) Calculate up and downstream at reqhgt
     # Downward
-    Rbgm<-(1-micro$clump^(Kc*n))*exp(-kkd$kd*pai_a)+micro$clump^(Kc*n)
-    Rdbm<-(1-micro$clump^(2*n))*((p8/sig)*exp(-kkd$kd*pai_a)+p9*exp(-h*pai_a)+p10*exp(h*pai_a))
+    Rbgm<-(1-(micro$clump^(Kc*n)))*exp(-kkd$kd*pai_a)+micro$clump^(Kc*n)
+    Rdbm<-(1-(micro$clump^(2*n)))*((p8/sig)*exp(-kkd$kd*pai_a)+p9*exp(-h*pai_a)+p10*exp(h*pai_a))
     sel<-which(is.na(Rdbm) | Rdbm<0)
     Rdbm[sel]<-0
     sel<-which(Rdbm>1)
     Rdbm[sel]<-1
-    Rddm<-(1-micro$clump^(2*n))*(p3*exp(-h*pai_a)+p4*exp(h*pai_t))+micro$clump^(2*n)
+    Rddm<-(1-(micro$clump^(2*n)))*(p3*exp(-h*pai_a)+p4*exp(h*pai_t))+micro$clump^(2*n)
     sel<-which(is.na(Rddm))
     Rddm[sel]<-1
     micro$Rbdown<-micro$dirr*sin(alt)*Rbgm
     micro$Rddown<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
     # Upward
-    Rdbm<-(1-micro$clump^(2*n))*((p5/sig)*exp(-kkd$kd*pai_a)+p6*exp(-h*pai_a)+p7*exp(h*pai_a))
+    Rdbm<-(1-(micro$clump^(2*n)))*((p5/sig)*exp(-kkd$kd*pai_a)+p6*exp(-h*pai_a)+p7*exp(h*pai_a))
     sel<-which(is.na(Rdbm) | Rdbm<0)
     Rdbm[sel]<-0
     sel<-which(Rdbm>1)
     Rdbm[sel]<-1
-    Rddm<-(1-micro$clump^(2*n))*(p1*exp(-h*pai_a)+p2*exp(h*pai_t))+micro$clump^(2*n)
+    Rddm<-(1-(micro$clump^(2*n)))*(p1*exp(-h*pai_a)+p2*exp(h*pai_t))+micro$clump^(2*n)
     sel<-which(is.na(Rddm))
     Rddm[sel]<-1
     micro$Rdup<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
@@ -419,20 +421,11 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, pai_a = NA, soilinit = c(NA, NA),
   om<-(2*pi)/(24*3600)
   ka<-k/pcs
   DD<-sqrt((2*ka)/om)
-  # Calculate G
-  A0<-aperm(apply(T0,c(1,2),.A0f),c(2,3,1))
-  r<-rast(A0[,,1])
-  cda<-micro$climdata
-  t0<-.vta(.t0f(cda$temp),r)
-  tt<-(c(1:length(cda$temp))-1)%%24
-  tt<-.vta(tt*3600,r)
-  G<-(sqrt(2)*A0*.rta(rast(k),hiy)*sin(om*(tt-t0)+(pi/4)))/.rta(rast(DD),hiy)
   # Save elements to micro
   micro$T0<-T0
   micro$theta<-theta
   micro$ka<-ka
   micro$DD<-DD
-  micro$G<-G
   micro$maxhgt<-maxhgt
   micro$progress<-2
   # Clean micro
@@ -595,30 +588,17 @@ soiltemp_dy  <- function(microd, reqhgt = 0.05, pai_a = NA, soilinit = c(NA, NA)
   om<-(2*pi)/(24*3600)
   ka<-k/pcs
   DD<-sqrt((2*ka)/om)
-  # Calculate G
-  A0<-(T0mx-T0mn)/2
-  r<-rast(A0[,,1])
-  cda<-microd$climdata
-  t0<-.vta(.t0fd(cda$temp),r)
-  tme_mn<-micro_mn$tme
-  tme_mx<-micro_mx$tme
-  tt_mn<-.vta(tme_mn$hour*3600,r)
-  tt_mx<-.vta(tme_mx$hour*3600,r)
-  G_mn<-(sqrt(2)*A0*.rta(rast(k),diy)*sin(om*(tt_mn-t0)+(pi/4)))/.rta(rast(DD),diy)
-  G_mx<-(sqrt(2)*A0*.rta(rast(k),diy)*sin(om*(tt_mx-t0)+(pi/4)))/.rta(rast(DD),diy)
   # Save elements to micro
   micro_mn$T0<-T0mn
   micro_mn$theta<-theta
   micro_mn$ka<-ka
   micro_mn$DD<-DD
-  micro_mn$G<-G_mn
   micro_mn$maxhgt<-maxhgt
   micro_mn$progress<-2
   micro_mx$T0<-T0mx
   micro_mx$theta<-theta
   micro_mx$ka<-ka
   micro_mx$DD<-DD
-  micro_mx$G<-G_mx
   micro_mx$maxhgt<-maxhgt
   micro_mx$progress<-2
   # Clean micro
@@ -729,26 +709,25 @@ wind <- function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, s
   if (is.na(zf)) zf<-ifelse(ti==1,30*24,30)
   # Calculate mean roughness lengths
   hgtm<-mean(as.vector(micro$veghgt),na.rm=T)
+  hgtm[hgtm<0.01]<-0.01
   pai<-apply(micro$pai,3,mean,na.rm=T)
+  pai[pai<0.01]<-0.01
   dm<-.zeroplanedis(hgtm,pai)
-  zmm<-0.01*hgtm
-  zmm[zmm<0.0001]<-0.0001
+  zmm<-.roughlength(hgtm,pai,dm)
   # Iteratively solve point microclimate model
-  vmicro<-.solvemicro(micro,climdata,dm,zmm,reqhgt,backweight,maxiter,gmn,ti)
-  # Convert to arrays
+  vmicro<-.solvemicro(micro,climdata,hgtm,pai,reqhgt,backweight,maxiter,gmn,ti)
+  # Convert mean roughness lengths to arrays
   hgtm<-array(hgtm,dim=dim(micro$pai))
   dm<-.vta(dm,micro$dtm)
-  zmm<-array(zmm,dim=dim(micro$pai))
+  zmm<-.vta(zmm,micro$dtm)
   # Calculate roughness lengths  etc
+  maxhgt<-micro$maxhgt
   if (is.na(xyf) == FALSE) {
     if (xyf == 1) {
       hgt<-micro$vha
       hgt[hgt<0.01]<-0.01
-      pai<-micro$pai
-      pai[pai<0.01]<-0.01
-      d<-.zeroplanedis(hgt,pai)
-      zm<-0.01*hgt
-      zm[zm<0.0001]<-0.0001
+      d<-.zeroplanedis(hgt,micro$pai)
+      zm<-.roughlength(hgt,micro$pai,d)
     } else {
       mdm<-trunc(min(dim(micro$dtm)[1:2])/2)
       if (xyf < mdm) {
@@ -757,34 +736,37 @@ wind <- function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, s
         pai<-.sma(micro$pai,xyf,zf,crs(micro$dtm))
         pai[pai<0.01]<-0.01
         d<-.zeroplanedis(hgt,pai)
-        zm<-0.01*hgt
-        zm[zm<0.0001]<-0.0001
+        zm<-.roughlength(hgt,pai,d)
       } else xyf<-NA
     }
   }
   if (is.na(xyf)) {  # averages profile across study area
-    hgt<-hgtm
     d<-dm
     zm<-zmm
   }
   # Calculate wind speed
-  maxhgt<-max(as.vector(micro$veghgt),na.rm=T)+2
   uf<-.vta(vmicro$uf,micro$dtm)
-  LL<-.vta(vmicro$LL,micro$dtm)
-  ufmu<-(log((maxhgt-d)/zm)/log((maxhgt-dm)/zmm))*(micro$ws/vmicro$mws)
+  ufmu<-(log((maxhgt-dm)/zmm)/log((maxhgt-d)/zm))*micro$ws
   ufmu<-.lim(ufmu,0.2)
-  ufmu<-.lim(ufmu,5,up=T)
+  ufmu<-.lim(ufmu,4,up=T)
   micro$uf<-uf*ufmu
-  # Above canopy
+  # Calculate arrays of actual height etc
   hgta<-micro$vha
   s1<-which(reqhgt >= hgta)
-  phim<-.dphim(zm[s1]/LL[s1])-.dphim((reqhgt-d[s1])/LL[s1])
-  uza<-((uf[s1]*ufmu[s1])/0.4)*(log((reqhgt-d[s1])/zm[s1])+phim)
+  uza<-suppressWarnings((micro$uf[s1]/0.4)*log((reqhgt-d[s1])/zm[s1]))
+  sel<-which(is.na(uza) | uza<micro$uf[s1])
+  uza[sel]<-micro$uf[s1[sel]]
   # Below canopy
   s2<-which(reqhgt < hgta)
-  phim<-.dphim(zm[s2]/LL[s2])-.dphim((hgta[s2]-d[s2])/LL[s2])
-  uh<-((uf[s2]*ufmu[s2])/0.4)*(log((hgta[s2]-d[s2])/zm[s2])+phim)
-  Be<-(uf[s2]*ufmu[s2])/uh
+  uh<-suppressWarnings((micro$uf[s2]/0.4)*log((hgta[s2]-d[s2])/zm[s2]))
+  sel<-which(is.na(uh) | uh<micro$uf[s2])
+  uh[sel]<-micro$uf[s2[sel]]
+  uref<-.vta(climdata$windspeed,micro$dtm)
+  sel<-which(uh>uref[s2])
+  uh[sel]<-micro$uf[s2[sel]]
+  Be<-(micro$uf[s2])/uh
+  Be[Be>1]<-1
+  Be[Be<0.001]<-0.001
   a<-micro$pai[s2]/hgta[s2]
   Lc<-(0.25*a)^-1
   Lm<-2*Be^3*Lc
@@ -793,6 +775,9 @@ wind <- function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, s
   uz<-array(NA,dim=dim(hgta))
   uz[s1]<-uza
   uz[s2]<-uzb
+  # Cap at max wind speed
+  sel<-which(uz>uref)
+  uz[sel]<-uref[sel]
   # Estimate H ratio
   Rabs<-apply(micro$radCsw+micro$radClw,3,mean,na.rm=T)
   Rem<-apply(micro$lwout,3,mean,na.rm=T)
@@ -802,7 +787,8 @@ wind <- function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, s
   # Calculate new phih
   Tk<-micro$tc+.vta(0.5*vmicro$dT,micro$dtm)
   H<-.vta(vmicro$H,micro$dtm)
-  LLa<-(43*29.3*(uf*ufmu)^3*Tk)/(-0.4*9.81*H*Hmu)
+  LLa<-(43*29.3*(micro$uf)^3*Tk)/(-0.4*9.81*H*Hmu)
+  LL<-.vta(vmicro$LL,micro$dtm)
   phihn<-.dphih(zm/LLa)-.dphim((maxhgt-d)/LLa)
   phihm<-.dphih(zmm/LL)-.dphim((maxhgt-dm)/LL)
   dTmu1<-Hmu/ufmu
@@ -855,7 +841,8 @@ wind <- function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, s
 #' @param radabs absorbed long and shortwave radiation (W/m2)
 #' @param gHa boundary layer conductances for heat (mol/m^2/s)
 #' @param gs stomatal conductance (mol/m^2/s)
-#' @param G rate of ground heat storage (W/m2)
+#' @param gCa conductance form ground surface to heat exchange surface (mol/m^2/s)
+#' @param T0 optional ground temperature input (W/m2)
 #' @param es saturated vapour pressure (kPa) at temperature tc (calculated if NA)
 #' @param tdew dewpoint temperature (deg C) (calculated if NA, see details)
 #' @param surfwet proportion of leaf or canopy acting as wet surface
@@ -880,7 +867,7 @@ wind <- function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, s
 #' wet surface. However, except when extremely droughted, the matric potential of
 #' leaves is such that `surfwet` ~ 1.
 #' @export
-PenMont <- function(tc,pk,ea,radabs,gHa,gs,G,es=NA,tdew=NA,surfwet=1,T_est=NA,allout=TRUE) {
+PenMont <- function(tc,pk,ea,radabs,gHa,gs,gCa=0,T0=NA,es=NA,tdew=NA,surfwet=1,T_est=NA,allout=TRUE) {
   if (is.na(es[1])) es<-.satvap(tc)
   if (is.na(tdew[1])) tdew<-.dewpoint(ea,tc)
   if (class(T_est)=="logical") T_est<-tc
@@ -893,10 +880,12 @@ PenMont <- function(tc,pk,ea,radabs,gHa,gs,G,es=NA,tdew=NA,surfwet=1,T_est=NA,al
   m<-44526*(gv/pk)
   L<-m*(es-ea)*surfwet
   dTmx<- -0.6273*max(tc,na.rm=T)+49.79
-  dT<-(radabs-Rem-L-G)/(29.3*gHr+m*delta)
-  # Limit
+  dT<-(radabs-Rem-L)/(29.3*gHr+m*delta)
   dT[dT>dTmx]<-dTmx
-  tcan<-tc+dT
+  if (class(T0) != "logical") {
+    tcan<-.TGadjust(dT,gHr,m,delta,tc,T0,gCa)
+
+  } else tcan<-tc+dT
   tcan<-.lim(tcan,tdew)
   tcan[tcan>72]<-72
   H<-29.3*gHa*(tcan-tc)
@@ -907,11 +896,10 @@ PenMont <- function(tc,pk,ea,radabs,gHa,gs,G,es=NA,tdew=NA,surfwet=1,T_est=NA,al
     estl<-.satvap(tcan)*surfwet
     L<-m*(estl-ea)
     L<-.lim(L,0)
-    out<-list(tcan=tcan,H=H,L=L,G=G,HR=HR)
+    out<-list(tcan=tcan,H=H,L=L,HR=HR)
   } else out<-list(tcan=tcan,H=H,HR=HR)
   return(out)
 }
-
 #' Estimate foliage density and plant area index above z
 #'
 #' @description The function `foliageden` applies a mirrored gamma distribution
@@ -1024,10 +1012,14 @@ temphumE<-function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA,
   gBs<-lais*gs
   # Calculate T0
   canabs<-micro$radCsw+micro$radClw
-  # Calculate Latent heat flux
-  TH<-PenMont(micro$tc,micro$pk,micro$ea,canabs,micro$gHa,gBs,micro$G,micro$estl,
+  hgt<-micro$vha
+  hgt[hgt<0.02]<-0.02
+  d<-.zeroplanedis(hgt,micro$pai)
+  d[d<0.013]<-0.013
+  micro$uf[micro$uf<0.1]<-0.1
+  gCa<-0.4*43*micro$uf*(hgt-d)/(hgt*log(d/0.0122))
+  TH<-PenMont(micro$tc,micro$pk,micro$ea,canabs,micro$gHa,gBs,gCa,micro$T0,micro$estl,
               micro$tdew,surfwet,micro$Test)
-  # Set limits in TH
   # Calculate temperature and vapour pressure above canopy, setting height to canopy top of reghgt < hgt
   z<-micro$vha
   sel<-which(reqhgt>=z) # above canopy

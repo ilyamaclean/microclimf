@@ -79,7 +79,7 @@
   sel<-which(gh<gmn)
   gh[sel]<-gmn[sel]
   TH<-PenMont(micro$Tz,micro$pk,micro$ea,leafabs,gh,
-              gs,0,NA,micro$tdew,1,T_est=tcan)
+              gs,0.01,NA,NA,micro$tdew,1,T_est=tcan)
   micro$tleaf<-TH$tcan
   sel<-which(reqhgt>micro$vha)
   micro$tleaf[sel]<-tcan[sel]
@@ -89,11 +89,9 @@
 .LangrangianSimV<-function(reqhgt,micro,ez,surfwet) {
   # Calculate soil surface effective vapour pressure
   n<-dim(ez)[3]
-  rhs<-.soilrh(micro$theta,
-               .rta(rast(micro$soilb),n),
-               .rta(rast(micro$psi_e),n),
-               .rta(rast(micro$Smax),n),
-               micro$T0)
+  Smin<-.rta(rast(micro$Smin),n)
+  Smax<-.rta(rast(micro$Smax),n)
+  rhs<-(micro$theta-Smin)/(Smax-Smin)
   e0<-.satvap(micro$T0)*rhs
   # Calculate d and zh of ground-layer
   d<-0.075*micro$vha
