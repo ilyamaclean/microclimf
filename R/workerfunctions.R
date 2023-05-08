@@ -913,7 +913,7 @@
   if (ti != 1) {
     td<-matrix(climdata$temp,ncol=24,byrow=TRUE)
     tc1<-mean(micro$tc,na.rm=T)
-    tc2<-mean(weather$temp,na.rm=T)
+    tc2<-mean(climdata$temp,na.rm=T)
     if (tc2 > tc1) {
       sm<-apply(td,1,which.min)
     } else sm<-apply(td,1,which.max)
