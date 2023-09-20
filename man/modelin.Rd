@@ -4,23 +4,10 @@
 \alias{modelin}
 \title{Create object of class microin with weather data as data.frame}
 \usage{
-modelin(
-  weather,
-  precip,
-  vegp,
-  soilc,
-  dtm,
-  windhgt = 2,
-  merid = 0,
-  dst = 0,
-  runchecks = TRUE,
-  daily = FALSE
-)
+modelin(micropoint, vegp, soilc, dtm, runchecks = TRUE, xyf = 1)
 }
 \arguments{
-\item{weather}{a data.frame of weather variables (see details)}
-
-\item{precip}{a vector of daily precipitation}
+\item{micropoint}{an object of class micropoint as returned by [runpointmodel()] or [subsetpointmodel()]}
 
 \item{vegp}{an object of class vegparams as returned by [vegpfromhab()] (see details)}
 
@@ -28,16 +15,11 @@ modelin(
 
 \item{dtm}{a PackedSpatRaster or SpatRaster object of elevations (see details)}
 
-\item{windhgt}{height above ground of wind speed measurement (m) in weather dataset (see details).}
-
-\item{merid}{optionally, longitude of local time zone meridian (decimal degrees)}
-
-\item{dst}{optionally, numeric value representing the time difference from the timezone meridian (hours, e.g. +1 for BST if merid = 0).}
-
 \item{runchecks}{optional logical indicating whether to call [checkinputs()] to run
 checks on format and units of input data.}
 
-\item{daily}{optional logical indicating whether `weather` is daily or hourly}
+\item{xyf}{optional spatial smoothing factor applied in calculation of surface
+roughness and zero-plane displacement heights (see details)}
 }
 \description{
 The function `modelin` creates an object of class microin
@@ -46,19 +28,21 @@ for running the model in hourly timesteps. Here it is assumed that the input
 weather data are a data.frame - i.e. not spatially variable.
 }
 \details{
-The format and and units of `weather` must follow that in the example
-dataset `climdata`. The array of Plant Area index values in `vegp` must
+The array of Plant Area index values in `vegp` must
 of the same x and y dims as `dtm` but can contain any number of repeated
 measures up to the number of entries in `weather`. Data are interpolated to the
 time increment of `weather`. Other vegetation paramaters, including vegetation
 height are assumed time-invarient. The SpatRaster datasets in `soilc` must have
 the same x and y dims as `dtm`. The x,y and z units of `dtm` must be all be in
-metres and the coordinate reference system must be defined. As not all wind
-measurements are at reference height, the height of the wind speed measurement
-must be specified if not 2 m. To enable calculation of below-canopy wind profiles
-in tall canopy, the wind speed is adjusted to give values for a height 2 m above
-the maximum vegetation height, using the wind-height profile for a reference grass
-surface.
+metres and the coordinate reference system must be defined. In subsequent
+downscaling of wind, the drag effects of vegetation, determined by vegetation height
+and foliage area are accounted for can calculated at this stage. In so doing, it is
+necessary to accommodate the possibility that the wind speed is not just affected
+by the surface roughness in each pixel,  but also by vegetation surrounding the
+location. This is accommodated for by applying `xyf` which effectively smooths
+the surface roughness coefficients using `terra::aggregate` where `xyf` is the
+aggregation factor. If `xyf` is set to `NA`, the roughness coefficients are averaged
+across the study area.
 }
 \seealso{
 [checkinputs()], [modelin_dy()], [modelina()]

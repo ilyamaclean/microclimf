@@ -1,79 +1,9 @@
-#' Predicts soil moisture from rainfall and radiation
-#'
-#' @description The function `soilmpredict` implements a simple two layer
-#' soil model to predict the daily soil moisture fraction in the surface and
-#' sub-surface layers
-#'
-#' @param rainfall a vector of daily rainfall (mm/day)
-#' @param rnet a vector of hourly net radiation (W/m^2)
-#' @param soiltype a soil type (as listed in [soilparameters()])
-#' @param soilinit initial soil moisture fractions in surface and sub-surface layers
-#' @param soilmcoefs an optional list of coefficients for running the soil moisture model
-#' as returned by [fitsoilm()]. Uses inbuilt parameters if not supplied.
-#' @return a list of the following:
-#' @return `soilm1` soil moisture fraction in surface layer
-#' @return `soilm2` soil moisture fraction in sub-surface layer
-#' @importFrom graphics par
-#' @export
-#' @examples
-#' # Calculate net radiation from inbuilt climate dataset
-#' swrad <- (1 - 0.15) * climdata$swrad
-#' lwout <- 5.67e-8 * 0.95 * (climdata$temp + 273.15)^4
-#' lwnet <- (1 - climdata$skyem) * lwout
-#' rnet <- swrad - lwnet
-#' # Run soil moisture model using inbuilt rainfall dataset
-#' sm<-soilmpredict(rainfall, rnet, "Loam", c(0.4, 0.4))
-#' # Plot results
-#' plot(sm$soilm1, type="l", ylim=c(0.1, 0.5), xlab="Day",
-#'      ylab="Soil moisture fraction")
-#' par(new = TRUE)
-#' plot(sm$soilm2, type="l", ylim=c(0.1,0.5), col="blue", lwd=2,
-#' xlab="", ylab="")
-soilmpredict <- function(rainfall, rnet, soiltype, soilinit=c(NA, NA), soilmcoefs = NA) {
-  # get soil coefficients
-  ii<-which(soilparameters$Soil.type==soiltype)
-  if (is.na(soilmcoefs[1])) {
-    soilmcoefs<-list(mult=soilparameters$mult[ii],
-                     rmu=soilparameters$rmu[ii],
-                     a=soilparameters$a[ii],
-                     pwr=soilparameters$pwr[ii])
-  }
-  # Get net radiation
-  rnet[rnet<0]<-0
-  rnetd<-matrix(rnet,ncol=24,byrow=T)
-  rnetd<-apply(rnetd,1,mean)
-  if (is.na(soilinit[1])) {
-    soilinit[1]<-(soilparameters$Smax[ii]+soilparameters$Smin[ii])/2
-  }
-  if (is.na(soilinit[2])) {
-    soilinit[2]<-(soilparameters$Smax[ii]+soilparameters$Smin[ii])/2
-  }
-  s<-soilinit[1]
-  s2<-soilinit[2]
-  for (i in 2:length(rnetd)) {
-    s[i]<-s[i-1]+soilmcoefs$rmu*rainfall[i]-soilmcoefs$mult*rnetd[i]
-    sav<-(s[i-1]+s2[i-1])/2
-    k<-soilparameters$Ksat[ii]*(sav/soilparameters$Smax[ii])^soilmcoefs$pwr
-    dif<-s2[i-1]-s[i-1]
-    s[i]<-s[i]+soilmcoefs$a*k*dif
-    s2[i]<-s2[i-1]-((soilmcoefs$a*k*dif)/10)
-    s[i]<-ifelse(s[i]>soilparameters$Smax[ii],soilparameters$Smax[ii],s[i])
-    s[i]<-ifelse(s[i]<soilparameters$Smin[ii],soilparameters$Smin[ii],s[i])
-    s2[i]<-ifelse(s2[i]>soilparameters$Smax[ii],soilparameters$Smax[ii],s2[i])
-    s2[i]<-ifelse(s2[i]<soilparameters$Smin[ii],soilparameters$Smin[ii],s2[i])
-  }
-  return(list(soilm1=s,soilm2=s2))
-}
-
 #' Spatially distribute soil moisture by topographic wetness index
 #'
 #' The function `soilmdistribute` spatially distrubutes soil moisture by the Bevan and Kirkby
 #' topographic wetness index
 #'
-#' @param soilm a vector of soil moisture fractions
-#' @param a digital terrain model (used for calaculating topographic wetness)
-#' @param Smin minimum fractional soil moisture content
-#' @param Smax maximum fractional soil moisture content
+#' @param micro an object of class microin as returned by e.g. modelin
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness
 #' @param twi optional SpatRaster object of topographic wetness index values.
@@ -82,35 +12,29 @@ soilmpredict <- function(rainfall, rnet, soiltype, soilinit=c(NA, NA), soilmcoef
 #' equivelent to length(soilm)
 #' @import terra
 #' @export
-#' @examples
-#' # Calculate vector of soil moistures
-#' library(terra)
-#' swrad <- (1 - 0.15) * climdata$swrad
-#' lwout <- 5.67e-8 * 0.95 * (climdata$temp + 273.15)^4
-#' lwnet <- (1 - climdata$skyem) * lwout
-#' rnet <- swrad - lwnet
-#' soilm <- soilmpredict(rainfall, rnet, "Loam", c(0.4, 0.4))$soilm1
-#' sma<- soilmdistribute(soilm, dtmcaerth)
-#' plot(rast(sma[,,365])) # soil moisture on last day of year
-#' plot(rast(sma[,,188])) # soil moisture on driest day of year
-#'
-soilmdistribute <- function(soilm, dtm, Smin = 0.074, Smax = 0.422, tfact = 1.5, twi = NA) {
+soilmdistribute <- function(micro, tfact = 1.5, twi = NA) {
+  soilm<-micro$soilm
+  dtm<-micro$dtm
+  Smin<-micro$groundp_p$Smin
+  Smax<-micro$groundp_p$Smax
   if (class(dtm)[1] == "PackedSpatRaster") dtm<-rast(dtm)
   if (class(twi)[1] == "logical") twi<-.topidx(dtm)
   rge<-Smax-Smin
-  soilm<-ifelse(soilm<=Smin,Smin+0.001,soilm)
-  soilm<-ifelse(soilm>=Smax,Smax-0.001,soilm)
+  soilm[soilm<=Smin]<-Smin+0.001
+  soilm[soilm>=Smax]<-Smax-0.001
   theta<-(soilm-Smin)/rge
   lt<-log(theta/(1-theta))
-  lt<-.vta(lt,twi)
   ltwi<-log(.is(twi))/tfact
   me<-mean(ltwi,na.rm=T)
   add<-ltwi-me
-  add<-.rta(rast(add),length(soilm))
+  add<-.rta(rast(add),dim(soilm)[3])
   smout<-lt+add
   smout<-1/(1+exp(-smout))
-  smout<-smout*rge+Smin
-  smout
+  smout<-.rast(smout, micro$dtm)
+  smout<-mask(smout,micro$dtm)
+  micro$soild<-as.array(smout)
+  micro$progress<-1
+  return(micro)
 }
 #' Applies two-stream radiation model
 #'
@@ -131,15 +55,16 @@ soilmdistribute <- function(soilm, dtm, Smin = 0.074, Smax = 0.422, tfact = 1.5,
 #' @import terra
 #' @export
 #'
-twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = NA) {
+twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = NA, tfact=1.5, twi=NA) {
+  if (micro$progress<1) micro<-soilmdistribute(micro,tfact,twi)
   dtm<-micro$dtm
   dtm[is.na(dtm)]<-0
   # === (1a) Calculate solar altitude
   tme<-micro$tme
   jd<-.jday(tme=tme)
   lt<-tme$hour+tme$min/60+tme$sec/3600
-  salt<-.solalt(lt,micro$lat,micro$long,jd,micro$merid,micro$dst)
-  sazi<-.solazi(lt,micro$lat,micro$long,jd,micro$merid,micro$dst)
+  salt<-.solalt(lt,micro$lat,micro$long,jd)
+  sazi<-.solazi(lt,micro$lat,micro$long,jd)
   alt<-.vta(.ar(salt),dtm)
   # === (1b) Calculate solar index
   si<-.solarindex(dtm,alt,sazi,slr,apr)
@@ -156,7 +81,7 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
   si<-si*shadowmask
   # === (1e) Calculate sky view
   msl<-tan(apply(atan(hor),c(1,2),mean))
-  svf<-0.5*cos(2 *msl)+0.5
+  svf<-0.5*cos(2*msl)+0.5
   # === (1f) Calculate canopy k
   kkd<-.cank(micro$vegx,alt,si)
   Kc<-kkd$kd/kkd$k0
@@ -169,13 +94,12 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
       micro$leafden<-fd$leafden
     } else micro$pai_a<-0
   }
-  # === (1g) Adjust paramaters for gap fraction and inclined surface
+  # === (1g) Adjust parameters for gap fraction and inclined surface
   n<-(micro$vha-reqhgt)/micro$vha
   n[n<0]<-0
   pai_a<-micro$pai_a/(1-micro$clump*n)
   pai_t<-micro$pai/(1-micro$clump)
-  sk<-(1-(1-micro$gref)*si)/(1-(1-micro$gref)*sin(salt))
-  gref2<-micro$gref*sk
+  gref2<-1-(((1-micro$gref)*sin(alt))/si)
   # === (1f) Calculate two stream base parameters
   om<-micro$lref+micro$ltra
   a<-1-om
@@ -238,14 +162,16 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
   Rddm<-(1-micro$clump^2)*(p3*exp(-h*pai_t)+p4*exp(h*pai_t))+micro$clump^2
   sel<-which(is.na(Rddm))
   Rddm[sel]<-1
-  micro$radGsw<-(1-micro$gref)*(micro$dirr*si*Rbgm+micro$dirr*sin(alt)*Rdbm+micro$difr*svfa*Rddm)
+  micro$radGdir<-micro$dirr*si*Rbgm
+  micro$radGdif<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
+  micro$radGsw<-(1-micro$gref)*(micro$radGdir+micro$radGdif)
   # Longwave
   trd<-(1-micro$clump^2)*exp(-pai_t)+micro$clump^2
   trd[trd<0]<-0
   trd[trd>1]<-1
   micro$lwout<-0.97*5.67*10^-8*(micro$tc+273.15)^4 # Longwave emitted
   lwsky<-micro$skyem*micro$lwout # Longwave radiation down from sky
-  micro$radGlw<-0.97*(trd*svfa*lwsky+(1-trd)*micro$lwout+(1-svfa)*micro$lwout)
+  micro$radGlw<-0.97*(trd*svfa*lwsky+(1-trd)*(1-svfa)*micro$lwout)
   # === (1l) Calculate canopy and ground combined absorbed radiation
   trb<-(1-micro$clump^Kc)*exp(-kkd$kd*pai_t)+micro$clump^Kc
   trb[trb<0]<-0
@@ -255,8 +181,10 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
   if (reqhgt > 0) {
     # === (1m) Calculate up and downstream at reqhgt
     # Downward
-    Rbgm<-(1-(micro$clump^(Kc*n)))*exp(-kkd$kd*pai_a)+micro$clump^(Kc*n)
-    Rdbm<-(1-(micro$clump^(2*n)))*((p8/sig)*exp(-kkd$kd*pai_a)+p9*exp(-h*pai_a)+p10*exp(h*pai_a))
+    mub<-(1-micro$clump)^(Kc*n)
+    mud<-(1-micro$clump)^(2*n)
+    Rbgm<-mub*exp(-kkd$kd*pai_a)+(1-mub)
+    Rdbm<-mud*((p8/sig)*exp(-kkd$kd*pai_a)+p9*exp(-h*pai_a)+p10*exp(h*pai_a))+(1-mud)
     sel<-which(is.na(Rdbm) | Rdbm<0)
     Rdbm[sel]<-0
     sel<-which(Rdbm>1)
@@ -267,31 +195,164 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
     micro$Rbdown<-micro$dirr*sin(alt)*Rbgm
     micro$Rddown<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
     # Upward
-    Rdbm<-(1-(micro$clump^(2*n)))*((p5/sig)*exp(-kkd$kd*pai_a)+p6*exp(-h*pai_a)+p7*exp(h*pai_a))
+    Rdbm<-mud*((p5/sig)*exp(-kkd$kd*pai_a)+p6*exp(-h*pai_a)+p7*exp(h*pai_a))+(1-mud)
     sel<-which(is.na(Rdbm) | Rdbm<0)
     Rdbm[sel]<-0
     sel<-which(Rdbm>1)
     Rdbm[sel]<-1
-    Rddm<-(1-(micro$clump^(2*n)))*(p1*exp(-h*pai_a)+p2*exp(h*pai_t))+micro$clump^(2*n)
+    Rddm<-mud*(p1*exp(-h*pai_a)+p2*exp(h*pai_t))+(1-mud)
     sel<-which(is.na(Rddm))
     Rddm[sel]<-1
     micro$Rdup<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
     # === (1n) Calculate leaf swabs
     a[is.na(a)]<-mean(a,na.rm=T)
     micro$radLsw<-0.5*a*(micro$Rddown+micro$Rdup+kkd$k*sin(alt)*micro$Rbdown)
+    micro$si<-si
+    micro$alt<-alt
   }
-  micro$k<-kkd$k
-  micro$kc<-Kc
-  micro$trb<-trb
-  micro$trd<-trd
-  micro$progress<-1
-  micro$albedo<-albedo
+  micro$progress<-2
   # Clean micro
   micro$lat<-NULL
   micro$long<-NULL
-  micro$merid<-NULL
-  micro$dst<-NULL
+  micro$vegx<-NULL
+  micro$lref<-NULL
+  micro$ltra<-NULL
+  micro$clump<-NULL
   return(micro)
+}
+#' Downscales wind
+#'
+#' @description The function `wind` downscales wind speed accounting for
+#' vegetation and terrain
+#' @param micro object of class microin as returned by [modelin()]
+#' @param reqhgt height above ground for which wind speeds are wanted. If negative (below ground) wind friction velocity only is returned
+#' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied.
+#' @param tfact coefficient determining sensitivity of soil moisture to variation
+#' in topographic wetness (see [soilmdistribute()])
+#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
+#' dtm if not supplied, but outer cells will be NA.
+#' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
+#' dtm if not supplied, but outer cells will be NA.
+#' @param hor an optional array of the tangent of the angle to the horizon in
+#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
+#' @param wsa an optional array of wind shelter coefficients in 8 directions.
+#' Calculated from dtm if not supplied, but outer cells will be NA.
+#' @param twi optional SpatRast object of topographic wetness index values.
+#' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' @return an object of class microin with the following components added:
+#' @return `uf` wind friction velocity (m/s)
+#' @return `uz` if `reqhgt > 0` wind speed at height `reqhgt` (m/s)
+#' @return `gHa` convective conductance (mol/m^2/s)
+#' @import terra zoo
+#' @export
+#' @details In downscaling wind, two processes are accounted for. Firstly the drag effects
+#' of vegetation on wind , which ultimately dictate the wind height profile. Secondly,
+#' the effects of local vegetation and terrain on wind speed. Terrain effects are calculated
+#' by applying the topographic shelter coefficient described in Maclean et al (2019) Methods
+#' in Ecology and Evolution, 10:280-290.
+wind <- function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA, apr = NA,
+                 hor = NA, wsa = NA, twi = NA) {
+  # Run two-stream model if not run
+  if (micro$progress < 2) micro<-twostream(micro,reqhgt,pai_a,slr,apr,hor,tfact,twi)
+  # Calculate ratio of u* ref to u* pixel (no diabnatic correction)
+  dp<-with(micro$vegp_p,.zeroplanedis(h,pai))
+  zmp<-with(micro$vegp_p,.roughlength(h,pai,dp))
+  ufp<-with(micro,(0.4*u2)/log((zref-dp)/zmp))
+  ufa<-with(micro,(0.4*u2)/log((zref-d)/zm))
+  umu<-ufp/ufa
+  # Calculate wind terrain shelter coefficient
+  dsm<-micro$dtm+micro$veghgt
+  s<-1
+  if (res(micro$dtm)[1]<=100) s<-10
+  if (class(wsa) == "logical") wsa<-.windsheltera(micro$dtm,micro$zref,s)
+  ws<-.windshelter(micro$winddir,dsm,2,s,wsa)
+  # Calculate friction velocity
+  micro$uf<-micro$ufp*umu*ws
+  # Calculate wind speed at height z
+  if (reqhgt > 0) {
+    s1<-which(reqhgt >= micro$vha)
+    uza<-suppressWarnings(with(micro,(uf[s1]/0.4)*log((reqhgt-d[s1])/zm[s1])))
+    sel<-which(is.na(uza) | uza<micro$uf[s1])
+    uza[sel]<-micro$uf[s1[sel]]
+    # Below canopy
+    s2<-which(reqhgt < micro$vha)
+    uh<-suppressWarnings(with(micro,(uf[s2]/0.4)*log((vha[s2]-d[s2])/zm[s2])))
+    sel<-which(is.na(uh) | uh<micro$uf[s2])
+    uh[sel]<-micro$uf[s2[sel]]
+    sel<-which(uh>micro$u2[s2])
+    uh[sel]<-micro$uf[s2[sel]]
+    Be<-(micro$uf[s2])/uh
+    Be[Be>1]<-1
+    Be[Be<0.001]<-0.001
+    a<-micro$pai[s2]/micro$vha[s2]
+    Lc<-(0.25*a)^-1
+    Lm<-2*Be^3*Lc
+    uzb<-uh*exp(Be*(reqhgt-micro$vha[s2])/Lm)
+    # Combine below cand above canopy
+    uz<-array(NA,dim=dim(micro$vha))
+    uz[s1]<-uza
+    uz[s2]<-uzb
+    # Cap at max wind speed
+    sel<-which(uz>micro$u2)
+    uz[sel]<-micro$u2[sel]
+    micro$uz<-uz
+  }
+  # Calculate convective conductance
+  micro$gHa<-with(micro,.gturb(uf,d,zm,zref,psi_h=0,0.01))
+  micro$progress<-3
+  # Clean micro
+  micro$d<-NULL
+  micro$zm<-NULL
+  micro$u2<-NULL
+  return(micro)
+}
+#' Applies Penman-Monteith equation
+#'
+#' @description The function `PenMont` applies a varient of the Penman-Monteith
+#' equation, to calculate surface temperature and the energy fluxes at the surface
+#' @param tc air temperature (deg c)
+#' @param pk atmospheric pressure (kPa)
+#' @param ea vapour pressure of air (kPa)
+#' @param radabs absorbed long and shortwave radiation (W/m2)
+#' @param gHa boundary layer conductances for heat (mol/m^2/s)
+#' @param gV conductance for vapour (mol/m^2/s)
+#' @param es optional saturated vapour pressure (kPa) at temperature tc (calculated if NA)
+#' @param tdew optional dewpoint temperature (deg C) (calculated if NA, see details)
+#' @param surfwet proportion of surface acting as wet surface
+#' @param G optional ground heat flux (W/m^2)
+#' @param allout optional logical indicating whether to return Latent, Sensible and
+#' Emitted radiation flux in addition to surface temperature
+#' @return a list with the following components:
+#' @return `T0` surface temperature (deg C)
+#' @return `H` the sensible heat flux (w/m^2) (NA if allout set to FALSE)
+#' @return `L` the latent heat flux (w/m^2) (NA if allout set to FALSE)
+#' @return `Rem` the emitted radiation flux (w/m^2) (NA if allout set to FALSE)
+#' @details The paramater `surfwet` determines how much of the canopy should be treated as
+#' wet surface. However, except when extremely droughted, the matric potential of
+#' of soil leaves is such that `surfwet` ~ 1.
+#' @export
+PenMont <- function(tc,pk,ea,radabs,gHa,gV,es=NA,tdew=NA,surfwet=1,G=0,allout=TRUE) {
+  if (is.na(es[1])) es<-.satvap(tc)
+  if (is.na(tdew[1])) tdew<-.dewpoint(ea,tc)
+  delta<-.delta(tc)
+  sb<-5.67*10^-8
+  gHr<-gHa+(4*0.97*sb*(tc+273.15)^3)/29.3
+  Rem<-0.97*sb*(tc+273.15)^4
+  m<-44526*(gV/pk)
+  L<-m*(es-ea)*surfwet
+  dT<-(radabs-Rem-L-G)/(29.3*gHr+m*delta)
+  dTmx<- -0.6273*max(tc,na.rm=T)+49.79
+  dT[dT>dTmx]<-dTmx
+  T0<-dT+tc
+  T0<-.lim(T0,tdew)
+  T0[T0>80]<-80
+  out<-list(T0=T0,H=NA,L=NA,Rem=NA)
+  if (allout) {
+    out$H<-29.3*gHa*(T0-tc)
+    out$L<-m*(.satvap(T0)-ea)*surfwet
+    out$Rem<-0.97*sb*(T0+273.15)^4
+  }
+  return(out)
 }
 #' Calculates ground surface temperature (hourly)
 #'
@@ -300,7 +361,6 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
 #' @param micro an object of class `microin` as returned by [modelin()] (see details)
 #' @param reqhgt height above ground at which model outputs are needed (m).
 #' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied.
-#' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
 #' @param slr an optional SpatRast object of slope values (Radians). Calculated from
@@ -313,628 +373,60 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
 #' Calculated from dtm if not supplied, but outer cells will be NA.
 #' @param twi optional SpatRast object of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
-#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
-#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
 #' @return an object of class micro with the following components added:
 #' @return `T0` ground surface temperature (deg C)
-#' @return `theta` surface soil moisture fraction
+#' @return `G` ground heat flux (W/m^2)
 #' @return additional terms needed for subsequent modelling.
 #' @import terra
 #' @export
-#' @seealso [groundrad()], [soiltemp_dy()]
-#' @details if [groundrad()] has not been run to add additional elements to `micro`
+#' @seealso [wind()], [soiltemp_dy()]
+#' @details if [wind()] has not been run to add additional elements to `micro`
 #' it is automatically called.
-soiltemp_hr  <- function(micro, reqhgt = 0.05, pai_a = NA, soilinit = c(NA, NA),
-                         tfact = 1.5, slr = NA, apr = NA, hor = NA, wsa = NA,
-                         twi = NA, soilmcoefs = NA, soiltcoefs = NA) {
+soiltemp_hr  <- function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA,
+                         apr = NA, hor = NA, wsa = NA, twi = NA) {
   # run two-stream and wind functions if not run
-  if (micro$progress<1) {
-    micro<-twostream(micro,reqhgt,pai_a,slr,apr,hor)
+  if (micro$progress<3) {
+    micro<-wind(micro,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
   }
-  # Calculate net radiation at ground
-  rnet<-micro$radGsw+micro$radGlw-micro$lwout
-  # get summed radiation
-  rsu<-suppressWarnings(apply(micro$radGsw,c(1,2),sum,na.rm=T))
-  me<-mean(rsu,na.rm=T)
-  rsu<-rsu/me
-  mx<-max(rsu,na.rm=T)
-  mn<-min(rsu,na.rm=T)
-  # Calculate max and min soil moisture
-  if (is.na(soilmcoefs[1])) {
-    thetamx<-.multisoil(micro,soilinit,tfact,mx,twi)
-    thetamn<-.multisoil(micro,soilinit,tfact,mn,twi)
-  } else {
-    clim<-micro$climdata
-    soilc<-micro$soilc
-    alb<-mean(.is(soilc$groundr),na.rm=T)
-    swrad<-(1-alb)*clim$swrad
-    lwout<- 5.67e-8*0.95*(clim$temp+273.15)^4
-    lwnet<-(1-clim$skyem)*lwout
-    rnet<-swrad-lwnet
-    rnet1<-rnet*mx
-    rnet2<-rnet*mn
-    sm<-soilmpredict(micro$prec,rnet1,"Loam",soilinit,soilmcoefs)
-    thetamx<-soilmdistribute(sm$soilm1,micro$dtm)
-    sm<-soilmpredict(micro$prec,rnet2,"Loam",soilinit,soilmcoefs)
-    thetamn<-soilmdistribute(sm$soilm1,micro$dtm)
-  }
-  # Adjust soil moisture
-  rsua<-.rta(rast(rsu),dim(thetamn)[3])
-  theta<-(rsua/mx)*(thetamx-thetamn)+thetamn
-  thetam<-apply(theta,c(1,2),mean,na.rm=TRUE)
-  theta<-.ehr(theta)
-  hiy<-length(micro$tme)
-  # Correct theta
-  theta[theta<0.0002]<-0.0002
-  sm<-log(theta/(1-theta))+8.516993
-  # Get paramaters
-  if (is.na(soiltcoefs[1])) {
-    scfs<-.soilcoefs(micro$soilc)
-  } else {
-    d<-dim(micro$dtm)[1:2]
-    scfs<-list(int=array(soiltcoefs$int,dim=d),
-               t1=array(soiltcoefs$t1,dim=d),
-               t2=array(soiltcoefs$t2,dim=d),
-               t3=array(soiltcoefs$t3,dim=d),
-               t4=array(soiltcoefs$t4,dim=d),
-               t5=array(soiltcoefs$t5,dim=d),
-               t6=array(soiltcoefs$t6,dim=d),
-               t7=array(soiltcoefs$t7,dim=d))
-  }
-  # Calculate wind shelter coefficient
-  dsm<-micro$dtm+micro$veghgt
-  s<-1
-  if (res(micro$dtm)[1]<=100) s<-10
-  micro$ws<-.windshelter(micro$climdata$winddir,dsm,2,s,wsa)
-  # Calculate wind at 2 m height
-  maxhgt<-max(as.vector(micro$veghgt),na.rm=T)+2
-  uf<-(0.4*micro$climdata$windspeed)/log((maxhgt-0.08)/0.01476)
-  w2<-(uf/0.4)*log((maxhgt-0.08)/0.01476)
-  w2<-.vta(w2,micro$dtm)*micro$ws
-  w2[w2<0]<-0
-  w2<-log(w2+1)
-  # Predict soil surface temperature
-  T0<-.rta(rast(scfs$int),hiy)+
-    .rta(rast(scfs$t1),hiy)*rnet+
-    .rta(rast(scfs$t2),hiy)*sm+
-    .rta(rast(scfs$t3),hiy)*w2+
-    .rta(rast(scfs$t4),hiy)*sm*rnet+
-    .rta(rast(scfs$t5),hiy)*sm*w2+
-    .rta(rast(scfs$t6),hiy)*rnet*w2+
-    .rta(rast(scfs$t7),hiy)*rnet*sm*w2
-  dTmx<- -0.6273*max(micro$tc,na.rm=T)+49.79
-  T0[T0>dTmx]<-dTmx
-  T0<-T0+micro$tc
-  T0<-.lim(T0,micro$tdew)
-  T0[T0>72]<-72
-  # Calculate soil conductivity and specific heat capacity
-  cs<-(2400*micro$rho/2.64+4180*thetam)
-  phs<-(micro$rho*(1-thetam)+thetam)*1000
-  pcs<-cs*phs # Total specific heat capacity
-  frs<-micro$Vm+micro$Vq
-  c1<-(0.57+1.73*micro$Vq+0.93*micro$Vm)/(1-0.74*micro$Vq-0.49*micro$Vm)-2.8*frs*(1-frs)
-  c2<-1.06*micro$rho*thetam
-  c3<-1+2.6*micro$Mc^-0.5
-  c4<-0.03+0.7*frs^2
-  k<-c1+c2*thetam-(c1-c4)*exp(-(c3*thetam)^4)
-  # Calculate damping depth etc
-  om<-(2*pi)/(24*3600)
-  ka<-k/pcs
-  DD<-sqrt((2*ka)/om)
-  # Save elements to micro
-  micro$T0<-T0
-  micro$theta<-theta
-  micro$ka<-ka
-  micro$DD<-DD
-  micro$maxhgt<-maxhgt
-  micro$progress<-2
+  # Estimate diurnal range in grid ground surface temperature with G set to zero
+  radabs<-micro$radGsw+micro$radGlw  # Absorbed radiation
+  # * Calculate soil relative humidity
+  n<-dim(radabs)[3]
+  surfwet<-with(micro,.soilrh(soild,.rta(soilb,n),.rta(psi_e,n),.rta(Smax,n),tc))
+  # * Calculate soil surface temperature
+  T0<-with(micro,PenMont(tc,pk,ea,radabs,gHa,gHa,estl,tdew,surfwet,G=0))
+  # * Calculate diurnal range
+  dtr<-.hourtoday(T0$T0,max)-.hourtoday(T0$T0,min)
+  # * Estimate point surface temperature with G set to zero
+  dtp<-.hourtoday(micro$T0p,max)-.hourtoday(micro$T0p,min)
+  # * Calculate ratio of diurnal temperature fluxes
+  dtR<-.ehr(dtr/dtp)
+  # Thermal conductance and damping depth (grid)
+  kDDg<-with(micro,.soilcond(.rta(rho,n),.rta(Vm,n),.rta(Vq,n),.rta(Mc,n),soild))
+  kDDp<-with(micro$groundp_p,.soilcond(rho,Vm,Vq,Mc,micro$soilm))
+  # Calculate Gmu
+  Gmu<-dtR*(kDDg$k*kDDp$DD)/(kDDp$k*kDDg$DD)
+  # Compute ground heat flux
+  G<-micro$Gp*Gmu
+  # Set limits to G:
+  # Calculate daily Rnet cycle
+  Rnet<-radabs-T0$Rem
+  Rd<-.ehr(pmax(.hourtoday(Rnet,max),-.hourtoday(Rnet,min)))
+  G<-pmin(G,0.6*Rd)
+  micro$G<-pmax(G,-0.6*Rd)
+  # Calculate soil surface temperature
+  micro$T0<-with(micro,PenMont(tc,pk,ea,radabs,gHa,gHa,estl,tdew,surfwet,G,allout=FALSE))$T0
+  micro$DDg<-kDDg$DD
+  micro$DDp<-kDDp$DD
+  micro$progress<-4
   # Clean micro
-  micro$prec<-NULL
   micro$rho<-NULL
   micro$Vm<-NULL
   micro$Vq<-NULL
   micro$Mc<-NULL
-  micro$soilc<-NULL
-  micro$radGsw<-NULL
-  micro$radGlw<-NULL
+  micro$soilb<-NULL
+  micro$psi_e<-NULL
   return(micro)
-}
-#' Calculates ground surface temperature (daily)
-#'
-#' @description The function `soiltemp_dy` estimates ground surface temperature
-#'
-#' @param microd an object of class `microindaily` as returned by [modelin_dy()]
-#' @param reqhgt height above ground at which model outputs are needed (m).
-#' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied.
-#' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
-#' @param tfact coefficient determining sensitivity of soil moisture to variation
-#' in topographic wetness (see [soilmdistribute()]).
-#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
-#' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
-#' @param hor an optional array of the tangent of the angle to the horizon in
-#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param wsa an optional array of wind shelter coefficients in 8 directions.
-#' Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param twi optional SpatRaster object of topographic wetness index values.
-#' Calculated from `dtm` of not supplied, but outer cells will be NA.
-#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
-#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
-#' @return an object of class micro with the following components added:
-#' @return `T0` ground surface temperature (deg C)
-#' @return `theta` surface soil moisture fraction
-#' @return additional terms needed for subsequent modelling.
-#' @import terra
-#' @export
-#' @seealso [groundrad()], [soiltemp_dy()]
-#' @details if [groundrad()] has not been run to add additional elements to `micro`
-#' it is automatically called.
-soiltemp_dy  <- function(microd, reqhgt = 0.05, pai_a = NA, soilinit = c(NA, NA), tfact = 1.5,
-                         slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA,
-                         soilmcoefs = NA, soiltcoefs = NA) {
-  # run two-stream and wind functions if not run
-  micro_mn<-microd$micro_mn
-  micro_mx<-microd$micro_mx
-  if (micro_mn$progress<1) {
-    micro_mn<-twostream(micro_mn,reqhgt,pai_a,slr,apr,hor)
-    micro_mx<-twostream(micro_mx,reqhgt,pai_a,slr,apr,hor)
-  }
-  # Calculate net radiation at ground
-  rnet1<-micro_mn$radGsw+micro_mn$radGlw-micro_mn$lwout
-  rnet2<-micro_mx$radGsw+micro_mx$radGlw-micro_mx$lwout
-  # get summed radiation
-  swabs<-micro_mn$radGsw+micro_mx$radGsw
-  rsu<-suppressWarnings(apply(swabs,c(1,2),sum,na.rm=T))
-  me<-mean(rsu,na.rm=T)
-  rsu<-rsu/me
-  mx<-max(rsu,na.rm=T)
-  mn<-min(rsu,na.rm=T)
-  # Calculate max and min soil moisture
-  climd<-micro_mn$climdata
-  micro_mn$climdata<-microd$climdata
-  if (is.na(soilmcoefs[1])) {
-    thetamx<-.multisoil(micro_mn,soilinit,tfact,mx,twi)
-    thetamn<-.multisoil(micro_mn,soilinit,tfact,mn,twi)
-  } else {
-    clim<-micro_mn$climdata
-    soilc<-micro_mn$soilc
-    alb<-mean(.is(soilc$groundr),na.rm=T)
-    swrad<-(1-alb)*clim$swrad
-    lwout<- 5.67e-8*0.95*(clim$temp+273.15)^4
-    lwnet<-(1-clim$skyem)*lwout
-    rnet<-swrad-lwnet
-    rnet1<-rnet*mx
-    rnet2<-rnet*mn
-    sm<-soilmpredict(micro_mn$prec,rnet1,"Loam",soilinit,soilmcoefs)
-    thetamx<-soilmdistribute(sm$soilm1,micro_mn$dtm)
-    sm<-soilmpredict(micro_mn$prec,rnet2,"Loam",soilinit,soilmcoefs)
-    thetamn<-soilmdistribute(sm$soilm1,micro_mn$dtm)
-  }
-  # Adjust soil moisture
-  rsua<-.rta(rast(rsu),dim(thetamn)[3])
-  theta<-(rsua/mx)*(thetamx-thetamn)+thetamn
-  thetam<-apply(theta,c(1,2),mean,na.rm=TRUE)
-  micro_mn$climdata<-climd
-  diy<-dim(micro_mn$tc)[3]
-  # Correct theta
-  theta[theta<0.0002]<-0.0002
-  sm<-log(theta/(1-theta))+8.516993
-  # Get paramaters
-  if (is.na(soiltcoefs[1])) {
-    scfs<-.soilcoefs(micro_mn$soilc)
-  } else {
-    d<-dim(micro_mn$dtm)[1:2]
-    scfs<-list(int=array(soiltcoefs$int,dim=d),
-               t1=array(soiltcoefs$t1,dim=d),
-               t2=array(soiltcoefs$t2,dim=d),
-               t3=array(soiltcoefs$t3,dim=d),
-               t4=array(soiltcoefs$t3,dim=d),
-               t5=array(soiltcoefs$t3,dim=d),
-               t6=array(soiltcoefs$t3,dim=d),
-               t7=array(soiltcoefs$t3,dim=d))
-  }
-  # Calculate wind shelter coefficient
-  dsm<-micro_mn$dtm+micro_mn$veghgt
-  s<-1
-  if (res(micro_mn$dtm)[1]<=100) s<-10
-  micro_mn$ws<-.windshelter(micro_mn$climdata$winddir,dsm,2,s,wsa)
-  micro_mx$ws<-.windshelter(micro_mx$climdata$winddir,dsm,2,s,wsa)
-  # Calculate wind at 2 m height
-  maxhgt<-max(as.vector(micro_mn$veghgt),na.rm=T)+2
-  uf_mn<-(0.4*micro_mn$climdata$windspeed)/log((maxhgt-0.08)/0.01476)
-  uf_mx<-(0.4*micro_mx$climdata$windspeed)/log((maxhgt-0.08)/0.01476)
-  w2_mn<-(uf_mn/0.4)*log((maxhgt-0.08)/0.01476)
-  w2_mx<-(uf_mx/0.4)*log((maxhgt-0.08)/0.01476)
-  w2_mn<-.vta(w2_mn,micro_mn$dtm)*micro_mn$ws
-  w2_mx<-.vta(w2_mx,micro_mx$dtm)*micro_mx$ws
-  w2_mn[w2_mn<0]<-0
-  w2_mx[w2_mx<0]<-0
-  w2_mn<-log(w2_mn+1)
-  w2_mx<-log(w2_mx+1)
-  # Predict soil surface temperature
-  T0mn<-.rta(rast(scfs$int),diy)+
-    .rta(rast(scfs$t1),diy)*rnet1+
-    .rta(rast(scfs$t2),diy)*sm+
-    .rta(rast(scfs$t3),diy)*w2_mn+
-    .rta(rast(scfs$t4),diy)*sm*rnet1+
-    .rta(rast(scfs$t5),diy)*sm*w2_mn+
-    .rta(rast(scfs$t6),diy)*rnet1*w2_mn+
-    .rta(rast(scfs$t7),diy)*rnet1*sm*w2_mn
-  T0mx<-.rta(rast(scfs$int),diy)+
-    .rta(rast(scfs$t1),diy)*rnet2+
-    .rta(rast(scfs$t2),diy)*sm+
-    .rta(rast(scfs$t3),diy)*w2_mx+
-    .rta(rast(scfs$t4),diy)*sm*rnet2+
-    .rta(rast(scfs$t5),diy)*sm*w2_mx+
-    .rta(rast(scfs$t6),diy)*rnet2*w2_mx+
-    .rta(rast(scfs$t7),diy)*rnet2*sm*w2_mx
-  T0mn<-T0mn+micro_mn$tc
-  T0mx<-T0mx+micro_mx$tc
-  T0mn<-.lim(T0mn,micro_mn$tdew)
-  T0mx<-.lim(T0mx,micro_mx$tdew)
-  # Calculate soil conductivity and specific heat capacity
-  cs<-(2400*micro_mn$rho/2.64+4180*thetam)
-  phs<-(micro_mn$rho*(1-thetam)+thetam)*1000
-  pcs<-cs*phs # Total specific heat capacity
-  frs<-micro_mn$Vm+micro_mn$Vq
-  c1<-(0.57+1.73*micro_mn$Vq+0.93*micro_mn$Vm)/
-    (1-0.74*micro_mn$Vq-0.49*micro_mn$Vm)-2.8*frs*(1-frs)
-  c2<-1.06*micro_mn$rho*thetam
-  c3<-1+2.6*micro_mn$Mc^-0.5
-  c4<-0.03+0.7*frs^2
-  k<-c1+c2*thetam-(c1-c4)*exp(-(c3*thetam)^4)
-  # Calculate damping depth etc
-  om<-(2*pi)/(24*3600)
-  ka<-k/pcs
-  DD<-sqrt((2*ka)/om)
-  # Save elements to micro
-  micro_mn$T0<-T0mn
-  micro_mn$theta<-theta
-  micro_mn$ka<-ka
-  micro_mn$DD<-DD
-  micro_mn$maxhgt<-maxhgt
-  micro_mn$progress<-2
-  micro_mx$T0<-T0mx
-  micro_mx$theta<-theta
-  micro_mx$ka<-ka
-  micro_mx$DD<-DD
-  micro_mx$maxhgt<-maxhgt
-  micro_mx$progress<-2
-  # Clean micro
-  micro_mn$prec<-NULL
-  micro_mn$rho<-NULL
-  micro_mn$Vm<-NULL
-  micro_mn$Vq<-NULL
-  micro_mn$Mc<-NULL
-  micro_mn$soilc<-NULL
-  micro_mn$radGsw<-NULL
-  micro_mn$radGlw<-NULL
-  micro_mx$prec<-NULL
-  micro_mx$rho<-NULL
-  micro_mx$Vm<-NULL
-  micro_mx$Vq<-NULL
-  micro_mx$Mc<-NULL
-  micro_mx$soilc<-NULL
-  micro_mx$radGsw<-NULL
-  micro_mx$radGlw<-NULL
-  out<-list(micro_mn=micro_mn,micro_mx=micro_mx,climdata=microd$climdata)
-  return(out)
-}
-#' Downscales wind
-#'
-#' @description The function `wind` downscales wind speed accounting for
-#' vegetation and terrain
-#' @param micro object of class microin as returned by [modelin()]
-#' @param climdata an array of hourly weather (see details)
-#' @param reqhgt height above ground for which wind speeds are wanted. If negative (below ground) wind friction velocity only is returned
-#' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied.
-#' @param xyf optional spatial smoothing factor applied in calculation of wind speeds (see details)
-#' @param zf optional integer used to calculate how frequently to sample the plant area index array
-#' when calculating smoothed wind speed (see details)
-#' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
-#' @param tfact coefficient determining sensitivity of soil moisture to variation
-#' in topographic wetness (see [soilmdistribute()])
-#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
-#' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
-#' @param hor an optional array of the tangent of the angle to the horizon in
-#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param wsa an optional array of wind shelter coefficients in 8 directions.
-#' Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param twi optional SpatRast object of topographic wetness index values.
-#' Calculated from `dtm` of not supplied, but outer cells will be NA.
-#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
-#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
-#' @param backweight an optional parameter used for iteratively deriving diabatic
-#' coefficients by running a point microclimate model until stable results are
-#' obtained (default 2). A higher value ensured the model is more likely to
-#' converge, but `maxiter` may then need to be increased.
-#' @param maxiter an optional number of iterations used to derive diabatic
-#' coefficients by running a point microclimate model until stable results are
-#' obtained (default 100). There is a moderate time penality by increasing
-#' the number.
-#' @param gmn optional minimum convective conductance value (mol/m^2/s). Lower values are more
-#' physically realistic, but can reduce the chance the point microclimate model will
-#' converge and may result in implausably high estimates of temperature.
-#' @return an object of class microin with the following components added:
-#' @return `uz` optionally wind speed at height `reqhgt` (m/s)
-#' @return `gHa` convective conductance (mol/m^2/s)
-#' @return `Test` initial estimates of canopy heat exchange surface temperatures (deg C)
-#' used to derive improve subsequent estimates.
-#' @import terra zoo
-#' @export
-#' @details The data.frame `climdata` is used to run a point model iteratively to
-#' get diabatic correction coefficients and to derive initial estimates of temperature.
-#' This point model must be run in hourly time-steps. Thus, when the whole microclimate
-#' model is run in hourly timesteps, `climdata` = `micro$climdata`, but when run in daily mode
-#' this is not the case, hence a seperate function input is requested. In
-#' downscaling wind, two processes are accounted for. Firstly the drag effects
-#' of vegetation on wind , which ultimately dictate the wind height profile. In
-#' so doing, it is necessary to accommodate the fact the wind speed is not just affected by
-#' the surface roughness at each point location, but also by vegetation surrounding the
-#' location. This is accommodated for by applying `xyf` which effectively smooths though surface roughness
-#' using `terra::aggregate` where `xyf` is the aggregation factor. Because surface roughness
-#' also depends on the plant area index (PAI), which is time-variant, and is computationally intensive
-#' to perform aggregations on PAI at each hourly time increment, `zf` determines the time at
-#' what frequency to aggregate PAI. E.g. where `zf` is 100, PAI at every 100th time increment is aggregated.
-#' By default 'xyf' is set to `NA`, in which case the wind profile is averaged across the entire
-#' study area. This is appropriate for microclimate models run at very high (<10m) resolution.
-#' For models run at coarse resoution (e.g. >= 1km) xyf should be set to one, for intermediate
-#' resolutions (10-1000m) xyf values should range for about 2 to 10.  The parameter `zf`
-#' is ignored if `xyf` is `NA` or `1` but by default is set to aggregate PAI at
-#' monthly intervals. Note also that to circumvent the issue that the maximum
-#' vegetation height within the study area may exceed the height at which input wind speeds are
-#' measured (by default assumed measured at a height of 2 m). [modelin()] and related functions
-#' adjust the wind profile to 2m above the height of tallest vegetation making the
-#' assumption that wind speed  measurements are normally taken in open areas where wind is unimpeded
-#' by vegetation. A standard height profile adjustment for an open area typical of those at which
-#' weather stations are sighted is undertaken. Additionally, the effects of local vegetation
-#' and terrain on wind speed. Terrain effects are calculated by applying the topographic
-#' shelter coefficient described in Maclean et al (2019) Methods in Ecology and Evolution, 10:280-290.
-wind <- function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, soilinit = c(NA, NA),
-                 tfact = 1.5, slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA, soilmcoefs = NA,
-                 soiltcoefs = NA, backweight = 2, maxiter = 100, gmn = 0.3) {
-  # Calculate zfactor
-  tme<-micro$tme
-  ed<-as.numeric(tme[length(tme)])
-  st<-as.numeric(tme[1])
-  ti<-round(((ed-st)/3600)/(length(tme)-1))
-  if (micro$progress<2) {
-    if (ti==1) {
-      micro<-soiltemp_hr(micro,reqhgt,pai_a,soilinit,tfact,slr,apr,hor,wsa,twi,soilmcoefs,soiltcoefs)
-    } else stop("Need to run soiltemp_dy")
-  }
-  if (is.na(zf)) zf<-ifelse(ti==1,30*24,30)
-  # Calculate mean roughness lengths
-  hgtm<-mean(as.vector(micro$veghgt),na.rm=T)
-  hgtm[hgtm<0.01]<-0.01
-  pai<-apply(micro$pai,3,mean,na.rm=T)
-  pai[pai<0.01]<-0.01
-  dm<-.zeroplanedis(hgtm,pai)
-  zmm<-.roughlength(hgtm,pai,dm)
-  # Iteratively solve point microclimate model
-  vmicro<-.solvemicro(micro,climdata,hgtm,pai,reqhgt,backweight,maxiter,gmn,ti)
-  # Convert mean roughness lengths to arrays
-  hgtm<-array(hgtm,dim=dim(micro$pai))
-  dm<-.vta(dm,micro$dtm)
-  zmm<-.vta(zmm,micro$dtm)
-  # Calculate roughness lengths  etc
-  maxhgt<-micro$maxhgt
-  if (is.na(xyf) == FALSE) {
-    if (xyf == 1) {
-      hgt<-micro$vha
-      hgt[hgt<0.01]<-0.01
-      d<-.zeroplanedis(hgt,micro$pai)
-      zm<-.roughlength(hgt,micro$pai,d)
-    } else {
-      mdm<-trunc(min(dim(micro$dtm)[1:2])/2)
-      if (xyf < mdm) {
-        hgt<-.rta(.smr(micro$veghgt,xyf),length(tme))
-        hgt[hgt<0.01]<-0.01
-        pai<-.sma(micro$pai,xyf,zf,crs(micro$dtm))
-        pai[pai<0.01]<-0.01
-        d<-.zeroplanedis(hgt,pai)
-        zm<-.roughlength(hgt,pai,d)
-      } else xyf<-NA
-    }
-  }
-  if (is.na(xyf)) {  # averages profile across study area
-    d<-dm
-    zm<-zmm
-  }
-  # Calculate wind speed
-  uf<-.vta(vmicro$uf,micro$dtm)
-  ufmu<-(log((maxhgt-dm)/zmm)/log((maxhgt-d)/zm))*micro$ws
-  ufmu<-.lim(ufmu,0.2)
-  ufmu<-.lim(ufmu,4,up=T)
-  micro$uf<-uf*ufmu
-  # Calculate arrays of actual height etc
-  hgta<-micro$vha
-  s1<-which(reqhgt >= hgta)
-  uza<-suppressWarnings((micro$uf[s1]/0.4)*log((reqhgt-d[s1])/zm[s1]))
-  sel<-which(is.na(uza) | uza<micro$uf[s1])
-  uza[sel]<-micro$uf[s1[sel]]
-  # Below canopy
-  s2<-which(reqhgt < hgta)
-  uh<-suppressWarnings((micro$uf[s2]/0.4)*log((hgta[s2]-d[s2])/zm[s2]))
-  sel<-which(is.na(uh) | uh<micro$uf[s2])
-  uh[sel]<-micro$uf[s2[sel]]
-  uref<-.vta(climdata$windspeed,micro$dtm)
-  sel<-which(uh>uref[s2])
-  uh[sel]<-micro$uf[s2[sel]]
-  Be<-(micro$uf[s2])/uh
-  Be[Be>1]<-1
-  Be[Be<0.001]<-0.001
-  a<-micro$pai[s2]/hgta[s2]
-  Lc<-(0.25*a)^-1
-  Lm<-2*Be^3*Lc
-  uzb<-uh*exp(Be*(reqhgt-hgta[s2])/Lm)
-  # Combine below cand above canopy
-  uz<-array(NA,dim=dim(hgta))
-  uz[s1]<-uza
-  uz[s2]<-uzb
-  # Cap at max wind speed
-  sel<-which(uz>uref)
-  uz[sel]<-uref[sel]
-  # Estimate H ratio
-  Rabs<-apply(micro$radCsw+micro$radClw,3,mean,na.rm=T)
-  Rem<-apply(micro$lwout,3,mean,na.rm=T)
-  H1<-.vta((Rabs-Rem),micro$dtm)
-  H2<-micro$radCsw+micro$radClw-micro$lwout
-  Hmu<-H2/H1
-  # Calculate new phih
-  Tk<-micro$tc+.vta(0.5*vmicro$dT,micro$dtm)
-  H<-.vta(vmicro$H,micro$dtm)
-  LLa<-(43*29.3*(micro$uf)^3*Tk)/(-0.4*9.81*H*Hmu)
-  LL<-.vta(vmicro$LL,micro$dtm)
-  phihn<-.dphih(zm/LLa)-.dphim((maxhgt-d)/LLa)
-  phihm<-.dphih(zmm/LL)-.dphim((maxhgt-dm)/LL)
-  dTmu1<-Hmu/ufmu
-  dTmu2<-(log((maxhgt-d)/zm)+phihm)/(log((maxhgt-dm)/zm)+phihn)
-  dTmu<-dTmu1*dTmu2
-  dTmu<-dTmu/mean(dTmu,na.rm=T)
-  dTmu<-.lim(dTmu,0.2)
-  dTmu<-.lim(dTmu,4,up=T)
-  # Set cap based on minimum conductance
-  dT1<-.vta(vmicro$dT,micro$dtm)
-  gHa<-H/(29.3*dT1)
-  pai<-micro$pai
-  pai[pai<0.5]<-0.5
-  leafd<-.rta(micro$leafd,length(tme))
-  gmin<-0.0375*2*0.5*(abs(dT1*dTmu)/(0.71*leafd))^0.25
-  gmin[gmin<gmn]<-gmn
-  sel<-which(gmin>gHa)
-  dTmu[sel]<-1
-  dT<-dT1*dTmu
-  # Set caps based on bare dry soil and energy balance with max radiation
-  dTmx<- -0.6273*max(micro$tc,na.rm=T)+49.79
-  dT[dT>dTmx]<-dTmx
-  T0<-micro$tc+dT
-  T0<-.lim(T0,micro$tdew)
-  T0[T0>72]<-72
-  # Calculate initial tempertare estimate
-  gHa<-abs(H*Hmu)/(29.3*(abs(T0-micro$tc)))
-  gHa[gHa<gmn]<-gmn
-  vgHa<-.vta(vmicro$gHa,micro$dtm)
-  sel<-which(abs(T0-micro$tdew)<0.01)
-  gHa[sel]<-vgHa[sel]
-  gHa[gHa>4]<-4
-  # Save outputs
-  micro$uz<-uz
-  micro$gHa<-gHa
-  micro$Test<-T0
-  micro$d<-d
-  micro$zm<-zm
-  micro$progress<-3
-  return(micro)
-}
-#' Calculates Latent heat exchange
-#'
-#' @description The function `PenMont` applies a varient of the Penman-Monteith
-#' equation, to calculate latent heat and canopy heat exchange surface
-#' temperature
-#' @param tc air temperature (deg c)
-#' @param pk atmospheric pressure (kPa)
-#' @param ea vapour pressure of air (kPa)
-#' @param radabs absorbed long and shortwave radiation (W/m2)
-#' @param gHa boundary layer conductances for heat (mol/m^2/s)
-#' @param gs stomatal conductance (mol/m^2/s)
-#' @param gCa conductance form ground surface to heat exchange surface (mol/m^2/s)
-#' @param T0 optional ground temperature input (W/m2)
-#' @param es saturated vapour pressure (kPa) at temperature tc (calculated if NA)
-#' @param tdew dewpoint temperature (deg C) (calculated if NA, see details)
-#' @param surfwet proportion of leaf or canopy acting as wet surface
-#' @param T_est optional initial estimate of canopy heat exchange surface temperature.
-#' Reduces error in linearisation when applying Penman-Monteith equation.
-#' @param allout optional logical indicating whether to return Latent, Sensible and
-#' Ground heat flux in addition to canopy temperature
-#' @return a list with the following components:
-#' @return `tcan` the leaf or effective canopy temperature (deg C)
-#' @return `H` the sensible heat flux (w/m^2)
-#' @return `HR` hte fractional of net radiation that is sensible heat
-#' @return Optionally `L` The latent heat flux (W/m^2)
-#' @return Optionally `G` The ground heat flux (W/m^2)
-#' @details `Latent` can be used to calaculate either the latent heat of
-#' evapotranspiration from individual leaves or bulk surface latent heat of
-#' evapotranspiration from the canopy as a whole depending on how `gHa` and `gs`
-#' are defined. If for the canopy as a whole, heat storage `G` should also be
-#' considered and `L` is the Latent heat per unit leaf area and should thus be
-#' multiplied by the total leaf area per unit ground area to derive a total. If
-#' for a leaf in isolation, set g0 to zero and T0 to an arbitrary value. The
-#' paramater `surfwet` determines how much of the canopy should be treated as
-#' wet surface. However, except when extremely droughted, the matric potential of
-#' leaves is such that `surfwet` ~ 1.
-#' @export
-PenMont <- function(tc,pk,ea,radabs,gHa,gs,gCa=0,T0=NA,es=NA,tdew=NA,surfwet=1,T_est=NA,allout=TRUE) {
-  if (is.na(es[1])) es<-.satvap(tc)
-  if (is.na(tdew[1])) tdew<-.dewpoint(ea,tc)
-  if (class(T_est)=="logical") T_est<-tc
-  Tav<-(tc+T_est)/2
-  delta<-.delta(Tav)
-  gv<-1/(1/gHa+1/gs)
-  sb<-5.67*10^-8
-  gHr<-gHa+(4*0.97*sb*(Tav+273.15)^3)/29.3
-  Rem<-0.97*sb*(tc+273.15)^4
-  m<-44526*(gv/pk)
-  L<-m*(es-ea)*surfwet
-  dTmx<- -0.6273*max(tc,na.rm=T)+49.79
-  dT<-(radabs-Rem-L)/(29.3*gHr+m*delta)
-  dT[dT>dTmx]<-dTmx
-  if (class(T0) != "logical") {
-    tcan<-.TGadjust(dT,gHr,m,delta,tc,T0,gCa)
-
-  } else tcan<-tc+dT
-  tcan<-.lim(tcan,tdew)
-  tcan[tcan>72]<-72
-  H<-29.3*gHa*(tcan-tc)
-  HR<-H/(radabs-Rem)
-  HR[HR<0]<-0
-  HR[HR>1]<-1
-  if (allout) {
-    estl<-.satvap(tcan)*surfwet
-    L<-m*(estl-ea)
-    L<-.lim(L,0)
-    out<-list(tcan=tcan,H=H,L=L,HR=HR)
-  } else out<-list(tcan=tcan,H=H,HR=HR)
-  return(out)
-}
-#' Estimate foliage density and plant area index above z
-#'
-#' @description The function `foliageden` applies a mirrored gamma distribution
-#' to estimate, for a given height `z` below canopy, the foliage density at
-#' height z and the plant area index above `z`
-#'
-#' @param z height above ground (m)
-#' @param hgt the height of the canopy (m)
-#' @param pai total plant area index of canopy
-#' @param shape optional shape parameter for gamma distribution (see details)
-#' @param rate optional rate parameter for gamm distribution (see details)
-#' @return a list with the following components:
-#' @return `leafden` the foliage density (one sided leaf area per m^3) at height z
-#' @return `paia` the plant area index above `z`
-#' @details a broadly realistic estimate of foliage density is generated
-#' using a mirrored gamma distribution (i.e. right (top) rather than left-skewed).
-#' in applying the gamma distribution `z / hgt` is re-scaled to the range 0-10.
-#' @importFrom stats dgamma pgamma
-#' @export
-#' @return a list of leaf densities and plant area index values
-#'
-#' @examples
-#' z<-c(1:1000)/100
-#' fdp<-foliageden(z,10,10)
-#' plot(z~fdp$leafden, xlab = "Foliage density")
-#' plot(z~fdp$pai_a, xlab = "PAI above z")
-foliageden<-function(z,hgt,pai,shape=1.5,rate=shape/7) {
-  # reverse and rescale z
-  x<-((hgt-z)/hgt)*10
-  # totAL DENS
-  td<-pgamma(10,shape,rate) # total density
-  rfd<-dgamma(x,shape,rate)/td # relative foliage density
-  tdf<-(pai/hgt)*rfd*10 # total foliage density
-  paia<-pgamma(x,shape,rate)*(pai/td) # pai above
-  return(list(leafden=tdf,pai_a=paia))
 }
 #' Estimate temperature and humidity at specified height above ground
 #'
@@ -942,7 +434,6 @@ foliageden<-function(z,hgt,pai,shape=1.5,rate=shape/7) {
 #' the microclimate model.
 #'
 #' @param micro object of class microin as returned by [modelin()]
-#' @param climdata an array of hourly weather (see [wind()])
 #' @param reqhgt height above ground for which wind speeds are wanted. If negative (below ground) wind friction velocity only is returned
 #' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied.
 #' @param xyf optional spatial smoothing factor applied in calculation of wind speeds (see details)
@@ -995,50 +486,64 @@ foliageden<-function(z,hgt,pai,shape=1.5,rate=shape/7) {
 #'
 #' @import terra zoo
 #' @export
-temphumE<-function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA, soilinit = c(NA, NA),
-                   tfact = 1.5, slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA, soilmcoefs = NA,
-                   soiltcoefs = NA, backweight = 2, maxiter = 100, gmn = 0.3, surfwet = 0.75) {
+temphumE<-function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA, apr = NA,
+                   hor = NA, wsa = NA, twi = NA, surfwet = NA) {
   # run soiltemp function if not run
-  if (micro$progress<3) {
-    micro<-wind(micro,climdata,reqhgt,pai_a,xyf,zf,soilinit,tfact,slr,apr,
-                hor,wsa,twi,soilmcoefs,soiltcoefs,backweight,maxiter,gmn)
+  if (micro$progress<4) {
+    micro<-soiltemp_hr(micro,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
   }
   # Calculate vapour conductivity
-  climdata<-micro$climdata
-  fsun<-.psunlit(micro$pai,micro$k,micro$kc,micro$clump)
-  fsund<-.psunlitd(micro$pai,micro$clump)
-  lais<-micro$pai*(micro$dp*fsund+(1-micro$dp)*fsun)
-  gs<-.layercond(.vta(climdata$swrad,micro$dtm),micro$gsmax,100)
-  gBs<-lais*gs
-  # Calculate T0
+  Rsw<-with(micro,difr+dirr*si)
+  n<-dim(Rsw)[3]
+  # Calculate ground wetness
+  eT<-.satvap(micro$T0)-micro$ea
+  gwet<-.predwet(eT)
+  if (class(surfwet) == "logical") {
+    surfwet<-with(micro,(soild-.rta(Smin,n))/.rta(Smax-Smin,n))
+  }
+  gwet<-pmax(gwet,surfwet)
+  gv<-.layercond(Rsw, .rta(micro$gsmax,n))*3
+  gV<-1/(1/micro$gHa+1/gv)
+  # Calculate canopy temperature
   canabs<-micro$radCsw+micro$radClw
-  hgt<-micro$vha
-  hgt[hgt<0.02]<-0.02
-  d<-.zeroplanedis(hgt,micro$pai)
-  d[d<0.013]<-0.013
-  micro$uf[micro$uf<0.1]<-0.1
-  gCa<-0.4*43*micro$uf*(hgt-d)/(hgt*log(d/0.0122))
-  TH<-PenMont(micro$tc,micro$pk,micro$ea,canabs,micro$gHa,gBs,gCa,micro$T0,micro$estl,
-              micro$tdew,surfwet,micro$Test)
-  # Calculate temperature and vapour pressure above canopy, setting height to canopy top of reghgt < hgt
-  z<-micro$vha
-  sel<-which(reqhgt>=z) # above canopy
-  z[sel]<-reqhgt
-  Tzv<-.TVabove(TH,micro,z,surfwet)
-  micro$Tz<-Tzv$Tz
-  ez<-Tzv$ez
-  # Computes below canopy temperatures
-  # NB Automatically replaces with above canopy if needed
-  Tzb<-.LangrangianSimT(reqhgt,micro,TH)
-  micro$Tz<-Tzb$To
-  # Compute leaf temperature
-  micro<-.leaftemp(micro,gs,reqhgt,TH$tcan,Tzb$leafabs)
-  # Compute relative humidity
-  rh<-.LangrangianSimV(reqhgt,micro,ez,surfwet)
+  TH<-with(micro,PenMont(tc,pk,ea,canabs,gHa,gV,estl,tdew,surfwet,G))
+  # Temperature and vapour above canopy
+  # Set z to canopy height if reqhgt < canopy height
+  z<-micro$vha*0+reqhgt
+  sel<-which(micro$vha>z)
+  z[sel]<-micro$vha[sel]
+  micro<-.TVabove(TH,micro,z,surfwet)
+  # Leaf temperature
+  Thl<-.leafbalance(micro,TH,surfwet)
+  micro$tleaf<-Thl$T0
+  # Temperature below canopy
+  Flux<-TH$H*(1-exp(-micro$pai))
+  Fluxz<-Thl$H
+  mu<-29.3*43
+  SH<-micro$Tz*mu
+  SG<-micro$T0*mu
+  Tzb<-.Langapprox(micro,reqhgt,Flux,Fluxz,SH,SG)/mu
+  selb<-which(reqhgt<micro$vha)
+  micro$Tz[selb]<-Tzb[selb]
+  # Set limits
+  tmx<-with(micro,pmax(tleaf,tc,T0,TH$T0))
+  tmn<-with(micro,pmin(tleaf,tc,T0,TH$T0))
+  Tz<-pmin(micro$Tz,tmx)
+  Tz<-pmax(Tz,tmn)
+  # Humidity below canopy
+  Flux<-TH$L*(1-exp(-micro$pai))
+  Fluxz<-Thl$L
+  mu<-44525.68*43/micro$pk
+  SH<-micro$ez*mu
+  SG<-micro$T0*gwet*mu
+  estb<-.Langapprox(micro,reqhgt,Flux,Fluxz,SH,SG)/mu
+  micro$ez[selb]<-estb[selb]
+  rh<-(micro$ez/.satvap(micro$Tz))*100
+  rh[rh>100]<-100
   # Return values needed
-  micro<-list(Tz=micro$Tz,tleaf=micro$tleaf,T0=micro$T0,soilm=micro$theta,relhum=rh,windspeed=micro$uz,
-              Rdirdown=micro$Rbdown,Rdifdown=micro$Rddown,Rlwdown=Tzb$Rldown,
-              Rswup=micro$Rdup,Rlwup=Tzb$Rlwup)
+  micro<-list(Tz=Tz,tleaf=micro$tleaf,T0=micro$T0,soilm=micro$soild,relhum=rh,windspeed=micro$uz,
+              Rdirdown=micro$Rbdown,Rdifdown=micro$Rddown,Rlwdown=Thl$lwdn,
+              Rswup=micro$Rdup,Rlwup=Thl$lwup)
   class(micro)<-"microout"
   return(micro)
 }
@@ -1049,9 +554,7 @@ temphumE<-function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA,
 #'
 #' @param micro object of class microin as returned by [modelin()]
 #' @param reqhgt height above ground at which model outputs are needed (m). Must be negative.
-#' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
 #' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied.
-#' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
 #' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
@@ -1064,44 +567,166 @@ temphumE<-function(micro, climdata, reqhgt = 0.05, pai_a = NA, xyf = 1, zf = NA,
 #' Calculated from dtm if not supplied, but outer cells will be NA.
 #' @param twi optional SpatRaster object of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
-#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
-#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
 #' @return `Tz` Array of air temperatures at height `reqhgt` below ground (deg C)
-#' @seealso [temphumE()] for running the above ground component of the microclimate model
+#' @seealso [temphumE()] for running the above ground component of the microclimate
+#' model and [below_dy()] for running the model in daily time increments.
 #'
 #' @import terra zoo abind
 #' @importFrom stats filter
 #' @export
-below_hr<-function(micro, reqhgt, pai_a = NA, soilinit = c(NA, NA), tfact =1.5,
-                   slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA,
-                   soilmcoefs = NA, soiltcoefs = NA) {
-  xx <- function(x,y) as.numeric(stats::filter(c(x,x),rep(1/y,y), sides = 2))
+below_hr<-function(micro, reqhgt, pai_a = NA, tfact = 1.5,
+                   slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA) {
   if (is.null(micro$T0[1])) {
-    micro<-soiltemp_hr(micro,reqhgt,pai_a,soilinit,tfact,slr,apr,hor,wsa,twi,soilmcoefs,soiltcoefs)
+    micro<-soiltemp_hr(micro,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
   }
-  hiy<-length(micro$tme)
-  Tav<-apply(micro$T0,c(1,2),mean)
-  Tan<-micro$T0-.rta(rast(Tav),hiy)
-  hr_sm<-(2*pi*abs(reqhgt)^2)/(7200*mean(micro$ka,na.rm=TRUE)) # calcaulate effective periodicity of soil fluctuations
-  hr_ps<-round((24*abs(reqhgt))/(2*pi*mean(micro$DD,na.rm=TRUE)),0)
-  if (hr_sm < hiy) {
-    Tz<-aperm(apply(Tan,c(1,2),xx,hr_sm),c(2,3,1))
-    Tz<-pmax(Tz[,,1:hiy],Tz[,,(hiy+1):dim(Tz)[3]],na.rm=T)
-    if (hr_ps > 0) Tz<-abind(Tz[,,(dim(Tz)[3]-(hr_ps-1)):dim(Tz)[3]],Tz)
-    Tz<-Tz[,,1:hiy]+.rta(rast(Tav),hiy)
-  } else Tz<-.rta(rast(Tav),hiy)
-  # Return values needed
-  return(Tz)
+  # Calculate n
+  n<- -118.35*reqhgt/mean(micro$DDp)
+  hiy<-ifelse((micro$tme$year[1]+1900)%%4==0,366*24,365*24)
+  # Test whether comple time sequence
+  tst<-as.numeric(micro$tme[25])-as.numeric(micro$tme[24])
+  if (tst > 3600) { # Not complete time sequence
+    if (n >= 24) {
+      micro$Tz<-.rta(rast(apply(micro$T0,c(1,2),mean)),dim(micro$T0)[3])
+      dTa<-micro$Tz-mean(micro$Tg,na.rm=T)
+    }
+    if (n < hiy) {
+      # Calculate daily annual wgts
+      w1<-24/n
+      w2<-n/hiy
+      wgt<-w1/(w1+w2)
+      # Temperature difference daily
+      Tdp<-.ehr(.hourtoday(micro$Tg,mean))
+      Tdg<-.ehr(.hourtoday(micro$T0,mean))
+      dTd<-Tdg-Tdp
+      micro$Tz<-wgt*dTd+(1-wgt)*dTa+micro$Tbp
+    }
+    if (n < 24) {
+      # Calculate hourly & daily wgts
+      w1<-1/n
+      w2<-n/24
+      wgt<-w1/(w1+w2)
+      # Temperature difference hourly
+      dTh<-micro$T0-micro$Tg
+      micro$Tz<-wgt*dTh+(1-wgt)*dTd+micro$Tbp
+    }
+  } else { # Complete time sequence
+    if (n < length(micro$tme)) {
+      micro$Tz<-aperm(apply(micro$T0,c(1,2),.ma,n),c(2,3,1))
+    } else {
+      micro$Tz<-.rta(rast(apply(micro$T0,c(1,2),mean)),dim(micro$T0)[3])
+    }
+  }
+  class(micro)<-"microout"
+  return(micro)
+}
+#' Calculates ground surface temperature (daily)
+#'
+#' @description The function `soiltemp_dy` estimates ground surface temperature
+#'
+#' @param micro_dy an object of class `microindaily` as returned by [modelin_dy()] (see details)
+#' @param reqhgt height above ground at which model outputs are needed (m).
+#' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied.
+#' @param tfact coefficient determining sensitivity of soil moisture to variation
+#' in topographic wetness (see [soilmdistribute()])
+#' @param slr an optional SpatRast object of slope values (Radians). Calculated from
+#' dtm if not supplied, but outer cells will be NA.
+#' @param apr an optional SpatRast object of aspect values (Radians). Calculated from
+#' dtm if not supplied, but outer cells will be NA.
+#' @param hor an optional array of the tangent of the angle to the horizon in
+#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
+#' @param wsa an optional array of wind shelter coefficients in 8 directions.
+#' Calculated from dtm if not supplied, but outer cells will be NA.
+#' @param twi optional SpatRast object of topographic wetness index values.
+#' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' @return an object of class microdaily with the following components added:
+#' @return `T0` ground surface temperature (deg C)
+#' @return `G` ground heat flux (W/m^2)
+#' @return additional terms needed for subsequent modelling.
+#' @import terra
+#' @export
+#' @seealso [wind()], [soiltemp_hr()]
+#' @details if [wind()] has not been run to add additional elements to `micro`
+#' it is automatically called.
+soiltemp_dy  <- function(micro_dy, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA,
+                         apr = NA, hor = NA, wsa = NA, twi = NA) {
+  # run two-stream and wind functions if not run
+  micro_mn<-micro_dy$micro_mn
+  micro_mx<-micro_dy$micro_mx
+  if (micro_mn$progress<3) {
+    micro_mn<-wind(micro_mn,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+    micro_mx<-wind(micro_mx,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+  }
+  # Estimate diurnal range in grid ground surface temperature with G set to zero
+  radabs_mn<-micro_mn$radGsw+micro_mn$radGlw  # Absorbed radiation (min)
+  radabs_mx<-micro_mx$radGsw+micro_mx$radGlw  # Absorbed radiation (max)
+  # * Calculate soil relative humidity
+  n<-dim(radabs_mn)[3]
+  surfwet_mn<-with(micro_mn,.soilrh(soild,.rta(soilb,n),.rta(psi_e,n),.rta(Smax,n),tc))
+  surfwet_mx<-with(micro_mx,.soilrh(soild,.rta(soilb,n),.rta(psi_e,n),.rta(Smax,n),tc))
+  # * Calculate soil surface temperature
+  T0_mn<-with(micro_mn,PenMont(tc,pk,ea,radabs_mn,gHa,gHa,estl,tdew,surfwet_mn,G=0))
+  T0_mx<-with(micro_mx,PenMont(tc,pk,ea,radabs_mx,gHa,gHa,estl,tdew,surfwet_mx,G=0))
+  # * Calculate diurnal range
+  dtr<-T0_mx$T0-T0_mn$T0
+  # * Estimate point surface temperature with G set to zero
+  dtp<-micro_mx$T0p-micro_mn$T0p
+  # * Calculate ratio of diurnal temperature fluxes
+  dtR<-dtr/dtp
+  # Thermal conductance and damping depth (grid)
+  kDDg_mn<-with(micro_mn,.soilcond(.rta(rho,n),.rta(Vm,n),.rta(Vq,n),.rta(Mc,n),soild))
+  kDDg_mx<-with(micro_mx,.soilcond(.rta(rho,n),.rta(Vm,n),.rta(Vq,n),.rta(Mc,n),soild))
+  kDDp_mn<-with(micro_mn$groundp_p,.soilcond(rho,Vm,Vq,Mc,micro_mn$soilm))
+  kDDp_mx<-with(micro_mx$groundp_p,.soilcond(rho,Vm,Vq,Mc,micro_mx$soilm))
+  # Calculate Gmu
+  Gmu_mn<-dtR*(kDDg_mn$k*kDDp_mn$DD)/(kDDp_mn$k*kDDg_mn$DD)
+  Gmu_mx<-dtR*(kDDg_mx$k*kDDp_mx$DD)/(kDDp_mx$k*kDDg_mx$DD)
+  # Compute ground heat flux
+  G_mn<-micro_mn$Gp*Gmu_mn
+  G_mx<-micro_mx$Gp*Gmu_mx
+  # Set limits to G:
+  # Calculate daily Rnet cycle
+  Rnet_mn<-radabs_mn-T0_mn$Rem
+  Rnet_mx<-radabs_mx-T0_mx$Rem
+  Rd<-pmax(Rnet_mx,-Rnet_mn)
+  G_mn<-pmin(G_mn,0.6*Rd)
+  G_mx<-pmin(G_mx,0.6*Rd)
+  micro_mn$G<-pmax(G_mn,-0.6*Rd)
+  micro_mx$G<-pmax(G_mx,-0.6*Rd)
+  # Calculate soil surface temperature
+  micro_mn$T0<-with(micro_mn,PenMont(tc,pk,ea,radabs_mn,gHa,gHa,estl,tdew,surfwet_mn,G,allout=FALSE))$T0
+  micro_mx$T0<-with(micro_mx,PenMont(tc,pk,ea,radabs_mx,gHa,gHa,estl,tdew,surfwet_mx,G,allout=FALSE))$T0
+  micro_mn$DDg<-kDDg_mn$DD
+  micro_mx$DDg<-kDDg_mx$DD
+  micro_mn$DDp<-kDDp_mn$DD
+  micro_mx$DDp<-kDDp_mx$DD
+  micro_mn$progress<-4
+  micro_mx$progress<-4
+  # Clean micromin
+  micro_mn$rho<-NULL
+  micro_mn$Vm<-NULL
+  micro_mn$Vq<-NULL
+  micro_mn$Mc<-NULL
+  micro_mn$soilb<-NULL
+  micro_mn$psi_e<-NULL
+  # Clean micromax
+  micro_mx$rho<-NULL
+  micro_mx$Vm<-NULL
+  micro_mx$Vq<-NULL
+  micro_mx$Mc<-NULL
+  micro_mx$soilb<-NULL
+  micro_mx$psi_e<-NULL
+  micro_dy$micro_mn<-micro_mn
+  micro_dy$micro_mx<-micro_mx
+  return(micro_dy)
 }
 #' Estimate temperature below ground (daily)
 #'
 #' @description The function `below_dy` runs the below ground component of
-#' the microclimate model in daily time increments.
+#' the microclimate model at hourly time increments.
 #'
-#' @param microd object of class microin as returned by [modelin()]
+#' @param micro object of class microin as returned by [modelin()]
 #' @param reqhgt height above ground at which model outputs are needed (m). Must be negative.
-#' @param expand optional logical indicating whethet to expand daily values to hourly
-#' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
+#' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied.
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
 #' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
@@ -1112,66 +737,100 @@ below_hr<-function(micro, reqhgt, pai_a = NA, soilinit = c(NA, NA), tfact =1.5,
 #' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
 #' @param wsa an optional array of wind shelter coefficients in 8 directions.
 #' Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param twi optional SpatRast object of topographic wetness index values.
+#' @param twi optional SpatRaster object of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
-#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
-#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
 #' @return `Tz` Array of air temperatures at height `reqhgt` below ground (deg C)
-#' @seealso [below_hr()] for running the below ground component of the microclimate model in hourly timesteps
+#' @seealso [temphumE()] for running the above ground component of the microclimate
+#' model and [below_hr()] for running the model in hourly time increments.
 #'
 #' @import terra zoo abind
 #' @importFrom stats filter
 #' @export
-below_dy<-function(microd, reqhgt, expand = TRUE, pai_a = NA, soilinit = c(NA, NA), tfact = 1.5,
-                   slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA,
-                   soilmcoefs = NA, soiltcoefs = NA) {
-  xx <- function(x,y) as.numeric(stats::filter(c(x,x),rep(1/y,y), sides = 2))
-  micro_mn<-microd$micro_mn
-  if (micro_mn$progress<5) {
-    microd<-soiltemp_dy(microd,reqhgt,pai_a,soilinit,tfact,slr,apr,hor,wsa,twi,soilmcoefs,soiltcoefs)
-    micro_mn<-microd$micro_mn
+below_dy<-function(micro_dy, reqhgt, pai_a = NA, tfact = 1.5,
+                   slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA) {
+
+  if (is.null(micro_dy$micro_mn$T0[1])) {
+    micro_dy<-soiltemp_dy(micro_dy,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
   }
-  micro_mx<-microd$micro_mx
-  # (1) Calculate average temperature grid
-  T0d<-(micro_mn$T0+micro_mx$T0)/2
-  Tav<-apply(T0d,c(1,2),mean)
-  #(2) Calculate periodicity and phase shift
-  l<-dim(T0d)[3]
-  Tan<-T0d-.rta(rast(Tav),l)
-  day_sm<-(2*pi*abs(reqhgt)^2)/(7200*24*mean(micro_mn$ka,na.rm=TRUE)) # calcaulate effective periodicity of soil fluctuations
-  day_ps<-round(abs(reqhgt)/(2*pi*mean(micro_mn$DD,na.rm=TRUE)),0)
-  # (3) Apply periodicity and phase shift
-  if (day_sm < l) {
-    if (day_sm > 1) {
-      Tzd<-aperm(apply(Tan,c(1,2),xx,day_sm),c(2,3,1))
-      Tzd<-pmax(Tzd[,,1:l],Tzd[,,(l+1):dim(Tzd)[3]],na.rm=T)
-      x1<-(dim(Tzd)[3]-(day_ps-1))
-      x2<-dim(Tzd)[3]
-      if (day_ps > 0) Tzd<-abind(Tzd[,,(dim(Tzd)[3]-(day_ps-1)):dim(Tzd)[3]],Tzd)
-      Tzd<-Tzd[,,1:l]+.rta(rast(Tav),l)
-    } else {
-      if (day_ps > 0) {
-        Tzd<-abind(T0d[,,(dim(T0d)[3]-(day_ps-1)):dim(T0d)[3]],T0d)
-        Tzd<-Tzd[,,1:l]
-      } else Tzd<-T0d
-    }
-  } else Tzd<-.rta(rast(Tav),l)
-  if (expand) {
-    # (4) Calculate wgts
-    d<-dim(Tzd)[3]
-    r<-rast(Tzd[,,1])
-    wg2<-rep(c(0:23)/23,d+1)
-    wg1<-1-wg2
-    # (5) Apply weights
-    Tzd1<-.ehr(abind(Tzd[,,1],Tzd))
-    Tzd2<-.ehr(abind(Tzd,Tzd[,,d]))
-    Tzh<-.vta(wg1,r)*Tzd1+.vta(wg2,r)*Tzd2
-    Tz<-Tzh[,,13:((d+1)*24-12)]
-  } else {
-    Tz<-Tzd
+  micro_mn<-micro_dy$micro_mn
+  micro_mx<-micro_dy$micro_mx
+  # Calculate n
+  DDp<-(micro_mn$DDp+micro_mx$DDp)/2
+  n<- -118.35*reqhgt/mean(DDp)
+  hiy<-ifelse((micro_mn$tme$year[1]+1900)%%4==0,366*24,365*24)
+  if (n >= 24) {
+    T0<-(micro_mn$T0+micro_mx$T0)/2
+    T0<-rast(apply((micro_mn$T0+micro_mx$T0)/2,c(1,2),mean))
+    micro_mn$Tz<-.rta(T0,dim(micro_mn$T0)[3])
+    micro_mx$Tz<-micro_mn$Tz
+    Tg<-(micro_mn$Tg+micro_mx$Tg)/2
+    dTa<-micro_mn$Tz-mean(Tg,na.rm=T)
   }
-  return(Tz)
+  if (n < hiy) {
+    # Calculate daily annual wgts
+    w1<-24/n
+    w2<-n/hiy
+    wgt<-w1/(w1+w2)
+    # Temperature difference daily
+    Tdp<-(micro_mn$Tg+micro_mx$Tg)/2
+    Tdg<-(micro_mn$T0+micro_mx$T0)/2
+    dTd<-Tdg-Tdp
+    micro_mn$Tz<-wgt*dTd+(1-wgt)*dTa+micro_mn$Tbp
+    micro_mx$Tz<-wgt*dTd+(1-wgt)*dTa+micro_mx$Tbp
+  }
+  if (n < 24) {
+    # Calculate hourly & daily wgts
+    w1<-1/n
+    w2<-n/24
+    wgt<-w1/(w1+w2)
+    # Temperature difference hourly
+    dTh_mn<-micro_mn$T0-micro_mn$Tg
+    dTh_mx<-micro_mx$T0-micro_mx$Tg
+    micro_mn$Tz<-wgt*dTh_mn+(1-wgt)*dTd+micro_mn$Tbp
+    micro_mx$Tz<-wgt*dTh_mx+(1-wgt)*dTd+micro_mx$Tbp
+  }
+  micro_dy$micro_mn<-micro_mn
+  micro_dy$micro_mx<-micro_mx
+  class(micro_dy)<-"microoutdaily"
+  return(micro_dy)
 }
+#' Estimate foliage density and plant area index above z
+#'
+#' @description The function `foliageden` applies a mirrored gamma distribution
+#' to estimate, for a given height `z` below canopy, the foliage density at
+#' height z and the plant area index above `z`
+#'
+#' @param z height above ground (m)
+#' @param hgt the height of the canopy (m)
+#' @param pai total plant area index of canopy
+#' @param shape optional shape parameter for gamma distribution (see details)
+#' @param rate optional rate parameter for gamm distribution (see details)
+#' @return a list with the following components:
+#' @return `leafden` the foliage density (one sided leaf area per m^3) at height z
+#' @return `paia` the plant area index above `z`
+#' @details a broadly realistic estimate of foliage density is generated
+#' using a mirrored gamma distribution (i.e. right (top) rather than left-skewed).
+#' in applying the gamma distribution `z / hgt` is re-scaled to the range 0-10.
+#' @importFrom stats dgamma pgamma
+#' @export
+#' @return a list of leaf densities and plant area index values
+#'
+#' @examples
+#' z<-c(1:1000)/100
+#' fdp<-foliageden(z,10,10)
+#' plot(z~fdp$leafden, xlab = "Foliage density")
+#' plot(z~fdp$pai_a, xlab = "PAI above z")
+foliageden<-function(z,hgt,pai,shape=1.5,rate=shape/7) {
+  # reverse and rescale z
+  x<-((hgt-z)/hgt)*10
+  # totAL DENS
+  td<-pgamma(10,shape,rate) # total density
+  rfd<-dgamma(x,shape,rate)/td # relative foliage density
+  tdf<-(pai/hgt)*rfd*10 # total foliage density
+  paia<-pgamma(x,shape,rate)*(pai/td) # pai above
+  return(list(leafden=tdf,pai_a=paia))
+}
+
 #' Create an object of type `soilcharac`
 #' @description The function `soilcfromtype` creates an object of class `soilcharac`
 #' from a SpatRaster object of soil types and specified ground reflectance
@@ -1193,4 +852,163 @@ soilcfromtype <- function(soiltype, groundr = 0.15) {
   soilc<-list(soiltype=soiltype,groundr=groundr)
   class(soilc) <- "soilcharac"
   return(soilc)
+}
+#' Writes model output as ncdf4 file
+#'
+#' @description The function `writetonc` writes hourly model outputs as an ncdf4 file to a specified file
+#'
+#' @param mout an object of class microut as returned by runmicro_hr or runmicro_dy with expand = TRUE
+#' @param fileout output filename
+#' @param dtm a SpatRast covering the extent of the model outputs
+#' @param reqhgt at at which model was run (m)
+#' @import ncdf4 terra
+#' @export
+writetonc <- function(mout, fileout, dtm, reqhgt) {
+  atonc<-function(a,rd) {
+    a<-apply(a,c(2,3),rev)
+    a<-aperm(a,c(2,1,3))
+    a <- round(a*rd,0)
+    a <-array(as.integer(a),dim=dim(a))
+    a
+  }
+  # Create eastings and nothings sequence
+  if (class(dtm)[1] == "PackedSpatRaster") dtm<-rast(dtm)
+  est<-seq(ext(dtm)$xmin+res(dtm)[1]/2,ext(dtm)$xmax-res(dtm)[1]/2,res(dtm)[1])
+  nth<-seq(ext(dtm)$ymin+res(dtm)[2]/2,ext(dtm)$ymax-res(dtm)[2]/2,res(dtm)[2])
+  east<-ncdim_def(name="east",units="metres",vals=est,longname="Eastings")
+  north<-ncdim_def(name="north",units="metres",vals=nth,longname="Northings")
+  # Create time variable
+  tme<-as.POSIXct(mout$tme)
+  times<-ncdim_def(name="Time",units="Decimal hours since 1970-01-01 00:00",vals=as.numeric(tme)/3600)
+  # Variable names
+  if (reqhgt > 0) {
+    tname<-paste0("Air temperature at height ",reqhgt," m")
+    lname<-paste0("Leaf temperature at height ",reqhgt," m")
+    rname<-paste0("Relative humidity at height ",reqhgt," m")
+    wname<-paste0("Wind speed at height ",reqhgt," m")
+    # Define variables
+    airtemp<-ncvar_def(name="Tz",longname=tname,units="deg C x 100",dim=list(east,north,times),
+                       missval=-9999,compression=9,prec="integer")
+    leaftemp<-ncvar_def(name="tleaf",longname=lname,units="deg C x 100",dim=list(east,north,times),
+                        missval=-9999,compression=9,prec="integer")
+    relhum<-ncvar_def(name="relhum",longname=rname,units="Percentage",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    windspeed<-ncvar_def(name="uz",longname=wname,units="m/s x 100",dim=list(east,north,times),
+                         missval=-9999,compression=9,prec="integer")
+    raddir<-ncvar_def(name="Rdirdown",longname="Downward direct shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    raddif<-ncvar_def(name="Rdifdown",longname="Downward diffuse shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    radlw<-ncvar_def(name="Rlwdown",longname="Downward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                     missval=-9999,compression=9,prec="integer")
+    radusw<-ncvar_def(name="Rswup",longname="Upward shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    radulw<-ncvar_def(name="Rlwup",longname="Upward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    # Create nc file
+    nc.name<-fileout
+    ncnew<-nc_create(filename=nc.name,list(airtemp,leaftemp,relhum,windspeed,raddir,raddif,radlw,radusw,radulw))
+    # Put variables in
+    ncvar_put(ncnew,airtemp,vals=atonc(mout$Tz,100))
+    ncvar_put(ncnew,leaftemp,vals=atonc(mout$tleaf,100))
+    ncvar_put(ncnew,relhum,vals=atonc(mout$relhum,1))
+    ncvar_put(ncnew,windspeed,vals=atonc(mout$windspeed,100))
+    ncvar_put(ncnew,raddir,vals=atonc(mout$Rdirdown,1))
+    ncvar_put(ncnew,raddif,vals=atonc(mout$Rdifdown,1))
+    ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))
+    ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))
+    ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))
+    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    nc_close(ncnew)
+  }
+  if (reqhgt == 0) {
+    soiltemp<-ncvar_def(name="Tz",longname="Soil surface temperature",units="deg C x 100",dim=list(east,north,times),
+                        missval=-9999,compression=9,prec="integer")
+    soilmoist<-ncvar_def(name="soilm",longname="Soil surface moisture",units="Percentage volume",dim=list(east,north,times),
+                         missval=-9999,compression=9,prec="integer")
+    raddir<-ncvar_def(name="Rdirdown",longname="Downward direct shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    raddif<-ncvar_def(name="Rdifdown",longname="Downward diffuse shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    radlw<-ncvar_def(name="Rlwdown",longname="Downward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                     missval=-9999,compression=9,prec="integer")
+    radusw<-ncvar_def(name="Rswup",longname="Upward shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    radulw<-ncvar_def(name="Rlwup",longname="Upward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    # Create nc file
+    nc.name<-fileout
+    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist))
+    # Put variables in
+    ncvar_put(ncnew,soiltemp,vals=atonc(mout$T0,100))
+    ncvar_put(ncnew,soilmoist,vals=atonc(mout$soilm,100))
+    ncvar_put(ncnew,raddir,vals=atonc(mout$Rdirdown,1))
+    ncvar_put(ncnew,raddif,vals=atonc(mout$Rdifdown,1))
+    ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))
+    ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))
+    ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))
+    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    nc_close(ncnew)
+  }
+  if (reqhgt < 0) {
+    tname<-paste0("Soil temperature at depth ",abs(reqhgt)," m")
+    soiltemp<-ncvar_def(name="Tz",longname=tname,units="deg C x 100",dim=list(east,north,times),
+                        missval=-9999,compression=9,prec="integer")
+    soilmoist<-ncvar_def(name="soilm",longname="Soil surface moisture",units="Percentage volume",dim=list(east,north,times),
+                         missval=-9999,compression=9,prec="integer")
+    nc.name<-fileout
+    ncnew<-nc_create(filename=nc.name,list(soiltemp))
+    # Put variables in
+    ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))
+    ncvar_put(ncnew,soilmoist,vals=atonc(mout$soilm,100))
+    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    nc_close(ncnew)
+  }
+}
+
+
+#' expand runmicro_big daily output to hourly and write as ncdf4 file
+#'
+#' @description the function `expandtonc` takes the daily output written by [runmicro_big()]
+#' when hourly = F, expands this to hourly, and writes data out as an ncdf4 file.
+#'
+#' @param filein file to be loaded as written out by [runmicro_big()]
+#' @param file to be written out. Must have .nc extension.
+#' @import ncdf4 terra
+#' @export
+expandtonc <- function(filein, fileout) {
+  mout<-readRDS(filein)
+  dtm<-mout$dtm; mout$dtm<-NULL
+  weather<-mout$weather; mout$weather<-NULL
+  reqhgt<-mout$reqhgt; mout$reqhgt<-NULL
+  merid<-mout$merid; mout$merid<-NULL
+  dst<-mout$dst; mout$dst<-NULL
+  mout_mn<-mout$mout_mn
+  mout_mx<-mout$mout_mx
+  mout_mn$Tz<-mout_mn$Tz/100
+  mout_mx$Tz<-mout_mx$Tz/100
+  mout_mn$tleaf<-mout_mn$tleaf/100
+  mout_mx$tleaf<-mout_mx$tleaf/100
+  mout_mn$windspeed<-mout_mn$windspeed/100
+  mout_mx$windspeed<-mout_mx$windspeed/100
+  cat("Expanding data to hourly \n")
+  if (reqhgt > 0) {
+    mout<-.expandclim2(mout_mn,mout_mx,weather)
+    class(mout)<-"microout"
+  }
+  if (reqhgt == 0) {
+    climd<-.climtodaily(weather)
+    Tz<-.expandtohour(mout_mn$Tz,mout_mx$Tz,climd$smn,climd$smx,weather$temp)
+    mout<-list(Tz=Tz,tleaf=NA,soilm=.ehr(mout_mn$theta),
+               relhum=NA,windspeed=NA,raddir=NA,raddif=NA,radlw=NA)
+    class(mout)<-"microout"
+  }
+  if (reqhgt < 0) {
+    climd<-.climtodaily(weather)
+    T0<-.expandtohour(mout_mn$T0,mout_mx$T0,climd$smn,climd$smx,climdata$temp)
+    mout<-list(Tz=Tz,tleaf=NA,relhum=NA,windspeed=NA,raddir=NA,raddif=NA,radlw=NA)
+    class(mout)<-"microout"
+  }
+  cat("Writing data as ncdf4 file \n")
+  writetonc(mout, fileout, dtm, weather, reqhgt, merid = 0, dst = 0)
 }

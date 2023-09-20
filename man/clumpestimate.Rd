@@ -23,5 +23,5 @@ The function `clumpestimate` estimates how clumpy a canopy is based on height an
 plant area index
 }
 \details{
-`hgt`, `pai` and `leafd` must all be sinle numeric values or arrays with identical dimensions
+`hgt`, `pai` and `leafd` must all be single numeric values or arrays with identical dimensions
 }

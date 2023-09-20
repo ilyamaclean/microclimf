@@ -4,7 +4,16 @@
 \alias{twostream}
 \title{Applies two-stream radiation model}
 \usage{
-twostream(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = NA)
+twostream(
+  micro,
+  reqhgt = 0.05,
+  pai_a = NA,
+  slr = NA,
+  apr = NA,
+  hor = NA,
+  tfact = 1.5,
+  twi = NA
+)
 }
 \arguments{
 \item{micro}{an object of class `micro` as returned by [modelin()]}

@@ -4,7 +4,7 @@
 \alias{.layercond}
 \title{Calculates bulk surface stomatal conductivity}
 \usage{
-.layercond(Rsw, gsmax, q50 = 100)
+.layercond(Rsw, gsmax, q50 = 300)
 }
 \description{
 Calculates bulk surface stomatal conductivity

@@ -2,7 +2,7 @@
 % Please edit documentation in R/componentfunctions.R
 \name{PenMont}
 \alias{PenMont}
-\title{Calculates Latent heat exchange}
+\title{Applies Penman-Monteith equation}
 \usage{
 PenMont(
   tc,
@@ -10,13 +10,11 @@ PenMont(
   ea,
   radabs,
   gHa,
-  gs,
-  gCa = 0,
-  T0 = NA,
+  gV,
   es = NA,
   tdew = NA,
   surfwet = 1,
-  T_est = NA,
+  G = 0,
   allout = TRUE
 )
 }
@@ -31,51 +29,36 @@ PenMont(
 
 \item{gHa}{boundary layer conductances for heat (mol/m^2/s)}
 
-\item{gs}{stomatal conductance (mol/m^2/s)}
+\item{gV}{conductance for vapour (mol/m^2/s)}
 
-\item{gCa}{conductance form ground surface to heat exchange surface (mol/m^2/s)}
+\item{es}{optional saturated vapour pressure (kPa) at temperature tc (calculated if NA)}
 
-\item{T0}{optional ground temperature input (W/m2)}
+\item{tdew}{optional dewpoint temperature (deg C) (calculated if NA, see details)}
 
-\item{es}{saturated vapour pressure (kPa) at temperature tc (calculated if NA)}
+\item{surfwet}{proportion of surface acting as wet surface}
 
-\item{tdew}{dewpoint temperature (deg C) (calculated if NA, see details)}
-
-\item{surfwet}{proportion of leaf or canopy acting as wet surface}
-
-\item{T_est}{optional initial estimate of canopy heat exchange surface temperature.
-Reduces error in linearisation when applying Penman-Monteith equation.}
+\item{G}{optional ground heat flux (W/m^2)}
 
 \item{allout}{optional logical indicating whether to return Latent, Sensible and
-Ground heat flux in addition to canopy temperature}
+Emitted radiation flux in addition to surface temperature}
 }
 \value{
 a list with the following components:
 
-`tcan` the leaf or effective canopy temperature (deg C)
+`T0` surface temperature (deg C)
 
-`H` the sensible heat flux (w/m^2)
+`H` the sensible heat flux (w/m^2) (NA if allout set to FALSE)
 
-`HR` hte fractional of net radiation that is sensible heat
+`L` the latent heat flux (w/m^2) (NA if allout set to FALSE)
 
-Optionally `L` The latent heat flux (W/m^2)
-
-Optionally `G` The ground heat flux (W/m^2)
+`Rem` the emitted radiation flux (w/m^2) (NA if allout set to FALSE)
 }
 \description{
 The function `PenMont` applies a varient of the Penman-Monteith
-equation, to calculate latent heat and canopy heat exchange surface
-temperature
+equation, to calculate surface temperature and the energy fluxes at the surface
 }
 \details{
-`Latent` can be used to calaculate either the latent heat of
-evapotranspiration from individual leaves or bulk surface latent heat of
-evapotranspiration from the canopy as a whole depending on how `gHa` and `gs`
-are defined. If for the canopy as a whole, heat storage `G` should also be
-considered and `L` is the Latent heat per unit leaf area and should thus be
-multiplied by the total leaf area per unit ground area to derive a total. If
-for a leaf in isolation, set g0 to zero and T0 to an arbitrary value. The
-paramater `surfwet` determines how much of the canopy should be treated as
+The paramater `surfwet` determines how much of the canopy should be treated as
 wet surface. However, except when extremely droughted, the matric potential of
-leaves is such that `surfwet` ~ 1.
+of soil leaves is such that `surfwet` ~ 1.
 }

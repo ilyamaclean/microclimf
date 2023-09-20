@@ -2,10 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.flowdir}
 \alias{.flowdir}
-\title{Caclulates flow direction}
+\title{Calculates flow direction}
 \usage{
 .flowdir(md)
 }
 \description{
-Caclulates flow direction
+Calculates flow direction
 }

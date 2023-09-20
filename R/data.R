@@ -55,6 +55,40 @@
 #'
 #' @format A PackedSpatRaster object with 50 rows and 50 columns
 "habitats"
+#' Output of point microclimate model
+#'
+#' An object of class `micropoint` with outputs of a point microclimate model
+#' run for Caerthillean Cove (latitude 49.96807N, longitude 5.215668) as returned
+#' by [runpointmodel()]
+#'
+#' @format a list of the following:
+#' \describe{
+#'   \item{weather}{a data.frame of hourly weather (same as `climdata`)}
+#'   \item{precip}{a vector of daily precipitation values in mm (same as 'rainfall`)}
+#'   \item{microp}{a list of the following:
+#'   (1) Tc - a vector of canopy heat exchange surface temperatures (deg C),
+#'   (2) Tg - a vector of ground surface temperatures (deg C),
+#'   (3) H - a vector of sensible heat fluxes (W/m^2),
+#'   (4) G - a vector of ground heat fluxes (W/m^2),
+#'   (5) psih - a vector of diabatic correction factors for heat,
+#'   (6) psim - a vector of diabatic correction factors for momentum,
+#'   (7) phih - a vector of diabatic influencing factors for heat,
+#'   (8) OL - a vector of Obukhov lengths,
+#'   (9) uf - A vector of wind friction velocities (m/s),
+#'   (10) RabsG - a vector of ground absorbed radiation fluxes
+#'   (11) error.mar-  error margin of model (deg C)}
+#'   \item{soilm}{a vector of soil moistures in the top 10 cm of the soil}
+#'   \item{vegp}{a list of vegetation paremeters used by the point model}
+#'   \item{groundp}{a list of ground paremeters used by the point model}
+#'   \item{soiltype}{soil type assumed when running the point model}
+#'   \item{lat}{latitude of location for which model was run (decimal degrees)}
+#'   \item{long}{longitude of location for which model was run (decimal degrees)}
+#'   \item{zref}{Height (m) of temperature and wind speed values in `weather`)}
+#'   \item{tstep}{time-step of model output (hour)}
+#'   \item{Tbz}{temperature below ground, here set to NA as model run above ground}
+#' }
+"micropoint"
+#'
 #' Daily rainfall
 #'
 #' A vector of daily rainfall for 169500, 12500 (x, y) using the Ordance Survey GB Grid Reference system (CRS: 27700).
@@ -90,14 +124,6 @@
 #'   \item{Vo}{Volumetric organic content of soil}
 #'   \item{Mc}{Mass fraction of clay}
 #'   \item{rho}{Soil bulk density (Mg / m^3)}
-#'   \item{int}{temperature model intercept}
-#'   \item{t1}{temperature model radiation coefficient}
-#'   \item{t2}{temperature model soil moisture coefficient}
-#'   \item{t3}{temperature model wind coefficient}
-#'   \item{t4}{temperature model soil moisture * radiation interaction coefficient}
-#'   \item{t5}{temperature model soil moisture * wind interaction coefficient}
-#'   \item{t6}{temperature model radiation * wind interaction coefficient}
-#'   \item{t7}{temperature model three-way interaction coefficient}
 #'   \item{mult}{soil moisture model radiation coefficient}
 #'   \item{rmu}{soil moisture model rainfall coefficient}
 #'   \item{a}{soil moisture model deeper layer multiplier coefficient}

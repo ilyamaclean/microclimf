@@ -4,7 +4,7 @@
 \alias{.expandclim}
 \title{Expand daily climate variables to hourly (all)}
 \usage{
-.expandclim(mout_mn, mout_mx, climdata)
+.expandclim(mout_mn, mout_mx, micropoint, reqhgt)
 }
 \description{
 Expand daily climate variables to hourly (all)

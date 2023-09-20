@@ -4,7 +4,7 @@
 \alias{.lapserate}
 \title{Lape rates}
 \usage{
-.lapserate(tc, rh, pk)
+.lapserate(tc, ea, pk)
 }
 \description{
 Lape rates

@@ -8,21 +8,13 @@ runmicro_hr(
   micro,
   reqhgt,
   pai_a = NA,
-  xyf = 1,
-  zf = NA,
-  soilinit = c(NA, NA),
   tfact = 1.5,
-  surfwet = 0.75,
   slr = NA,
   apr = NA,
   hor = NA,
   wsa = NA,
   twi = NA,
-  soilmcoefs = NA,
-  soiltcoefs = NA,
-  backweight = 2,
-  maxiter = 100,
-  gmn = 0.3
+  surfwet = NA
 )
 }
 \arguments{
@@ -32,17 +24,8 @@ runmicro_hr(
 
 \item{pai_a}{an optional array of plant area index values above `reqhgt` (see details)}
 
-\item{xyf}{optional input for called function [wind()]}
-
-\item{zf}{optional input for called function [wind()]}
-
-\item{soilinit}{initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])}
-
 \item{tfact}{coefficient determining sensitivity of soil moisture to variation
 in topographic wetness (see [soilmdistribute()])}
-
-\item{surfwet}{an optional single numeric value of array of values specifying the proportion
-of the canopy surface that should be treated as wet surface (see details)}
 
 \item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
@@ -59,22 +42,10 @@ Calculated from dtm if not supplied, but outer cells will be NA.}
 \item{twi}{optional SpatRaster object of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
 
-\item{soilmcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilm()]}
-
-\item{soiltcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilt()]}
-
-\item{backweight}{an optional parameter used for iteratively deriving diabatic
-coefficients. See [wind()])}
-
-\item{maxiter}{an optional number of iterations used to derive diabatic
-coefficients by running a point microclimate model until stable results are
-obtained (default 100). See [wind()])}
-
-\item{gmn}{optional minimum convective conductance value (mol/m^2/s). See [wind()])}
+\item{surfwet}{an optional single numeric value of array of values specifying the proportion
+of the canopy surface that should be treated as wet surface (see details)}
 }
 \value{
-an object of class microout with the following components:
-
 `Tz` Array of air temperatures at height `reqhgt` (deg C). Identical to `T0`
 if `reqhgt` = 0.
 
@@ -111,36 +82,33 @@ time increments
 \details{
 `pai_a` is used to calculate the radiation intercepted by leaves at `reqhgt` if
 below canopy. If not supplied it is calculated from total plant area index by
-assuming a realistic shape to the vertical profile foliage within the canopy. Wind speed and
-radiation values are only returned when `reqhgt > 0`. To derive radiation values when
-`reqhgt = 0`, set `pai_a` to `micro$pai`. If supplied, `pai_a` must have the
-same dimensions as micro$pai. I.e. with the same x and y dims as the the
-supplied dtm and values for each hour as the z dimension. The parameter `surfwet`
+assuming a realistic shape to the vertical profile foliage within the canopy. If supplied,
+`pai_a` must have the same dimensions as micro$pai. I.e. with the same x and y
+dims as the the supplied dtm and values for each hour as the z dimension. The parameter `surfwet`
 determines how much of the canopy should be treated as wet surface when calculating
 latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
-is such that `surfwet` ~ 1.
+is such that `surfwet` ~ 1. If set to NA, surfess wetness is modelled.
 }
 \examples{
 library(terra)
 library(zoo)
 library(abind)
-# Create model input with inbuilt datasets
-micro<-modelin(climdata,rainfall,vegp,soilc,dtmcaerth)
-# Run model 5 cm above ground (takes ~ 3 mins to run on 50 x 50 x 8760 values)
-mout<-runmicro_hr(micro, 0.05)
+# ** First run point model (NB not run as uses inbuilt dataset)
+# micropoint<-runpointmodel(climdata,rainfall,vegp,soilc,reqhgt = 0.05)
+# ** Subset inbuilt point model to get hottest days in each month
+micropoint_mx<-subsetpointmodel(micropoint, tstep = "month", what = "tmax")
+micropoint_mn<-subsetpointmodel(micropoint, tstep = "month", what = "tmin")
+# ** Create model inputs with inbuilt datasets
+micro_mx<-modelin(micropoint_mx,vegp,soilc,dtmcaerth)
+micro_mn<-modelin(micropoint_mn,vegp,soilc,dtmcaerth)
+# Run model 5 cm above ground
+mout_mx<-runmicro_hr(micro_mx, 0.05)
+mout_mn<-runmicro_hr(micro_mn, 0.05)
 # Plot air temperatures on hottest hour
-plot(rast(mout$Tz[,,4094]))
-# Plot mean air temperatures
-mairt<-apply(mout$Tz,c(1,2),mean)
+plot(rast(mout_mx$Tz[,,134]))
+# Plot mean of monthly max and min
+mairt<-apply((mout_mn$Tz + mout_mx$Tz) / 2, c(1,2),mean)
 plot(rast(mairt))
-# Plot ground temperatures on hottest and coldest hour
-plot(rast(mout$T0[,,991])) # coldest hour
-plot(rast(mout$T0[,,4094])) # hottest hour
-# Run model 20 cm below ground
-mout<-runmicro_hr(micro, -0.2)
-# Extract and plot mean soil temperatures
-msoilt<-apply(mout$Tz,c(1,2),mean)
-plot(rast(msoilt))
 }
 \seealso{
 [runmicro_dy()] for faster running microclimate model in daily time-steps,

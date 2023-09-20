@@ -6,41 +6,23 @@
 \usage{
 temphumE(
   micro,
-  climdata,
   reqhgt = 0.05,
   pai_a = NA,
-  xyf = 1,
-  zf = NA,
-  soilinit = c(NA, NA),
   tfact = 1.5,
   slr = NA,
   apr = NA,
   hor = NA,
   wsa = NA,
   twi = NA,
-  soilmcoefs = NA,
-  soiltcoefs = NA,
-  backweight = 2,
-  maxiter = 100,
-  gmn = 0.3,
-  surfwet = 0.75
+  surfwet = NA
 )
 }
 \arguments{
 \item{micro}{object of class microin as returned by [modelin()]}
 
-\item{climdata}{an array of hourly weather (see [wind()])}
-
 \item{reqhgt}{height above ground for which wind speeds are wanted. If negative (below ground) wind friction velocity only is returned}
 
 \item{pai_a}{plant area index above `reqhgt`. Determined from total `pai` if not supplied.}
-
-\item{xyf}{optional spatial smoothing factor applied in calculation of wind speeds (see details)}
-
-\item{zf}{optional integer used to calculate how frequently to sample the plant area index array
-when calculating smoothed wind speed (see details)}
-
-\item{soilinit}{initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])}
 
 \item{tfact}{coefficient determining sensitivity of soil moisture to variation
 in topographic wetness (see [soilmdistribute()])}
@@ -60,6 +42,17 @@ Calculated from dtm if not supplied, but outer cells will be NA.}
 \item{twi}{optional SpatRast object of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
 
+\item{surfwet}{an optional coefficient describing the fraction of the
+vegetation surface that acts like a free water surface. Reduce if relative
+humidity estimates seem too high.}
+
+\item{xyf}{optional spatial smoothing factor applied in calculation of wind speeds (see details)}
+
+\item{zf}{optional integer used to calculate how frequently to sample the plant area index array
+when calculating smoothed wind speed (see details)}
+
+\item{soilinit}{initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])}
+
 \item{soilmcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilm()]}
 
 \item{soiltcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilt()]}
@@ -72,10 +65,6 @@ coefficients by running a point microclimate model until stable results are
 obtained (default 100). See [wind()])}
 
 \item{gmn}{optional minimum convective conductance value (mol/m^2/s). See [wind()])}
-
-\item{surfwet}{an optional coefficient describing the fraction of the
-vegetation surface that acts like a free water surface. Reduce if relative
-humidity estimates seem too high.}
 }
 \value{
 an object of class microout with the following components:

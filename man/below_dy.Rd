@@ -5,29 +5,21 @@
 \title{Estimate temperature below ground (daily)}
 \usage{
 below_dy(
-  microd,
+  micro_dy,
   reqhgt,
-  expand = TRUE,
   pai_a = NA,
-  soilinit = c(NA, NA),
   tfact = 1.5,
   slr = NA,
   apr = NA,
   hor = NA,
   wsa = NA,
-  twi = NA,
-  soilmcoefs = NA,
-  soiltcoefs = NA
+  twi = NA
 )
 }
 \arguments{
-\item{microd}{object of class microin as returned by [modelin()]}
-
 \item{reqhgt}{height above ground at which model outputs are needed (m). Must be negative.}
 
-\item{expand}{optional logical indicating whethet to expand daily values to hourly}
-
-\item{soilinit}{initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])}
+\item{pai_a}{plant area index above `reqhgt`. Determined from total `pai` if not supplied.}
 
 \item{tfact}{coefficient determining sensitivity of soil moisture to variation
 in topographic wetness (see [soilmdistribute()])}
@@ -44,20 +36,19 @@ dtm if not supplied, but outer cells will be NA.}
 \item{wsa}{an optional array of wind shelter coefficients in 8 directions.
 Calculated from dtm if not supplied, but outer cells will be NA.}
 
-\item{twi}{optional SpatRast object of topographic wetness index values.
+\item{twi}{optional SpatRaster object of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
 
-\item{soilmcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilm()]}
-
-\item{soiltcoefs}{optional list of soil moisture model coefficients as returned by [fitsoilt()]}
+\item{micro}{object of class microin as returned by [modelin()]}
 }
 \value{
 `Tz` Array of air temperatures at height `reqhgt` below ground (deg C)
 }
 \description{
 The function `below_dy` runs the below ground component of
-the microclimate model in daily time increments.
+the microclimate model at hourly time increments.
 }
 \seealso{
-[below_hr()] for running the below ground component of the microclimate model in hourly timesteps
+[temphumE()] for running the above ground component of the microclimate
+model and [below_hr()] for running the model in hourly time increments.
 }
