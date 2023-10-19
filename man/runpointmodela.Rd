@@ -8,10 +8,10 @@ runpointmodela(
   climarray,
   precarray,
   tme,
+  reqhgt = 0.05,
   vegp,
   soilc,
   windhgt = 2,
-  reqhgt = 0.1,
   soilm = NA,
   dTmx = 25,
   maxiter = 10
@@ -22,7 +22,9 @@ runpointmodela(
 
 \item{precarray}{an array of daily precipitation (see details)}
 
-\item{tme}{an object of class POSIXlt giving the dates and times for each weather variable stroed in the array}
+\item{tme}{an object of class POSIXlt giving the dates and times for each weather variable stored in the array}
+
+\item{reqhgt}{height for which temperatures are needed (used only when reqhgt < 0 to calculate tmeperature below ground)}
 
 \item{vegp}{an object of class vegparams as returned by [vegpfromhab()] (see details)}
 
@@ -30,9 +32,7 @@ runpointmodela(
 
 \item{windhgt}{height above ground of wind speed data in weather}
 
-\item{reqhgt}{height for which temperatures are needed (used only when reqhgt < 0 to calculate tmeperature below ground)}
-
-\item{soilm}{optional vector of soil moisture values in upper 10 cm of the soil (calculated if not supplied)}
+\item{soilm}{optional array of soil moisture values in upper 10 cm of the soil (calculated if not supplied)}
 
 \item{dTmx}{optional maximum amount by which canopy or ground surface temperatures can exceed air temperatures.
 Included to ensure model convergence}

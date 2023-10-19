@@ -8,29 +8,29 @@ runmicro_biga(
   climarray,
   precarray,
   tme,
+  reqhgt,
   vegp,
   soilc,
   dtm,
   dtmc,
-  reqhgt,
   pathout = getwd(),
-  altcorrect = 1,
-  subsetmodel = TRUE,
-  tstep = "month",
-  what = "tmax",
-  days = NA,
   hourly = FALSE,
   expand = FALSE,
   tilesize = NA,
   writeasnc = TRUE,
+  subsetmodel = TRUE,
+  tstep = "month",
+  what = "tmax",
+  days = NA,
+  altcorrect = 1,
   windhgt = 2,
   soilm = NA,
-  silent = FALSE,
   runchecks = TRUE,
   xyf = 1,
   pai_a = NA,
   tfact = 1.5,
-  surfwet = NA
+  surfwet = NA,
+  silent = FALSE
 )
 }
 \arguments{
@@ -40,6 +40,8 @@ runmicro_biga(
 
 \item{tme}{an object of class POSIXlt giving the dates and times for each weather variable stored
 in the array. Must be in UTC timezone.}
+
+\item{reqhgt}{height for which temperatures are needed (m, negative if below ground surface)}
 
 \item{vegp}{an object of class vegparams as returned by [vegpfromhab()] (see details)}
 
@@ -51,23 +53,7 @@ in the array. Must be in UTC timezone.}
 of the weather data used when running [micropointa()]. Must give elevations in metres if
 `altcorrect` > 0.}
 
-\item{reqhgt}{height for which temperatures are needed (m, negative if below ground surface)}
-
 \item{pathout}{a file directory to which to save data. Default saves to subfolder 'microut' in wording directory.}
-
-\item{altcorrect}{a single numeric value indicating whether to apply an elevational lapse rate correction to
-temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable
-lapse rate correction, see details)}
-
-\item{subsetmodel}{optional logical indicating whether to subset the model to return e.g. monthly values.
-See also [subsetpointmodel()]}
-
-\item{tstep}{one of `year` or `month` or `bioclim`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])}
-
-\item{what}{one of `tmax`, `tmin` or `tmedian`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])}
-
-\item{days}{optionally a vector of the days in the time sequence to return data for.
-Used only if `subsetmodel == TRUE`. If provided `tstep` is ignored. See [subsetpointmodel()]).}
 
 \item{hourly}{optional logical indicating whether to run the model in hourly or daily mode (see details).}
 
@@ -79,11 +65,23 @@ Calculated automatically based on data size of not provided.}
 
 \item{writeasnc}{optional logical indicating whether to write output data as netCDF4 files (default TRUE)}
 
+\item{subsetmodel}{optional logical indicating whether to subset the model to return e.g. monthly values.
+See also [subsetpointmodel()]}
+
+\item{tstep}{one of `year` or `month` or `bioclim`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])}
+
+\item{what}{one of `tmax`, `tmin` or `tmedian`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])}
+
+\item{days}{optionally a vector of the days in the time sequence to return data for.
+Used only if `subsetmodel == TRUE`. If provided `tstep` is ignored. See [subsetpointmodel()]).}
+
+\item{altcorrect}{a single numeric value indicating whether to apply an elevational lapse rate correction to
+temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable
+lapse rate correction, see details)}
+
 \item{windhgt}{height above ground of wind speed data in weather (m) (see details)}
 
 \item{soilm}{optional vector of soil moisture values in upper 10 cm of the soil (calculated if not supplied)}
-
-\item{silent}{optional logical indicating whether to report on progress (default FALSE - progress reported).}
 
 \item{runchecks}{optional logical indicating whether to call [checkinputs()] to run checks on format and units of input data.}
 
@@ -96,6 +94,8 @@ heights (see details)}
 
 \item{surfwet}{an optional single numeric value of array of values specifying the proportion
 of the canopy surface that should be treated as wet surface (see details)}
+
+\item{silent}{optional logical indicating whether to report on progress (default FALSE - progress reported).}
 }
 \value{
 if `hourly = TRUE` or `expand = TRUE` and `writeasnc = TRUE` the function writes writes a seperate netcdf4 file to disk

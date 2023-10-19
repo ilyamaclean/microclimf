@@ -4,19 +4,22 @@
 #'
 #' @param weather a data.frame of weather variables (see details)
 #' @param precip a vector of daily precipitation
+#' @param reqhgt height for which temperatures are needed (used only when reqhgt < 0 to calculate tmeperature below ground)
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
 #' @param windhgt height above ground of wind speed data in weather
-#' @param reqhgt height for which temperatures are needed (used only when reqhgt < 0 to calculate tmeperature below ground)
 #' @param soilm optional vector of soil moisture values in upper 10 cm of the soil (calculated if not supplied)
 #' @param dTmx optional maximum amount by which canopy or ground surface temperatures can exceed air temperatures.
 #' Included to ensure model convergence
 #' @param maxiter optional integer indicating the maximum number of iterations (see details)
+#' @param yearG optional logical indicating whether or not to include annual ground heat flux cycle
+#' @param lat optional central latitude of study area (removes tile effects when running in tiles)
+#' @param long optional central longitude of study area (removes tile effects when running in tiles)
 #' @return a list of the following:
 #' (1) weather - a data.frame of weather variables, but with temperature and
 #' wind speed height-adjusted to be above canopy if necessary (see details)
 #' (2) precip - a vector of daily precipitation (same as input)
-#' (3) microp - an object of class pointmicro as returned bgy [microiter::RunBigLeaf()].
+#' (3) microp - an object of class pointmicro as returned by [micropoint::RunBigLeaf()].
 #' (4) soilm - a vector of hourly soil moisture fractions in the upper 10 cm of the soil
 #' (5) Tbz - a vector of below ground temperatures. NA if reqhgt > 0
 #' (5) vegp - a list of vegetation paremeters used by the point model
@@ -46,7 +49,8 @@
 #' # Plot canopy heat exchange surface temperature
 #' microp<-micropoint$microp
 #' plot(microp$Tc,type="l") # temperature of canopy surface
-runpointmodel<-function(weather, precip, vegp, soilc, windhgt = 2, reqhgt = 0.1, soilm = NA, dTmx = 25, maxiter = 100)  {
+runpointmodel<-function(weather, precip,  reqhgt = 0.05, vegp, soilc, windhgt = 2, soilm = NA, dTmx = 25,
+                        maxiter = 100, yearG = TRUE, lat = NA, long = NA)  {
   # Convert weather data format
   w2<-weather
   w2$lwdown<-weather$skyem*5.67*10^-8*(weather$temp+273.15)^4
@@ -80,25 +84,29 @@ runpointmodel<-function(weather, precip, vegp, soilc, windhgt = 2, reqhgt = 0.1,
                   Psie=soilparameters$psi_e[sn],
                   Smax=soilparameters$Smax[sn],
                   Smin=soilparameters$Smin[sn],
-                  alpha=microiter::soilparams$Smin[sn],
-                  n=microiter::soilparams$n[sn],
+                  alpha=micropoint::soilparams$Smin[sn],
+                  n=micropoint::soilparams$n[sn],
                   Ksat=soilparameters$Ksat[sn])
   # Peform weather height adjustment
   mxhgt<-.mfr(vegp$hgt,max)
   zref<-ifelse(mxhgt>2,mxhgt,2)
   zref<-max(zref,windhgt)
   if (class(vegp$x)[1] == "PackedSpatRaster") vegp$x<-rast(vegp$x)
-  ll<-.latlongfromraster(vegp$x)
+  if (class(lat) == "logical") {
+    ll<-.latlongfromraster(vegp$x)
+  } else ll<-data.frame(lat=lat,long=long)
   if (zref > 2) {
-    # Extract latitude and longitude
-    w2<-microiter::weather_hgt(w2,zin=2,uzin=windhgt,zout=zref,ll$lat,ll$long)
+  # Extract latitude and longitude
+  vegparams<-micropoint::vegparams
+  groundparams<-micropoint::groundparams
+   w2<-micropoint::weather_hgt(w2,zin=2,uzin=windhgt,zout=zref,ll$lat,ll$long)
   }
-  # Set minimum wind spped to avoid convergence issues
+  # Set minimum wind speed to avoid convergence issues
   w2$windspeed[w2$windspeed<0.5]<-0.5
   # Run soil moisture model if not provided
-  if (class(soilm)=="logical") soilm<-microiter::soilmmodel(w2, soiltype)
+  if (class(soilm)=="logical") soilm<-micropoint::soilmmodel(w2, soiltype)
   # Run big Leaf model
-  microp <- microiter::RunBigLeaf(w2,vegp_p,groundp_p,soilm,ll$lat,ll$long,dTmx,zref,maxiter=maxiter)
+  microp <- micropoint::RunBigLeaf(w2,vegp_p,groundp_p,soilm,ll$lat,ll$long,dTmx,zref,maxiter=maxiter,yearG=yearG)
   # Sort out weather
   w2$skyem<-weather$skyem
   w2$swrad<-w2$swdown
@@ -296,18 +304,18 @@ modelin <- function(micropoint, vegp, soilc, dtm, runchecks = TRUE, xyf = 1) {
 #' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
-#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
-#' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
-#' @param hor an optional array of the tangent of the angle to the horizon in
-#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param wsa an optional array of wind shelter coefficients in 8 directions.
-#' Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param twi optional SpatRaster object of topographic wetness index values.
-#' Calculated from `dtm` of not supplied, but outer cells will be NA.
 #' @param surfwet an optional single numeric value of array of values specifying the proportion
 #' of the canopy surface that should be treated as wet surface (see details)
+#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
+#' the dtm in micro if not supplied, but outer cells will be NA.
+#' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
+#' the dtm in micro if not supplied, but outer cells will be NA.
+#' @param hor an optional array of the tangent of the angle to the horizon in
+#' 24 directions. Calculated from the dtm in micro if not supplied, but outer cells will be NA.
+#' @param twi optional SpatRaster object of topographic wetness index values.
+#' Calculated from the dtm in micro of not supplied, but outer cells will be NA.
+#' @param wsa an optional array of wind shelter coefficients in 8 directions.
+#' Calculated from the dtm in micro if not supplied, but outer cells will be NA.
 #' @return `Tz` Array of air temperatures at height `reqhgt` (deg C). Identical to `T0`
 #' if `reqhgt` = 0.
 #' @return `tleaf` Array of leaf temperatures at height `reqhgt` (deg C).
@@ -349,7 +357,7 @@ modelin <- function(micropoint, vegp, soilc, dtm, runchecks = TRUE, xyf = 1) {
 #' library(zoo)
 #' library(abind)
 #' # ** First run point model (NB not run as uses inbuilt dataset)
-#' # micropoint<-runpointmodel(climdata,rainfall,vegp,soilc,reqhgt = 0.05)
+#' # micropoint<-runpointmodel(climdata, rainfall, reqhgt = 0.05, vegp, soilc)
 #' # ** Subset inbuilt point model to get hottest days in each month
 #' micropoint_mx<-subsetpointmodel(micropoint, tstep = "month", what = "tmax")
 #' micropoint_mn<-subsetpointmodel(micropoint, tstep = "month", what = "tmin")
@@ -364,13 +372,13 @@ modelin <- function(micropoint, vegp, soilc, dtm, runchecks = TRUE, xyf = 1) {
 #' # Plot mean of monthly max and min
 #' mairt<-apply((mout_mn$Tz + mout_mx$Tz) / 2, c(1,2),mean)
 #' plot(rast(mairt))
-runmicro_hr <- function(micro, reqhgt, pai_a = NA, tfact = 1.5, slr = NA, apr = NA,
-                        hor = NA, wsa = NA, twi = NA, surfwet = NA) {
+runmicro_hr <- function(micro, reqhgt, pai_a = NA, tfact = 1.5, surfwet = NA,
+                        slr = NA, apr = NA, hor = NA, twi = NA, wsa = NA) {
   # Calculate soil surface temperature and soil moisture
-  micro<-soiltemp_hr(micro,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+  micro<-soiltemp_hr(micro,reqhgt,pai_a,tfact,slr,apr,hor,twi,wsa)
   # Run above ground
   if (reqhgt > 0) {
-    mout<-temphumE(micro,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi,surfwet)
+    mout<-temphumE(micro,reqhgt,pai_a,tfact,surfwet,slr,apr,hor,twi,wsa)
   }
   # Run at ground level
   if (reqhgt == 0) {
@@ -381,7 +389,7 @@ runmicro_hr <- function(micro, reqhgt, pai_a = NA, tfact = 1.5, slr = NA, apr = 
   }
   # Run below ground
   if (reqhgt < 0) {
-    micro<-below_hr(micro,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+    micro<-below_hr(micro,reqhgt,pai_a,tfact,slr,apr,hor,twi,wsa)
     mout<-list(Tz=micro$Tz,tleaf=NA,T0=micro$T0,soilm=micro$soild,
                relhum=NA,windspeed=NA,Rdirdown=NA,Rdifdown=NA,Rlwdown=NA,
                Rswup=NA,Rlwup=NA)

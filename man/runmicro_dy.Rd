@@ -10,12 +10,12 @@ runmicro_dy(
   expand = TRUE,
   pai_a = NA,
   tfact = 1.5,
+  surfwet = NA,
   slr = NA,
   apr = NA,
   hor = NA,
-  wsa = NA,
   twi = NA,
-  surfwet = NA
+  wsa = NA
 )
 }
 \arguments{
@@ -28,6 +28,9 @@ runmicro_dy(
 \item{tfact}{coefficient determining sensitivity of soil moisture to variation
 in topographic wetness (see [soilmdistribute()])}
 
+\item{surfwet}{an optional single numeric value of array of values specifying the proportion
+of the canopy surface that should be treated as wet surface (modelled if not supplied)}
+
 \item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
 dtm if not supplied, but outer cells will be NA.}
 
@@ -37,14 +40,11 @@ dtm if not supplied, but outer cells will be NA.}
 \item{hor}{an optional array of the tangent of the angle to the horizon in
 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.}
 
-\item{wsa}{an optional array of wind shelter coefficients in 8 directions.
-Calculated from dtm if not supplied, but outer cells will be NA.}
-
 \item{twi}{optional SpatRaster object of topographic wetness index values.
 Calculated from `dtm` of not supplied, but outer cells will be NA.}
 
-\item{surfwet}{an optional single numeric value of array of values specifying the proportion
-of the canopy surface that should be treated as wet surface (modelled if not supplied)}
+\item{wsa}{an optional array of wind shelter coefficients in 8 directions.
+Calculated from dtm if not supplied, but outer cells will be NA.}
 
 \item{microd}{object of class microindaily as returned by [modelin_dy()]}
 }

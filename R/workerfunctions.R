@@ -367,7 +367,6 @@
   r<-.rast(tpx,dtm)
   r
 }
-# *** twostream()
 #' Calculates the solar azimuth
 .solazi <- function(localtime, lat, long, jd, merid = 0, dst = 0) {
   st<-.soltime(localtime,long,jd,merid,dst)
@@ -596,9 +595,10 @@
                                                         (cos((pi*z)/h)+1)^2+5))))/pi
   inth<-4.293251*h
   s<-which(z==h)
-  int[s]<-inth
+  int[s]<-inth[s]
   mu<-((uf/(a2*h))*(1/uf^2))
   rHa<-int*mu
+  rHa[rHa<0.001]<-0.01
   rHa
 }
 #' Langrangian approximation function
@@ -793,13 +793,28 @@
 # =========================================================================== #
 # ********** Functions associated with runmicrobig ************************** #
 # =========================================================================== #
-#' crop dem by rown and column
+#' crop dem by row and column
 .croprast<-function(r,rw,cl,tilesize) {
   e<-ext(r)
   xmn<-e$xmin+(cl-1)*tilesize*res(r)[1]
   xmx<-e$xmin+cl*tilesize*res(r)[1]
   ymn<-e$ymax-rw*tilesize*res(r)[2]
   ymx<-e$ymax-(rw-1)*tilesize*res(r)[2]
+  xmn<-ifelse(xmn<e$xmin,e$xmin,xmn)
+  xmx<-ifelse(xmx>e$xmax,e$xmax,xmx)
+  ymn<-ifelse(ymn<e$ymin,e$ymin,ymn)
+  ymx<-ifelse(ymx>e$ymax,e$ymax,ymx)
+  e2<-ext(c(xmn,xmx,ymn,ymx))
+  r2<-terra::crop(r,e2)
+  r2
+}
+#' crop dem by row and column with overlap
+.croprasto<-function(r,rw,cl,tilesize,ovlap=10) {
+  e<-ext(r)
+  xmn<-e$xmin+(cl-1)*tilesize*res(r)[1]-ovlap*res(r)[1]
+  xmx<-e$xmin+cl*tilesize*res(r)[1]+ovlap*res(r)[1]
+  ymn<-e$ymax-rw*tilesize*res(r)[2]-ovlap*res(r)[2]
+  ymx<-e$ymax-(rw-1)*tilesize*res(r)[2]+ovlap*res(r)[2]
   xmn<-ifelse(xmn<e$xmin,e$xmin,xmn)
   xmx<-ifelse(xmx>e$xmax,e$xmax,xmx)
   ymn<-ifelse(ymn<e$ymin,e$ymin,ymn)
@@ -833,3 +848,168 @@
 # =========================================================================== #
 # ********** Functions associated with post-processing data ***************** #
 # =========================================================================== #
+#' Calculates reference time for phase of diurnal temperature fluctuation
+.t0f<-function(tc) {
+  tc<-matrix(tc,ncol=24,byrow=T)
+  tmx<-apply(tc,1,which.max)-1
+  t0<-(tmx-6)%%24
+  rep(t0*3600,each=24)
+}
+#' Calculates reference time for phase of diurnal temperature fluctuation (daily)
+.t0fd<-function(tc) {
+  tc<-matrix(tc,ncol=24,byrow=T)
+  tmx<-apply(tc,1,which.max)-1
+  t0<-(tmx-6)%%24
+  t0<-t0*3600
+  t0
+}
+#' Selects relevent daily min (or max) data from hourly climate arrays
+.climds<-function(climarray,sel) {
+  climo<-list(temp=climarray$temp[,,sel],
+              relhum=climarray$relhum[,,sel],
+              pres=climarray$pres[,,sel],
+              swrad=climarray$swrad[,,sel],
+              difrad=climarray$difrad[,,sel],
+              skyem=climarray$skyem[,,sel],
+              windspeed=climarray$windspeed[,,sel],
+              winddir=climarray$winddir[,,sel])
+  climo
+}
+# =========================================================================== #
+# ************* Functions associated with bioclim variables ***************** #
+# =========================================================================== #
+#' identifies which entries of weather time series should be selected
+.biosel<-function(tme, tc) {
+  tch<-matrix(tc,ncol=24,byrow=TRUE)
+  tcd<-apply(tch,1,mean)
+  tmd<-matrix(as.numeric(tme),ncol=24,byrow=TRUE)
+  tmd<-as.POSIXlt(apply(tmd,1,mean),origin="1970-01-01 00:00",tz="UTC")
+  # Median temperature of the month
+  sel_med<-0
+  for (mth in 1:12) {
+    s<-which(tmd$mon+1==mth)
+    o<-order(tcd[s])
+    n<-trunc(length(o)/2)
+    s2<-s[1]-1+o[n]
+    sel_med<-c(sel_med,s2)
+  }
+  sel_med<-sel_med[-1]
+  # Maximum and minimum  (median of multiple years)
+  yrs<-unique(tmd$year)
+  sel_max<-0
+  sel_min<-0
+  for (y in 1:length(yrs)) {
+    s<-which(tmd$year==yrs[y])
+    sel_max<-c(sel_max,which.max(tcd[s])+s[1]-1)
+    sel_min<-c(sel_min,which.min(tcd[s])+s[1]-1)
+  }
+  sel_max<-sel_max[-1]
+  sel_min<-sel_min[-1]
+  o1<-order(tcd[sel_max])
+  o2<-order(tcd[sel_min])
+  sel_max<-sel_max[o1]
+  sel_min<-sel_min[o2]
+  n<-trunc(length(sel_max)/2)+1
+  sel_max<-sel_max[n]
+  sel_min<-sel_min[n]
+  # Expand out to hour
+  seld<-c(sel_med,sel_max,sel_min)
+  selh<-rep((seld-1)*24,each=24)+rep(c(1:24),length(seld))
+  return(list(selh=selh,seld=seld))
+}
+#' identifies which entries of bioclim time series should be selected for a given quarter
+.selquarter<-function(tmeh,mon)  {
+  mths<-c(mon-1,mon,mon+1)%%12
+  mths[mths==0]<-12
+  sel<-0
+  for (i in 1:3) {
+    seli<-which(tmeh$mon+1==mths[i])
+    sel<-c(sel,seli)
+  }
+  return(sel[-1])
+}
+#' Run micropoint for bioclim calculations
+.biomicropoint<-function(weather,precip,tme,vegp,soilc,reqhgt,windhgt,soilm,dTmx,maxiter,lat=NA,long=NA) {
+  soilparams<-micropoint::soilparams # dirty fix
+  if (class(weather) == "data.frame") {
+    # Subset right values
+    tme<-as.POSIXlt(weather$obs_time,tz="UTC")
+    tc<-weather$temp
+    sel<-.biosel(tme, tc)
+    # Run full soil model
+    if (class(soilc$soiltype) == "PackedSpatRaster") soilc$soiltype<-rast(soilc$soiltype)
+    sn<-.getmode(as.vector(soilc$soiltype))
+    soiltype<-soilparameters$Soil.type[sn]
+    # Convert weather data format
+    w2<-weather
+    w2$lwdown<-weather$skyem*5.67*10^-8*(weather$temp+273.15)^4
+    w2$precip<-rep(precip,each=24)/24
+    w2$swdown<-weather$swrad
+    w2$swrad<-NULL
+    w2$skyem<-NULL
+    if (class(soilm)=="logical") soilm<-micropoint::soilmmodel(w2, soiltype)
+    # Subset weather and precipitation
+    weather2<-weather[sel$selh,]
+    precip2<-precip[sel$seld]
+    soilm2<-soilm[sel$selh]
+    # Run point model
+    micropoint<-runpointmodel(weather2,precip2,reqhgt,vegp,soilc,windhgt,soilm2,dTmx,maxiter,yearG=FALSE,lat,long)
+  } else {
+    tc<-apply(weather$temp,3,mean)
+    sel<-.biosel(tme, tc)
+    # Run full soil model
+    if (class(soilc$soiltype) == "PackedSpatRaster") soilc$soiltype<-rast(soilc$soiltype)
+    sn<-.getmode(as.vector(soilc$soiltype))
+    soiltype<-soilparameters$Soil.type[sn]
+    # Create weather data.frame
+    ea<-.satvap(weather$temp)*weather$relhum/100
+    rh<-(apply(ea,3,mean)/.satvap(tc))*100
+    rh[rh>100]<-100
+    w2<-data.frame(obs_time=tme,
+                   temp=tc,
+                   relhum=rh,
+                   pres=apply(weather$pres,3,mean),
+                   swdown=apply(weather$swrad,3,mean),
+                   difrad=apply(weather$difrad,3,mean),
+                   lwdown=apply(weather$skyem,3,mean)*5.67*10^-8*(tc+273.15)^4,
+                   windspeed=apply(weather$windspeed,3,mean),
+                   winddir=0,
+                   precip=rep(apply(precip,3,mean),each=24))
+    if (class(soilm)=="logical") soilm<-micropoint::soilmmodel(w2, soiltype)
+    # Subset weather and precipitation
+    weather2<-list(temp=weather$temp[,,sel$selh],
+                   relhum=weather$relhum[,,sel$selh],
+                   pres=weather$pres[,,sel$selh],
+                   swrad=weather$swrad[,,sel$selh],
+                   difrad=weather$difrad[,,sel$selh],
+                   skyem=weather$skyem[,,sel$selh],
+                   windspeed=weather$windspeed[,,sel$selh],
+                   winddir=weather$winddir[,,sel$selh])
+    precip2<-precip[,,sel$seld]
+    soilm<-soilm[sel$selh]
+    soilmo<-array(rep(soilm,each=dim(precip)[1]*dim(precip)[2]),dim=c(dim(precip)[1],dim(precip)[2],length(soilm)))
+    micropoint <- runpointmodela(weather2,precip2,tme[sel$selh],reqhgt,vegp,soilc,windhgt,soilmo,dTmx,maxiter)
+  }
+  return(micropoint)
+}
+#' Check SpatRasts of model input
+.checkbiginputs<-function(dtm,vegp,soilc) {
+  .cr<-function(r,dtm) {
+    sel<-which(is.na(.is(dtm))==FALSE & is.na(.is(r)))
+    length(sel)
+  }
+  pr<-.rast(vegp$pai[,,1],dtm)
+  cr<-.rast(vegp$clump[,,1],dtm)
+  le<-c(.cr(pr,dtm),.cr(vegp$hgt,dtm),.cr(vegp$x,dtm),.cr(vegp$gsmax,dtm),
+        .cr(vegp$leafr,dtm),.cr(cr,dtm),.cr(vegp$leafd,dtm),.cr(vegp$leaft,dtm))
+  nms<-c("pai","hgt","x","gsmax","leafr","clump","leafd","leaft")
+  if (max(le)>0) {
+    sel<-which(le>0)
+    stop(paste0("The following layers of vegp contain NA that are not NA in dtm: ",nms[sel],"\n"))
+  }
+  le<-c(.cr(soilc$soiltype,dtm),.cr(soilc$groundr,dtm))
+  if (max(le)>0) {
+    sel<-which(le>0)
+    stop(paste0("The following layers of soilc contain NA that are not NA in dtm: ",nms[sel],"\n"))
+  }
+}

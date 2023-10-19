@@ -7,27 +7,27 @@
 runmicro_big(
   weather,
   precip,
+  reqhgt,
   vegp,
   soilc,
   dtm,
-  reqhgt,
   pathout,
+  hourly = TRUE,
+  expand = FALSE,
+  tilesize = NA,
+  writeasnc = TRUE,
   subsetmodel = TRUE,
   tstep = "month",
   what = "tmax",
   days = NA,
-  hourly = FALSE,
-  expand = FALSE,
-  tilesize = NA,
-  writeasnc = TRUE,
   windhgt = 2,
   soilm = NA,
-  silent = FALSE,
   runchecks = TRUE,
   xyf = 1,
   pai_a = NA,
   tfact = 1.5,
-  surfwet = NA
+  surfwet = NA,
+  silent = FALSE
 )
 }
 \arguments{
@@ -35,25 +35,15 @@ runmicro_big(
 
 \item{precip}{a vector of daily precipitation}
 
+\item{reqhgt}{height for which temperatures are needed (m, negative if below ground surface)}
+
 \item{vegp}{an object of class vegparams as returned by [vegpfromhab()] (see details)}
 
 \item{soilc}{an object of class soilcharac as returned by [soilcfromtype()]}
 
 \item{dtm}{a PackedSpatRaster or SpatRaster object of elevations (see details)}
 
-\item{reqhgt}{height for which temperatures are needed (m, negative if below ground surface)}
-
 \item{pathout}{a file directory to which to save data. Default saves to subfolder 'microut' in wording directory.}
-
-\item{subsetmodel}{optional logical indicating whether to subset the model to return e.g. monthly values.
-See also [subsetpointmodel()]}
-
-\item{tstep}{one of `year` or `month` or `bioclim`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])}
-
-\item{what}{one of `tmax`, `tmin` or `tmedian`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])}
-
-\item{days}{optionally a vector of the days in the time sequence to return data for.
-Used only if `subsetmodel == TRUE`. If provided `tstep` is ignored. See [subsetpointmodel()]).}
 
 \item{hourly}{optional logical indicating whether to run the model in hourly or daily mode (see details).}
 
@@ -65,16 +55,24 @@ Calculated automatically based on data size of not provided.}
 
 \item{writeasnc}{optional logical indicating whether to write output data as netCDF4 files (default TRUE)}
 
+\item{subsetmodel}{optional logical indicating whether to subset the model to return e.g. monthly values.
+See also [subsetpointmodel()]}
+
+\item{tstep}{one of `year` or `month` or `bioclim`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])}
+
+\item{what}{one of `tmax`, `tmin` or `tmedian`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])}
+
+\item{days}{optionally a vector of the days in the time sequence to return data for.
+Used only if `subsetmodel == TRUE`. If provided `tstep` is ignored. See [subsetpointmodel()]).}
+
 \item{windhgt}{height above ground of wind speed data in weather (m) (see details)}
 
 \item{soilm}{optional vector of soil moisture values in upper 10 cm of the soil (calculated if not supplied)}
 
-\item{silent}{optional logical indicating whether to report on progress (default FALSE - progress reported).}
-
 \item{runchecks}{optional logical indicating whether to call [checkinputs()] to run checks on format and units of input data.}
 
 \item{xyf}{optional spatial smoothing factor applied in calculation of surface roughness and zero-plane displacement
-heights (see details)}
+heights (see details).}
 
 \item{pai_a}{an optional array of plant area index values above `reqhgt` (see details)}
 
@@ -82,6 +80,8 @@ heights (see details)}
 
 \item{surfwet}{an optional single numeric value of array of values specifying the proportion
 of the canopy surface that should be treated as wet surface (see details)}
+
+\item{silent}{optional logical indicating whether to report on progress (default FALSE - progress reported).}
 }
 \value{
 if `hourly = TRUE` or `expand = TRUE` and `writeasnc = TRUE` the function writes writes a seperate netcdf4 file to disk
@@ -124,7 +124,7 @@ same dimensions as micro$pai. I.e. with the same x and y dims as the the
 supplied dtm and values for each hour as the z dimension. The parameter `surfwet`
 determines how much of the canopy should be treated as wet surface when calculating
 latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
-is such that `surfwet` ~ 1. If set to NA, surfess wetness is modelled.
+is such that `surfwet` ~ 1. If set to NA, surface wetness is modelled.
 }
 \seealso{
 [runmicro_biga()] for running the microclimate model over large areas

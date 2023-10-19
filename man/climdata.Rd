@@ -22,6 +22,6 @@ a data frame with the following elements:
 climdata
 }
 \description{
-A data frame of hourly weather in 2017 at Caerthillean Cove, Lizard, Cornwall (49.96807N, 5.215668W)
+A data frame of hourly weather in 2017 at Caerthillian Cove, Lizard, Cornwall (49.96807N, 5.215668W)
 }
 \keyword{datasets}

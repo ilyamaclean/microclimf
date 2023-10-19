@@ -13,7 +13,7 @@ soilmdistribute(micro, tfact = 1.5, twi = NA)
 in topographic wetness}
 
 \item{twi}{optional SpatRaster object of topographic wetness index values.
-Calculated from `dtm` of not supplied, but outer cells will be NA.}
+Calculated from he dtm in micro of not supplied, but outer cells will be NA.}
 }
 \value{
 a 3D array of soil moistures with the same x and y dims as `dtm` and z

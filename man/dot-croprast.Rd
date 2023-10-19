@@ -2,10 +2,10 @@
 % Please edit documentation in R/workerfunctions.R
 \name{.croprast}
 \alias{.croprast}
-\title{crop dem by rown and column}
+\title{crop dem by row and column}
 \usage{
 .croprast(r, rw, cl, tilesize)
 }
 \description{
-crop dem by rown and column
+crop dem by row and column
 }

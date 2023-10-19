@@ -8,8 +8,8 @@ modelina(
   micropointa,
   vegp,
   soilc,
-  dtmc,
   dtm,
+  dtmc,
   altcorrect = 0,
   runchecks = TRUE,
   xyf = 1
@@ -22,11 +22,11 @@ modelina(
 
 \item{soilc}{an object of class soilcharac as returned by [soilcfromtype()]}
 
+\item{dtm}{a SpatRaster object of elevations in metres (see details)}
+
 \item{dtmc}{a SpatRaster object giving the resolution, spatial extent, and projection
 of the weather data used when running [micropointa()]. Must give elevations in metres if
 `altcorrect` > 0.}
-
-\item{dtm}{a SpatRaster object of elevations in metres (see details)}
 
 \item{altcorrect}{a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)}
 
@@ -72,11 +72,11 @@ climarray <- list(temp = ta(climdata$temp),
 precarray <- ta(rainfall)
 # ============= Run point microclimate model for each grid cell ========== #
 tme <- as.POSIXlt(climdata$obs_time, tz="UTC")
-micropointa <- runpointmodela(climarray, precarray, tme, vegp, soilc)
+micropoinaltcorrectta <- runpointmodela(climarray, precarray, tme, reqhgt = 0.05, vegp, soilc)
 micropointa<-subsetpointmodela(micropointa, tstep = "month", what = "tmax")
 # =================== Run model input function  ========================== #
 dtmc <- aggregate(rast(dtmcaerth), 10) # Coarse resolution dtm
-micro <- modelina(micropointa, vegp, soilc, dtmc, dtmcaerth)
+micro <- modelina(micropointa, vegp, soilc, dtmcaerth, dtmc)
 }
 \seealso{
 [modelin()], [modelina_dy()], [nctoclimarray()]

@@ -4,12 +4,12 @@
 #'
 #' @param climarray a list of arrays of weather variables (see details and [nctoclimarray()])
 #' @param precarray an array of daily precipitation (see details)
-#' @param tme an object of class POSIXlt giving the dates and times for each weather variable stroed in the array
+#' @param tme an object of class POSIXlt giving the dates and times for each weather variable stored in the array
+#' @param reqhgt height for which temperatures are needed (used only when reqhgt < 0 to calculate tmeperature below ground)
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
 #' @param windhgt height above ground of wind speed data in weather
-#' @param reqhgt height for which temperatures are needed (used only when reqhgt < 0 to calculate tmeperature below ground)
-#' @param soilm optional vector of soil moisture values in upper 10 cm of the soil (calculated if not supplied)
+#' @param soilm optional array of soil moisture values in upper 10 cm of the soil (calculated if not supplied)
 #' @param dTmx optional maximum amount by which canopy or ground surface temperatures can exceed air temperatures.
 #' Included to ensure model convergence
 #' @param maxiter optional integer indicating the maximum number of iterations (see details)
@@ -25,7 +25,7 @@
 #' The parameter `maxiter` sets the maximum number of times the model is iterated to achieve
 #' convergence. Increasing this value improves accuracy at the expense of computation time.
 #' @export
-runpointmodela<-function(climarray, precarray, tme, vegp, soilc, windhgt = 2, reqhgt = 0.1, soilm = NA, dTmx = 25, maxiter = 10)  {
+runpointmodela<-function(climarray, precarray, tme, reqhgt = 0.05, vegp, soilc, windhgt = 2, soilm = NA, dTmx = 25, maxiter = 10)  {
   .todf<-function(climarray,i,j,tme) {
     climdf<-with(climarray,data.frame(obs_time=tme,
                                       temp=temp[i,j,],
@@ -47,7 +47,7 @@ runpointmodela<-function(climarray, precarray, tme, vegp, soilc, windhgt = 2, re
       if (class(soilm) == "logical") {
         soilmo<-NA
       } else soilmo<-soilm[i,j,]
-      pointo[[k]]<-runpointmodel(climdf,prec,vegp,soilc,windhgt,reqhgt,soilmo,dTmx,maxiter)
+      pointo[[k]]<-runpointmodel(climdf,prec,reqhgt,vegp,soilc,windhgt,soilmo,dTmx,maxiter)
       k<-k+1
     }
   }
@@ -95,10 +95,10 @@ modelin_dy<-function(micropoint, vegp, soilc, dtm, runchecks = TRUE, xyf = 1) {
 #' @param micropointa a list of objects of class micropoint as returned by [runpointmodela()] or [subsetpointmodela()]
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
+#' @param dtm a SpatRaster object of elevations in metres (see details)
 #' @param dtmc a SpatRaster object giving the resolution, spatial extent, and projection
 #' of the weather data used when running [micropointa()]. Must give elevations in metres if
 #' `altcorrect` > 0.
-#' @param dtm a SpatRaster object of elevations in metres (see details)
 #' @param altcorrect a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)
 #' @param runchecks optional logical indicating whether to call [checkinputs()] to run
 #' @param xyf optional spatial smoothing factor applied in calculation of surface
@@ -135,12 +135,12 @@ modelin_dy<-function(micropoint, vegp, soilc, dtm, runchecks = TRUE, xyf = 1) {
 #' precarray <- ta(rainfall)
 #' # ============= Run point microclimate model for each grid cell ========== #
 #' tme <- as.POSIXlt(climdata$obs_time, tz="UTC")
-#' micropointa <- runpointmodela(climarray, precarray, tme, vegp, soilc)
+#' micropoinaltcorrectta <- runpointmodela(climarray, precarray, tme, reqhgt = 0.05, vegp, soilc)
 #' micropointa<-subsetpointmodela(micropointa, tstep = "month", what = "tmax")
 #' # =================== Run model input function  ========================== #
 #' dtmc <- aggregate(rast(dtmcaerth), 10) # Coarse resolution dtm
-#' micro <- modelina(micropointa, vegp, soilc, dtmc, dtmcaerth)
-modelina <- function(micropointa, vegp, soilc, dtmc, dtm, altcorrect = 0, runchecks = TRUE, xyf = 1) {
+#' micro <- modelina(micropointa, vegp, soilc, dtmcaerth, dtmc)
+modelina <- function(micropointa, vegp, soilc, dtm, dtmc, altcorrect = 0, runchecks = TRUE, xyf = 1) {
   .cca<-function(weather,varn,h,r,rfi) {
     a<-array(NA,dim=c(dim(r)[1:2],h))
     k<-1
@@ -339,10 +339,10 @@ modelina <- function(micropointa, vegp, soilc, dtmc, dtm, altcorrect = 0, runche
 #' @param micropointa a list of objects of class micropoint as returned by [runpointmodela()] or [subsetpointmodela()]
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
+#' @param dtm a SpatRaster object of elevations in metres (see details)
 #' @param dtmc a SpatRaster object giving the resolution, spatial extent, and projection
 #' of the weather data used when running [micropointa()]. Must give elevations in metres if
 #' `altcorrect` > 0.
-#' @param dtm a SpatRaster object of elevations in metres (see details)
 #' @param altcorrect a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)
 #' @param runchecks optional logical indicating whether to call [checkinputs()] to run
 #' @param xyf optional spatial smoothing factor applied in calculation of surface
@@ -352,7 +352,7 @@ modelina <- function(micropointa, vegp, soilc, dtmc, dtm, altcorrect = 0, runche
 #'
 #' @import terra
 #' @export
-modelina_dy<-function(micropointa, vegp, soilc, dtmc, dtm, altcorrect = 0, runchecks = TRUE, xyf = 1) {
+modelina_dy<-function(micropointa, vegp, soilc, dtm, dtmc, altcorrect = 0, runchecks = TRUE, xyf = 1) {
   micropointa_mn<-list()
   micropointa_mx<-list()
   n<-length(micropointa)
@@ -362,8 +362,8 @@ modelina_dy<-function(micropointa, vegp, soilc, dtmc, dtm, altcorrect = 0, runch
     micropointa_mx[[i]]<-ptd$micropoint_mx
   }
   # Create model in objects
-  micro_mn<-modelina(micropointa_mn,vegp,soilc,dtmc,dtm,altcorrect,runchecks,xyf)
-  micro_mx<-modelina(micropointa_mx,vegp,soilc,dtmc,dtm,altcorrect,runchecks,xyf)
+  micro_mn<-modelina(micropointa_mn,vegp,soilc,dtm,dtmc,altcorrect,runchecks,xyf)
+  micro_mx<-modelina(micropointa_mx,vegp,soilc,dtm,dtmc,altcorrect,runchecks,xyf)
   out<-list(micro_mn=micro_mn,micro_mx=micro_mx,micropoint=micropointa[[trunc(n/2)]])
   class(out)<-"microindaily"
   return(out)
@@ -379,18 +379,18 @@ modelina_dy<-function(micropointa, vegp, soilc, dtmc, dtm, altcorrect = 0, runch
 #' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
+#' @param surfwet an optional single numeric value of array of values specifying the proportion
+#' of the canopy surface that should be treated as wet surface (modelled if not supplied)
 #' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
 #' dtm if not supplied, but outer cells will be NA.
 #' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
 #' dtm if not supplied, but outer cells will be NA.
 #' @param hor an optional array of the tangent of the angle to the horizon in
 #' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param wsa an optional array of wind shelter coefficients in 8 directions.
-#' Calculated from dtm if not supplied, but outer cells will be NA.
 #' @param twi optional SpatRaster object of topographic wetness index values.
 #' Calculated from `dtm` of not supplied, but outer cells will be NA.
-#' @param surfwet an optional single numeric value of array of values specifying the proportion
-#' of the canopy surface that should be treated as wet surface (modelled if not supplied)
+#' @param wsa an optional array of wind shelter coefficients in 8 directions.
+#' Calculated from dtm if not supplied, but outer cells will be NA.
 #' @return if expand = TRUE, an object of class microout with the following components:
 #' @return `Tz` Array of air temperatures at height `reqhgt` (deg C). Identical to `T0`
 #' if `reqhgt` = 0.
@@ -423,14 +423,14 @@ modelina_dy<-function(micropointa, vegp, soilc, dtmc, dtm, altcorrect = 0, runch
 #'
 #' @import terra
 #' @export
-runmicro_dy <- function(micro_dy, reqhgt, expand = TRUE, pai_a = NA, tfact = 1.5,
-                        slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA, surfwet = NA) {
+runmicro_dy <- function(micro_dy, reqhgt, expand = TRUE, pai_a = NA, tfact = 1.5, surfwet = NA,
+                        slr = NA, apr = NA, hor = NA, twi = NA, wsa = NA) {
   # Calculate soil surface temperature and soil moisture
-  microd<-soiltemp_dy(micro_dy,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+  microd<-soiltemp_dy(micro_dy,reqhgt,pai_a,tfact,slr,apr,hor,twi,wsa)
   # Run above ground
   if (reqhgt > 0) {
-    mout_mn<-temphumE(microd$micro_mn,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi,surfwet)
-    mout_mx<-temphumE(microd$micro_mx,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi,surfwet)
+    mout_mn<-temphumE(microd$micro_mn,reqhgt,pai_a,tfact,surfwet,slr,apr,hor,twi,wsa)
+    mout_mx<-temphumE(microd$micro_mx,reqhgt,pai_a,tfact,surfwet,slr,apr,hor,twi,wsa)
   }
   if (reqhgt == 0) {
     mout_mn<-with(microd$micro_mn,list(Tz=T0,tleaf=NA,T0=T0,soilm=soild,
@@ -442,7 +442,7 @@ runmicro_dy <- function(micro_dy, reqhgt, expand = TRUE, pai_a = NA, tfact = 1.5
   }
   # Run below ground
   if (reqhgt < 0) {
-    microd<-below_dy(microd,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+    microd<-below_dy(microd,reqhgt,pai_a,tfact,slr,apr,hor,twi,wsa)
     mout_mn<-with(microd$micro_mn,list(Tz=Tz,tleaf=NA,T0=T0,soilm=soild,
                                          relhum=NA,windspeed=NA,Rdirdown=NA,Rdifdown=NA,Rlwdown=NA,
                                          Rswup=NA,Rlwup=NA))
@@ -466,35 +466,36 @@ runmicro_dy <- function(micro_dy, reqhgt, expand = TRUE, pai_a = NA, tfact = 1.5
 #'
 #' The function `runmicro_big` tiles larger studies and saves outputs for each tile
 #'
+#'
 #' @param weather a data.frame of weather variables (see details)
 #' @param precip a vector of daily precipitation
+#' @param reqhgt height for which temperatures are needed (m, negative if below ground surface)
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
 #' @param dtm a PackedSpatRaster or SpatRaster object of elevations (see details)
-#' @param reqhgt height for which temperatures are needed (m, negative if below ground surface)
 #' @param pathout a file directory to which to save data. Default saves to subfolder 'microut' in wording directory.
-#' @param subsetmodel optional logical indicating whether to subset the model to return e.g. monthly values.
-#' See also [subsetpointmodel()]
-#' @param tstep one of `year` or `month` or `bioclim`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])
-#' @param what one of `tmax`, `tmin` or `tmedian`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])
-#' @param days optionally a vector of the days in the time sequence to return data for.
-#' Used only if `subsetmodel == TRUE`. If provided `tstep` is ignored. See [subsetpointmodel()]).
 #' @param hourly optional logical indicating whether to run the model in hourly or daily mode (see details).
 #' @param expand optional logical indicating whether to expand model outputs to hourly if run in daily mode
 #' (ignored if `hourly = TRUE`).
 #' @param tilesize optional intiger of the number of pixels in x and y of each tile (returned tiles are square).
 #' Calculated automatically based on data size of not provided.
 #' @param writeasnc optional logical indicating whether to write output data as netCDF4 files (default TRUE)
+#' @param subsetmodel optional logical indicating whether to subset the model to return e.g. monthly values.
+#' See also [subsetpointmodel()]
+#' @param tstep one of `year` or `month` or `bioclim`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])
+#' @param what one of `tmax`, `tmin` or `tmedian`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])
+#' @param days optionally a vector of the days in the time sequence to return data for.
+#' Used only if `subsetmodel == TRUE`. If provided `tstep` is ignored. See [subsetpointmodel()]).
 #' @param windhgt height above ground of wind speed data in weather (m) (see details)
 #' @param soilm optional vector of soil moisture values in upper 10 cm of the soil (calculated if not supplied)
-#' @param silent optional logical indicating whether to report on progress (default FALSE - progress reported).
 #' @param runchecks optional logical indicating whether to call [checkinputs()] to run checks on format and units of input data.
 #' @param xyf optional spatial smoothing factor applied in calculation of surface roughness and zero-plane displacement
-#' heights (see details)
+#' heights (see details).
 #' @param pai_a an optional array of plant area index values above `reqhgt` (see details)
 #' @param tfact coefficient determining sensitivity of soil moisture to variation in topographic wetness (see [soilmdistribute()])
 #' @param surfwet an optional single numeric value of array of values specifying the proportion
 #' of the canopy surface that should be treated as wet surface (see details)
+#' @param silent optional logical indicating whether to report on progress (default FALSE - progress reported).
 #' @seealso [runmicro_biga()] for running the microclimate model over large areas
 #' as tiles with climate input data provided as arrays.
 #' @return  if `hourly = TRUE` or `expand = TRUE` and `writeasnc = TRUE` the function writes writes a seperate netcdf4 file to disk
@@ -535,24 +536,26 @@ runmicro_dy <- function(micro_dy, reqhgt, expand = TRUE, pai_a = NA, tfact = 1.5
 #' supplied dtm and values for each hour as the z dimension. The parameter `surfwet`
 #' determines how much of the canopy should be treated as wet surface when calculating
 #' latent heat fluxes. However, except when extremely droughted, the matric potential of leaves
-#' is such that `surfwet` ~ 1. If set to NA, surfess wetness is modelled.
-runmicro_big <- function(weather, precip, vegp, soilc, dtm, reqhgt, pathout,
+#' is such that `surfwet` ~ 1. If set to NA, surface wetness is modelled.
+runmicro_big <- function(weather, precip, reqhgt, vegp, soilc, dtm, pathout,
+                         hourly = TRUE, expand = FALSE, tilesize = NA, writeasnc = TRUE,
                          subsetmodel = TRUE, tstep = "month", what = "tmax", days = NA,
-                         hourly = FALSE, expand = FALSE, tilesize = NA, writeasnc = TRUE,
-                         windhgt = 2, soilm = NA, silent = FALSE,
-                         runchecks = TRUE, xyf = 1, pai_a = NA, tfact = 1.5, surfwet = NA) {
-  # Run point model
-  if (silent == FALSE) cat("Running point microclimate model\n")
-  micropoint<-runpointmodel(weather,precip,vegp,soilc,windhgt,reqhgt,soilm)
-  if (subsetmodel)   micropoint<-subsetpointmodel(micropoint,tstep,what,days)
-  # Create directory for storing data
-  path2<-paste0(pathout,"microut/")
-  dir.create(path2,showWarnings = FALSE)
+                         windhgt = 2, soilm = NA, runchecks = TRUE,
+                         xyf = 1, pai_a = NA, tfact = 1.5, surfwet = NA, silent = FALSE) {
   # Unpack data
   up<-.unpack(dtm,vegp,soilc)
   dtm<-up$dtm
   vegp<-up$vegp
   soilc<-up$soilc
+  .checkbiginputs(dtm,vegp,soilc) # check no odd NAs
+  # Run point model
+  if (silent == FALSE) cat("Running point microclimate model\n")
+  ll<-.latlongfromraster(dtm)
+  micropoint<-runpointmodel(weather,precip,reqhgt,vegp,soilc,windhgt,soilm,lat=ll$lat,long=ll$long)
+  if (subsetmodel)   micropoint<-subsetpointmodel(micropoint,tstep,what,days)
+  # Create directory for storing data
+  path2<-paste0(pathout,"microut/")
+  dir.create(path2,showWarnings = FALSE)
   # Calculate tile size
   if (is.na(tilesize) == TRUE) {
     nt<-length(micropoint$weather$temp)
@@ -579,7 +582,9 @@ runmicro_big <- function(weather, precip, vegp, soilc, dtm, reqhgt, pathout,
   for (rw in 1:rws) {
     for (cl in 1:cls) {
       dtmi<-.croprast(dtm,rw,cl,tilesize)
-      if (is.na(mean(as.vector(dtmi),na.rm=T))==F) {
+      v<-as.vector(dtmi)
+      v<-v[is.na(v)==F]
+      if (length(v)>1) {
         slri<-crop(slr,ext(dtmi))
         apri<-crop(apr,ext(dtmi))
         twii<-crop(twi,ext(dtmi))
@@ -590,10 +595,10 @@ runmicro_big <- function(weather, precip, vegp, soilc, dtm, reqhgt, pathout,
         if (silent==FALSE) cat(paste0("Running model for tile ",rw," ",cl,"\n"))
         if (hourly) {
           micro<-modelin(micropoint,vegpi,soilci,dtmi,runchecks,xyf)
-          mout<-runmicro_hr(micro,reqhgt,pai_a,tfact,slri,apri,hori,wsai,twii,surfwet)
+          mout<-runmicro_hr(micro,reqhgt,pai_a,tfact,surfwet,slri,apri,hori,twii,wsai)
         } else {
           microd<-modelin_dy(micropoint,vegpi,soilci,dtmi,runchecks,xyf)
-          mout<-runmicro_dy(microd,reqhgt,expand,pai_a,tfact,slri,apri,hori,wsai,twii,surfwet)
+          mout<-runmicro_dy(microd,reqhgt,expand,pai_a,tfact,surfwet,slri,apri,hori,twii,wsai)
         }
         # Write output
         rwt<-ifelse(rw<10,paste0("0",rw),paste0("",rw))
@@ -626,32 +631,31 @@ runmicro_big <- function(weather, precip, vegp, soilc, dtm, reqhgt, pathout,
 #' @param precarray an array of daily precipitation (see details)
 #' @param tme an object of class POSIXlt giving the dates and times for each weather variable stored
 #' in the array. Must be in UTC timezone.
+#' @param reqhgt height for which temperatures are needed (m, negative if below ground surface)
 #' @param vegp an object of class vegparams as returned by [vegpfromhab()] (see details)
 #' @param soilc an object of class soilcharac as returned by [soilcfromtype()]
 #' @param dtm a PackedSpatRaster or SpatRaster object of elevations (see details)
 #' @param dtmc a SpatRaster object giving the resolution, spatial extent, and projection
 #' of the weather data used when running [micropointa()]. Must give elevations in metres if
 #' `altcorrect` > 0.
-#' @param reqhgt height for which temperatures are needed (m, negative if below ground surface)
 #' @param pathout a file directory to which to save data. Default saves to subfolder 'microut' in wording directory.
-#' @param altcorrect a single numeric value indicating whether to apply an elevational lapse rate correction to
-#' temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable
-#' lapse rate correction, see details)
-#' @param subsetmodel optional logical indicating whether to subset the model to return e.g. monthly values.
-#' See also [subsetpointmodel()]
-#' @param tstep one of `year` or `month` or `bioclim`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])
-#' @param what one of `tmax`, `tmin` or `tmedian`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])
-#' @param days optionally a vector of the days in the time sequence to return data for.
-#' Used only if `subsetmodel == TRUE`. If provided `tstep` is ignored. See [subsetpointmodel()]).
 #' @param hourly optional logical indicating whether to run the model in hourly or daily mode (see details).
 #' @param expand optional logical indicating whether to expand model outputs to hourly if run in daily mode
 #' (ignored if `hourly = TRUE`).
 #' @param tilesize optional intiger of the number of pixels in x and y of each tile (returned tiles are square).
 #' Calculated automatically based on data size of not provided.
 #' @param writeasnc optional logical indicating whether to write output data as netCDF4 files (default TRUE)
+#' @param subsetmodel optional logical indicating whether to subset the model to return e.g. monthly values.
+#' See also [subsetpointmodel()]
+#' @param tstep one of `year` or `month` or `bioclim`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])
+#' @param what one of `tmax`, `tmin` or `tmedian`. Used only if `subsetmodel == TRUE` (see [subsetpointmodel()])
+#' @param days optionally a vector of the days in the time sequence to return data for.
+#' Used only if `subsetmodel == TRUE`. If provided `tstep` is ignored. See [subsetpointmodel()]).
+#' @param altcorrect a single numeric value indicating whether to apply an elevational lapse rate correction to
+#' temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable
+#' lapse rate correction, see details)
 #' @param windhgt height above ground of wind speed data in weather (m) (see details)
 #' @param soilm optional vector of soil moisture values in upper 10 cm of the soil (calculated if not supplied)
-#' @param silent optional logical indicating whether to report on progress (default FALSE - progress reported).
 #' @param runchecks optional logical indicating whether to call [checkinputs()] to run checks on format and units of input data.
 #' @param xyf optional spatial smoothing factor applied in calculation of surface roughness and zero-plane displacement
 #' heights (see details)
@@ -659,6 +663,7 @@ runmicro_big <- function(weather, precip, vegp, soilc, dtm, reqhgt, pathout,
 #' @param tfact coefficient determining sensitivity of soil moisture to variation in topographic wetness (see [soilmdistribute()])
 #' @param surfwet an optional single numeric value of array of values specifying the proportion
 #' of the canopy surface that should be treated as wet surface (see details)
+#' @param silent optional logical indicating whether to report on progress (default FALSE - progress reported).
 #' @seealso [runmicro_biga()] for running the microclimate model over large areas
 #' as tiles with climate input data provided as a data.frame.
 #' @return  if `hourly = TRUE` or `expand = TRUE` and `writeasnc = TRUE` the function writes writes a seperate netcdf4 file to disk
@@ -710,14 +715,14 @@ runmicro_big <- function(weather, precip, vegp, soilc, dtm, reqhgt, pathout,
 #' pressure data to account for these elevation differences. If `altcorrect`= 1, a fixed
 #' lapse rate of 5 degrees per 100m is applied to the temperature data. If
 #' `altcorrect`= 2, humidity-dependent lapse rates are calculated and applied.
-runmicro_biga <- function(climarray, precarray, tme, vegp, soilc, dtm, dtmc, reqhgt, pathout = getwd(),
-                          altcorrect = 1, subsetmodel = TRUE, tstep = "month", what = "tmax", days = NA,
-                          hourly = FALSE, expand = FALSE, tilesize = NA, writeasnc = TRUE,
-                          windhgt = 2, soilm = NA, silent = FALSE,
-                          runchecks = TRUE, xyf = 1, pai_a = NA, tfact = 1.5, surfwet = NA) {
+runmicro_biga <- function(climarray, precarray, tme, reqhgt, vegp, soilc, dtm, dtmc,
+                          pathout = getwd(), hourly = FALSE, expand = FALSE, tilesize = NA, writeasnc = TRUE,
+                          subsetmodel = TRUE, tstep = "month", what = "tmax", days = NA,
+                          altcorrect = 1, windhgt = 2, soilm = NA, runchecks = TRUE,
+                          xyf = 1, pai_a = NA, tfact = 1.5, surfwet = NA, silent = FALSE) {
   # Run point model
   if (silent == FALSE) cat("Running point microclimate model over all grid cells of climate array\n")
-  micropointa<-runpointmodela(climarray,precarray,tme,vegp,soilc,windhgt,reqhgt,soilm)
+  micropointa<-runpointmodela(climarray,precarray,tme,reqhgt,vegp,soilc,windhgt,soilm,maxiter=10)
   if (subsetmodel) micropointa<-subsetpointmodela(micropointa,tstep,what,days)
   # Create directory for storing data
   path2<-paste0(pathout,"microut/")
@@ -753,7 +758,9 @@ runmicro_biga <- function(climarray, precarray, tme, vegp, soilc, dtm, dtmc, req
   for (rw in 1:rws) {
     for (cl in 1:cls) {
       dtmi<-.croprast(dtm,rw,cl,tilesize)
-      if (is.na(mean(as.vector(dtmi),na.rm=T))==F) {
+      v<-as.vector(dtmi)
+      v<-v[is.na(v)==F]
+      if (length(v)>1) {
         slri<-crop(slr,ext(dtmi))
         apri<-crop(apr,ext(dtmi))
         twii<-crop(twi,ext(dtmi))
@@ -763,11 +770,11 @@ runmicro_biga <- function(climarray, precarray, tme, vegp, soilc, dtm, dtmc, req
         soilci<-.soilcrop(soilc,dtmi)
         if (silent==FALSE) cat(paste0("Running model for tile ",rw," ",cl,"\n"))
         if (hourly) {
-          micro<-modelina(micropointa,vegpi,soilci,dtmc,dtmi,altcorrect,runchecks,xyf)
-          mout<-runmicro_hr(micro,reqhgt,pai_a,tfact,slri,apri,hori,wsai,twii,surfwet)
+          micro<-modelina(micropointa,vegpi,soilci,dtmi,dtmc,altcorrect,runchecks,xyf)
+          mout<-runmicro_hr(micro,reqhgt,pai_a,tfact,surfwet,slri,apri,hori,twii,wsai)
         } else {
-          microd<-modelina_dy(micropointa,vegpi,soilci,dtmc,dtmi,altcorrect,runchecks,xyf)
-          mout<-runmicro_dy(microd,reqhgt,expand,pai_a,tfact,slri,apri,hori,wsai,twii,surfwet)
+          microd<-modelina_dy(micropointa,vegpi,soilci,dtmi,dtmc,altcorrect,runchecks,xyf)
+          mout<-runmicro_dy(microd,reqhgt,expand,pai_a,tfact,surfwet,slri,apri,hori,twii,wsai)
         }
         # Write output
         rwt<-ifelse(rw<10,paste0("0",rw),paste0("",rw))

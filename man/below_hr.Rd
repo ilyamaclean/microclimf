@@ -12,8 +12,8 @@ below_hr(
   slr = NA,
   apr = NA,
   hor = NA,
-  wsa = NA,
-  twi = NA
+  twi = NA,
+  wsa = NA
 )
 }
 \arguments{
@@ -27,19 +27,19 @@ below_hr(
 in topographic wetness (see [soilmdistribute()])}
 
 \item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
-dtm if not supplied, but outer cells will be NA.}
+the dtm in micro if not supplied, but outer cells will be NA.}
 
 \item{apr}{an optional SpatRaster object of aspect values (Radians). Calculated from
-dtm if not supplied, but outer cells will be NA.}
+the dtm in micro if not supplied, but outer cells will be NA.}
 
 \item{hor}{an optional array of the tangent of the angle to the horizon in
-24 directions. Calculated from dtm if not supplied, but outer cells will be NA.}
-
-\item{wsa}{an optional array of wind shelter coefficients in 8 directions.
-Calculated from dtm if not supplied, but outer cells will be NA.}
+24 directions. Calculated from the dtm in micro if not supplied, but outer cells will be NA.}
 
 \item{twi}{optional SpatRaster object of topographic wetness index values.
-Calculated from `dtm` of not supplied, but outer cells will be NA.}
+Calculated from the dtm in micro if not supplied, but outer cells will be NA.}
+
+\item{wsa}{an optional array of wind shelter coefficients in 8 directions.
+Calculated from the dtm in micro if not supplied, but outer cells will be NA.}
 }
 \value{
 `Tz` Array of air temperatures at height `reqhgt` below ground (deg C)

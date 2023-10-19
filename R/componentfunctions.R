@@ -7,7 +7,7 @@
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness
 #' @param twi optional SpatRaster object of topographic wetness index values.
-#' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' Calculated from he dtm in micro of not supplied, but outer cells will be NA.
 #' @return a 3D array of soil moistures with the same x and y dims as `dtm` and z
 #' equivelent to length(soilm)
 #' @import terra
@@ -45,17 +45,20 @@ soilmdistribute <- function(micro, tfact = 1.5, twi = NA) {
 #' @param micro an object of class `micro` as returned by [modelin()]
 #' @param reqhgt height at which temperatures are required (m). Negative if below ground
 #' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied
+#' @param tfact coefficient determining sensitivity of soil moisture to variation
+#' in topographic wetness
 #' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' the dtm in micro if not supplied, but outer cells will be NA.
 #' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' the dtm in micro if not supplied, but outer cells will be NA.
 #' @param hor an optional array of the tangent of the angle to the horizon in
-#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
+#' 24 directions. Calculated from the dtm in micro if not supplied, but outer cells will be NA.
+#' @param twi optional SpatRaster object of topographic wetness index values.
+#' Calculated from he dtm in micro if not supplied, but outer cells will be NA.
 #' @return an object of class micro with additional terms added for subsequent modelling
 #' @import terra
 #' @export
-#'
-twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = NA, tfact=1.5, twi=NA) {
+twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr = NA, hor = NA, twi = NA) {
   if (micro$progress<1) micro<-soilmdistribute(micro,tfact,twi)
   dtm<-micro$dtm
   dtm[is.na(dtm)]<-0
@@ -229,16 +232,16 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
 #' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied.
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
-#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from the
+#' dtm in micro if not supplied, but outer cells will be NA.
 #' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' the dtm ion micro if not supplied, but outer cells will be NA.
 #' @param hor an optional array of the tangent of the angle to the horizon in
-#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param wsa an optional array of wind shelter coefficients in 8 directions.
-#' Calculated from dtm if not supplied, but outer cells will be NA.
+#' 24 directions. Calculated from the dtm in micro if not supplied, but outer cells will be NA.
 #' @param twi optional SpatRast object of topographic wetness index values.
-#' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' Calculated from the dtm in micro if not supplied, but outer cells will be NA.
+#' @param wsa an optional array of wind shelter coefficients in 8 directions.
+#' Calculated from the dtm in micro if not supplied, but outer cells will be NA.
 #' @return an object of class microin with the following components added:
 #' @return `uf` wind friction velocity (m/s)
 #' @return `uz` if `reqhgt > 0` wind speed at height `reqhgt` (m/s)
@@ -251,9 +254,9 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, slr = NA, apr = NA, hor = 
 #' by applying the topographic shelter coefficient described in Maclean et al (2019) Methods
 #' in Ecology and Evolution, 10:280-290.
 wind <- function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA, apr = NA,
-                 hor = NA, wsa = NA, twi = NA) {
+                 hor = NA, twi = NA, wsa = NA) {
   # Run two-stream model if not run
-  if (micro$progress < 2) micro<-twostream(micro,reqhgt,pai_a,slr,apr,hor,tfact,twi)
+  if (micro$progress < 2) micro<-twostream(micro,reqhgt,pai_a,tfact,slr,apr,hor,twi)
   # Calculate ratio of u* ref to u* pixel (no diabnatic correction)
   dp<-with(micro$vegp_p,.zeroplanedis(h,pai))
   zmp<-with(micro$vegp_p,.roughlength(h,pai,dp))
@@ -364,15 +367,15 @@ PenMont <- function(tc,pk,ea,radabs,gHa,gV,es=NA,tdew=NA,surfwet=1,G=0,allout=TR
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
 #' @param slr an optional SpatRast object of slope values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' the dtm in micro if not supplied, but outer cells will be NA.
 #' @param apr an optional SpatRast object of aspect values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' the dtm in micro if not supplied, but outer cells will be NA.
 #' @param hor an optional array of the tangent of the angle to the horizon in
-#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param wsa an optional array of wind shelter coefficients in 8 directions.
-#' Calculated from dtm if not supplied, but outer cells will be NA.
+#' 24 directions. Calculated from the dtm in micro if not supplied, but outer cells will be NA.
 #' @param twi optional SpatRast object of topographic wetness index values.
-#' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' Calculated from the dtm in micro if not supplied, but outer cells will be NA.
+#' @param wsa an optional array of wind shelter coefficients in 8 directions.
+#' Calculated from the dtm in micro if not supplied, but outer cells will be NA.
 #' @return an object of class micro with the following components added:
 #' @return `T0` ground surface temperature (deg C)
 #' @return `G` ground heat flux (W/m^2)
@@ -383,10 +386,10 @@ PenMont <- function(tc,pk,ea,radabs,gHa,gV,es=NA,tdew=NA,surfwet=1,G=0,allout=TR
 #' @details if [wind()] has not been run to add additional elements to `micro`
 #' it is automatically called.
 soiltemp_hr  <- function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA,
-                         apr = NA, hor = NA, wsa = NA, twi = NA) {
+                         apr = NA, hor = NA, twi = NA, wsa = NA) {
   # run two-stream and wind functions if not run
   if (micro$progress<3) {
-    micro<-wind(micro,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+    micro<-wind(micro,reqhgt,pai_a,tfact,slr,apr,hor,twi,wsa)
   }
   # Estimate diurnal range in grid ground surface temperature with G set to zero
   radabs<-micro$radGsw+micro$radGlw  # Absorbed radiation
@@ -436,34 +439,20 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA
 #' @param micro object of class microin as returned by [modelin()]
 #' @param reqhgt height above ground for which wind speeds are wanted. If negative (below ground) wind friction velocity only is returned
 #' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied.
-#' @param xyf optional spatial smoothing factor applied in calculation of wind speeds (see details)
-#' @param zf optional integer used to calculate how frequently to sample the plant area index array
-#' when calculating smoothed wind speed (see details)
-#' @param soilinit initial soil moisture fractions in surface and subsurface layer (see [soilmpredict()])
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
-#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
-#' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
-#' @param hor an optional array of the tangent of the angle to the horizon in
-#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param wsa an optional array of wind shelter coefficients in 8 directions.
-#' Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param twi optional SpatRast object of topographic wetness index values.
-#' Calculated from `dtm` of not supplied, but outer cells will be NA.
-#' @param soilmcoefs optional list of soil moisture model coefficients as returned by [fitsoilm()]
-#' @param soiltcoefs optional list of soil moisture model coefficients as returned by [fitsoilt()]
-#' @param backweight an optional parameter used for iteratively deriving diabatic
-#' coefficients. See [wind()])
-#' @param maxiter an optional number of iterations used to derive diabatic
-#' coefficients by running a point microclimate model until stable results are
-#' obtained (default 100). See [wind()])
-#' @param gmn optional minimum convective conductance value (mol/m^2/s). See [wind()])
 #' @param surfwet an optional coefficient describing the fraction of the
-#' vegetation surface that acts like a free water surface. Reduce if relative
-#' humidity estimates seem too high.
-#' @return an object of class microout with the following components:
+#' vegetation surface that acts like a free water surface. Calculated from rainfall if not supplied.
+#' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
+#' the dtm in micro if not supplied, but outer cells will be NA.
+#' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
+#' the dtm in micro if not supplied, but outer cells will be NA.
+#' @param hor an optional array of the tangent of the angle to the horizon in
+#' 24 directions. Calculated from the dtm in micro if not supplied, but outer cells will be NA.
+#' @param twi optional SpatRast object of topographic wetness index values.
+#' Calculated from the dtm in micro if not supplied, but outer cells will be NA.
+#' @param wsa an optional array of wind shelter coefficients in 8 directions.
+#' Calculated from the dtm in micro if not supplied, but outer cells will be NA.
 #' @return `Tz` Array of air temperatures at height `reqhgt` (deg C)
 #' @return `tleaf` Array of leaf temperatures at height `reqhgt` (deg C). if `reqhgt` greater than canopy height, the returned temperatures are those that would be attained by an unshaded leaf with average reflectance
 #' @return `T0` Array of ground surface temperatures (deg C)
@@ -486,11 +475,11 @@ soiltemp_hr  <- function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA
 #'
 #' @import terra zoo
 #' @export
-temphumE<-function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA, apr = NA,
-                   hor = NA, wsa = NA, twi = NA, surfwet = NA) {
+temphumE<-function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, surfwet = NA,
+                   slr = NA, apr = NA, hor = NA, twi = NA, wsa = NA) {
   # run soiltemp function if not run
   if (micro$progress<4) {
-    micro<-soiltemp_hr(micro,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+    micro<-soiltemp_hr(micro,reqhgt,pai_a,tfact,slr,apr,hor,twi,wsa)
   }
   # Calculate vapour conductivity
   Rsw<-with(micro,difr+dirr*si)
@@ -558,15 +547,15 @@ temphumE<-function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA, apr 
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
 #' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' the dtm in micro if not supplied, but outer cells will be NA.
 #' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' the dtm in micro if not supplied, but outer cells will be NA.
 #' @param hor an optional array of the tangent of the angle to the horizon in
-#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param wsa an optional array of wind shelter coefficients in 8 directions.
-#' Calculated from dtm if not supplied, but outer cells will be NA.
+#' 24 directions. Calculated from the dtm in micro if not supplied, but outer cells will be NA.
 #' @param twi optional SpatRaster object of topographic wetness index values.
-#' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' Calculated from the dtm in micro if not supplied, but outer cells will be NA.
+#' @param wsa an optional array of wind shelter coefficients in 8 directions.
+#' Calculated from the dtm in micro if not supplied, but outer cells will be NA.
 #' @return `Tz` Array of air temperatures at height `reqhgt` below ground (deg C)
 #' @seealso [temphumE()] for running the above ground component of the microclimate
 #' model and [below_dy()] for running the model in daily time increments.
@@ -575,9 +564,9 @@ temphumE<-function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA, apr 
 #' @importFrom stats filter
 #' @export
 below_hr<-function(micro, reqhgt, pai_a = NA, tfact = 1.5,
-                   slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA) {
+                   slr = NA, apr = NA, hor = NA, twi = NA, wsa = NA) {
   if (is.null(micro$T0[1])) {
-    micro<-soiltemp_hr(micro,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+    micro<-soiltemp_hr(micro,reqhgt,pai_a,tfact,slr,apr,hor,twi,wsa)
   }
   # Calculate n
   n<- -118.35*reqhgt/mean(micro$DDp)
@@ -629,15 +618,15 @@ below_hr<-function(micro, reqhgt, pai_a = NA, tfact = 1.5,
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
 #' @param slr an optional SpatRast object of slope values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' the dtm in micro_dy if not supplied, but outer cells will be NA.
 #' @param apr an optional SpatRast object of aspect values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' the dtm in micro_dy if not supplied, but outer cells will be NA.
 #' @param hor an optional array of the tangent of the angle to the horizon in
-#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param wsa an optional array of wind shelter coefficients in 8 directions.
-#' Calculated from dtm if not supplied, but outer cells will be NA.
+#' 24 directions. Calculated from the dtm in micro_dy if not supplied, but outer cells will be NA.
 #' @param twi optional SpatRast object of topographic wetness index values.
-#' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' Calculated from the dtm in micro_dy if not supplied, but outer cells will be NA.
+#' @param wsa an optional array of wind shelter coefficients in 8 directions.
+#' Calculated from the dtm in micro_dy if not supplied, but outer cells will be NA.
 #' @return an object of class microdaily with the following components added:
 #' @return `T0` ground surface temperature (deg C)
 #' @return `G` ground heat flux (W/m^2)
@@ -647,14 +636,14 @@ below_hr<-function(micro, reqhgt, pai_a = NA, tfact = 1.5,
 #' @seealso [wind()], [soiltemp_hr()]
 #' @details if [wind()] has not been run to add additional elements to `micro`
 #' it is automatically called.
-soiltemp_dy  <- function(micro_dy, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr = NA,
-                         apr = NA, hor = NA, wsa = NA, twi = NA) {
+soiltemp_dy  <- function(micro_dy, reqhgt = 0.05, pai_a = NA, tfact = 1.5,
+                         slr = NA, apr = NA, hor = NA, twi = NA, wsa = NA) {
   # run two-stream and wind functions if not run
   micro_mn<-micro_dy$micro_mn
   micro_mx<-micro_dy$micro_mx
   if (micro_mn$progress<3) {
-    micro_mn<-wind(micro_mn,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
-    micro_mx<-wind(micro_mx,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+    micro_mn<-wind(micro_mn,reqhgt,pai_a,tfact,slr,apr,hor,twi,wsa)
+    micro_mx<-wind(micro_mx,reqhgt,pai_a,tfact,slr,apr,hor,twi,wsa)
   }
   # Estimate diurnal range in grid ground surface temperature with G set to zero
   radabs_mn<-micro_mn$radGsw+micro_mn$radGlw  # Absorbed radiation (min)
@@ -730,15 +719,15 @@ soiltemp_dy  <- function(micro_dy, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr =
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
 #' @param slr an optional SpatRaster object of slope values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' from the dtm in micro_dy if not supplied, but outer cells will be NA.
 #' @param apr an optional SpatRaster object of aspect values (Radians). Calculated from
-#' dtm if not supplied, but outer cells will be NA.
+#' the dtm in micro_dy if not supplied, but outer cells will be NA.
 #' @param hor an optional array of the tangent of the angle to the horizon in
-#' 24 directions. Calculated from dtm if not supplied, but outer cells will be NA.
-#' @param wsa an optional array of wind shelter coefficients in 8 directions.
-#' Calculated from dtm if not supplied, but outer cells will be NA.
+#' 24 directions. Calculated from the dtm micro_dy if not supplied, but outer cells will be NA.
 #' @param twi optional SpatRaster object of topographic wetness index values.
-#' Calculated from `dtm` of not supplied, but outer cells will be NA.
+#' Calculated from the dtm in micro_dy if not supplied, but outer cells will be NA.
+#' @param wsa an optional array of wind shelter coefficients in 8 directions.
+#' Calculated from the dtm in micro_dy if not supplied, but outer cells will be NA.
 #' @return `Tz` Array of air temperatures at height `reqhgt` below ground (deg C)
 #' @seealso [temphumE()] for running the above ground component of the microclimate
 #' model and [below_hr()] for running the model in hourly time increments.
@@ -747,10 +736,10 @@ soiltemp_dy  <- function(micro_dy, reqhgt = 0.05, pai_a = NA, tfact = 1.5, slr =
 #' @importFrom stats filter
 #' @export
 below_dy<-function(micro_dy, reqhgt, pai_a = NA, tfact = 1.5,
-                   slr = NA, apr = NA, hor = NA, wsa = NA, twi = NA) {
+                   slr = NA, apr = NA, hor = NA, twi = NA, wsa = NA) {
 
   if (is.null(micro_dy$micro_mn$T0[1])) {
-    micro_dy<-soiltemp_dy(micro_dy,reqhgt,pai_a,tfact,slr,apr,hor,wsa,twi)
+    micro_dy<-soiltemp_dy(micro_dy,reqhgt,pai_a,tfact,slr,apr,hor,twi,wsa)
   }
   micro_mn<-micro_dy$micro_mn
   micro_mx<-micro_dy$micro_mx

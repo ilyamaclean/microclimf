@@ -9,12 +9,12 @@ runmicro_hr(
   reqhgt,
   pai_a = NA,
   tfact = 1.5,
+  surfwet = NA,
   slr = NA,
   apr = NA,
   hor = NA,
-  wsa = NA,
   twi = NA,
-  surfwet = NA
+  wsa = NA
 )
 }
 \arguments{
@@ -27,23 +27,23 @@ runmicro_hr(
 \item{tfact}{coefficient determining sensitivity of soil moisture to variation
 in topographic wetness (see [soilmdistribute()])}
 
-\item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
-dtm if not supplied, but outer cells will be NA.}
-
-\item{apr}{an optional SpatRaster object of aspect values (Radians). Calculated from
-dtm if not supplied, but outer cells will be NA.}
-
-\item{hor}{an optional array of the tangent of the angle to the horizon in
-24 directions. Calculated from dtm if not supplied, but outer cells will be NA.}
-
-\item{wsa}{an optional array of wind shelter coefficients in 8 directions.
-Calculated from dtm if not supplied, but outer cells will be NA.}
-
-\item{twi}{optional SpatRaster object of topographic wetness index values.
-Calculated from `dtm` of not supplied, but outer cells will be NA.}
-
 \item{surfwet}{an optional single numeric value of array of values specifying the proportion
 of the canopy surface that should be treated as wet surface (see details)}
+
+\item{slr}{an optional SpatRaster object of slope values (Radians). Calculated from
+the dtm in micro if not supplied, but outer cells will be NA.}
+
+\item{apr}{an optional SpatRaster object of aspect values (Radians). Calculated from
+the dtm in micro if not supplied, but outer cells will be NA.}
+
+\item{hor}{an optional array of the tangent of the angle to the horizon in
+24 directions. Calculated from the dtm in micro if not supplied, but outer cells will be NA.}
+
+\item{twi}{optional SpatRaster object of topographic wetness index values.
+Calculated from the dtm in micro of not supplied, but outer cells will be NA.}
+
+\item{wsa}{an optional array of wind shelter coefficients in 8 directions.
+Calculated from the dtm in micro if not supplied, but outer cells will be NA.}
 }
 \value{
 `Tz` Array of air temperatures at height `reqhgt` (deg C). Identical to `T0`
@@ -94,7 +94,7 @@ library(terra)
 library(zoo)
 library(abind)
 # ** First run point model (NB not run as uses inbuilt dataset)
-# micropoint<-runpointmodel(climdata,rainfall,vegp,soilc,reqhgt = 0.05)
+# micropoint<-runpointmodel(climdata, rainfall, reqhgt = 0.05, vegp, soilc)
 # ** Subset inbuilt point model to get hottest days in each month
 micropoint_mx<-subsetpointmodel(micropoint, tstep = "month", what = "tmax")
 micropoint_mn<-subsetpointmodel(micropoint, tstep = "month", what = "tmin")

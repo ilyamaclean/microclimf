@@ -7,13 +7,16 @@
 runpointmodel(
   weather,
   precip,
+  reqhgt = 0.05,
   vegp,
   soilc,
   windhgt = 2,
-  reqhgt = 0.1,
   soilm = NA,
   dTmx = 25,
-  maxiter = 100
+  maxiter = 100,
+  yearG = TRUE,
+  lat = NA,
+  long = NA
 )
 }
 \arguments{
@@ -21,13 +24,13 @@ runpointmodel(
 
 \item{precip}{a vector of daily precipitation}
 
+\item{reqhgt}{height for which temperatures are needed (used only when reqhgt < 0 to calculate tmeperature below ground)}
+
 \item{vegp}{an object of class vegparams as returned by [vegpfromhab()] (see details)}
 
 \item{soilc}{an object of class soilcharac as returned by [soilcfromtype()]}
 
 \item{windhgt}{height above ground of wind speed data in weather}
-
-\item{reqhgt}{height for which temperatures are needed (used only when reqhgt < 0 to calculate tmeperature below ground)}
 
 \item{soilm}{optional vector of soil moisture values in upper 10 cm of the soil (calculated if not supplied)}
 
@@ -35,13 +38,19 @@ runpointmodel(
 Included to ensure model convergence}
 
 \item{maxiter}{optional integer indicating the maximum number of iterations (see details)}
+
+\item{yearG}{optional logical indicating whether or not to include annual ground heat flux cycle}
+
+\item{lat}{optional central latitude of study area (removes tile effects when running in tiles)}
+
+\item{long}{optional central longitude of study area (removes tile effects when running in tiles)}
 }
 \value{
 a list of the following:
 (1) weather - a data.frame of weather variables, but with temperature and
 wind speed height-adjusted to be above canopy if necessary (see details)
 (2) precip - a vector of daily precipitation (same as input)
-(3) microp - an object of class pointmicro as returned bgy [microiter::RunBigLeaf()].
+(3) microp - an object of class pointmicro as returned by [micropoint::RunBigLeaf()].
 (4) soilm - a vector of hourly soil moisture fractions in the upper 10 cm of the soil
 (5) Tbz - a vector of below ground temperatures. NA if reqhgt > 0
 (5) vegp - a list of vegetation paremeters used by the point model
