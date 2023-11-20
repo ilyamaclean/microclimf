@@ -1042,7 +1042,7 @@ nctoclimarray <- function(ncfile, dtm, dtr_cor_fac = 1.285)  {
   ssrd<-rast(ncfile,subds = "ssrd") # Surface short-wave (solar) radiation downwards (W/m^2)
   lsm<-rast(ncfile,subds = "lsm") # Land sea mask
   # Create coarse-resolution dtm to use as template for resampling
-  te<-project(t2m[[1]],crs(dtm))
+  te<-terra::project(t2m[[1]],crs(dtm))
   agf<-res(te)[1]/res(dtm)[1]
   dtmc<-aggregate(dtm,fact=agf,fun=mean,na.rm=T)
   # Apply coastal correction to temperature data
@@ -1052,16 +1052,16 @@ nctoclimarray <- function(ncfile, dtm, dtr_cor_fac = 1.285)  {
   # Calculate vapour pressure
   ea<-.rast(.satvap(as.array(d2m)-273.15),t2m)
   # Resample all variables to match dtmc
-  tc<-project(tc,dtmc)
-  ea<-project(ea,dtmc)
-  sp<-project(sp,dtmc)
-  u10<-project(u10,dtmc)
-  v10<-project(v10,dtmc)
-  tp<-project(tp,dtmc)
-  msnlwrf<-project(msnlwrf,dtmc)
-  msdwlwrf<-project(msdwlwrf,dtmc)
-  fdir<-project(fdir,dtmc)
-  ssrd<-project(ssrd,dtmc)
+  tc<-terra::project(tc,dtmc)
+  ea<-terra::project(ea,dtmc)
+  sp<-terra::project(sp,dtmc)
+  u10<-terra::project(u10,dtmc)
+  v10<-terra::project(v10,dtmc)
+  tp<-terra::project(tp,dtmc)
+  msnlwrf<-terra::project(msnlwrf,dtmc)
+  msdwlwrf<-terra::project(msdwlwrf,dtmc)
+  fdir<-terra::project(fdir,dtmc)
+  ssrd<-terra::project(ssrd,dtmc)
   # Derive varies
   temp<-as.array(tc) # Temperature (deg c)
   relhum<-(as.array(ea)/.satvap(temp))*100 # Relative humidity (%)
