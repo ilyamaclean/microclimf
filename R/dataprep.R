@@ -122,12 +122,6 @@ subsetpointmodela <- function(pointmodela, tstep = "month", what = "tmax", days 
   }
   micropointa
 }
-
-
-
-
-
-
 #' Check format and values in model inputs
 #'
 #' The function `checkinputs` checks all the inputs into the model and returns errors

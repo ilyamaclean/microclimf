@@ -163,7 +163,7 @@ modelina <- function(micropointa, vegp, soilc, dtm, dtmc, altcorrect = 0, runche
     weather[[i]]<-onepoint$weather
     precip[[i]]<-onepoint$precip
     if (runchecks) {
-      rc<-checkinputs(weather[[i]],precip[[i]],vegp,soilc,dtm,FALSE,tstep=onepoint$tstep)
+      rc<-checkinputs(weather[[i]],precip[[i]],vegp,soilc,dtmc,FALSE,tstep=onepoint$tstep)
       weather[[i]]<-rc$weather
       precip[[i]]<-rc$precip
       vegp<-rc$vegp
