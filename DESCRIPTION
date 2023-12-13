@@ -27,7 +27,7 @@ Imports: ncdf4,
     abind,
     zoo,
     stats
-Remotes: ilyamaclean/micropoint
+Remotes: github::ilyamaclean/micropoint
 Suggests: 
     knitr,
     rmarkdown,
