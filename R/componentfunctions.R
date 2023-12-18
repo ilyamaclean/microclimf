@@ -341,7 +341,10 @@ PenMont <- function(tc,pk,ea,radabs,gHa,gV,es=NA,tdew=NA,surfwet=1,G=0,allout=TR
   sb<-5.67*10^-8
   gHr<-gHa+(4*0.97*sb*(tc+273.15)^3)/29.3
   Rem<-0.97*sb*(tc+273.15)^4
-  m<-44526*(gV/pk)
+  la<-45068.7-42.8428*tc
+  sel<-which(tc<0)
+  la[sel]<-51078.69-4.338*tc[sel]-0.06367*tc[sel]^2
+  m<-la*(gV/pk)
   L<-m*(es-ea)*surfwet
   dT<-(radabs-Rem-L-G)/(29.3*gHr+m*delta)
   dTmx<- -0.6273*max(tc,na.rm=T)+49.79
