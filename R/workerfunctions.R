@@ -195,6 +195,7 @@
   if (class(d)=="logical") d<-.zeroplanedis(h,pai)
   Be<-sqrt(0.003+(0.2*pai)/2)
   zm<-(h-d)*exp(-0.4/Be)*exp(psi_h)
+  zm[zm<0.0005]<-0.0005
   zm
 }
 #' Calculate saturated vapour pressure

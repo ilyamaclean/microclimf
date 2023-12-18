@@ -26,7 +26,7 @@ modelina(
 
 \item{dtmc}{a SpatRaster object giving the resolution, spatial extent, and projection
 of the weather data used when running [micropointa()]. Must give elevations in metres if
-`altcorrect` > 0.}
+`altcorrect` > 0 or if setting runchecks to TRUE.}
 
 \item{altcorrect}{a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction, see details)}
 
