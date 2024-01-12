@@ -192,7 +192,7 @@
 }
 #' Calculate roughness length
 .roughlength<-function(h,pai,d=NA,psi_h=0) {
-  if (class(d)=="logical") d<-.zeroplanedis(h,pai)
+  if (class(d)[1]=="logical") d<-.zeroplanedis(h,pai)
   Be<-sqrt(0.003+(0.2*pai)/2)
   zm<-(h-d)*exp(-0.4/Be)*exp(psi_h)
   zm[zm<0.0005]<-0.0005
@@ -1013,4 +1013,112 @@
     sel<-which(le>0)
     stop(paste0("The following layers of soilc contain NA that are not NA in dtm: ",nms[sel],"\n"))
   }
+}
+# =========================================================================== #
+# *************** Functions associated with snow modelling ****************** #
+# =========================================================================== #
+#' Get snow environment form lat and long
+.extractsnowenv <- function(lat, long) {
+  xy<-as.matrix(data.frame(x=long,y=lat))
+  int<-as.numeric(extract(rast(snowenv),xy))
+  env<-"Alpine"
+  if (int == 1) env<-"Maritime"
+  if (int == 2) env<-"Prairie"
+  if (int == 3) env<-"Tundra"
+  if (int == 4) env<-"Taiga"
+  return(env)
+}
+#' Calculates snow density parameters from snow environment
+.snowdens<-function(snowenv="Tundra") {
+  densfun<-c(0.5975,0.2237,0.0012,0.0038)
+  if (snowenv == "Maritime") densfun<-c(0.5979,0.2578,0.001,0.0038)
+  if (snowenv == "Prairie") densfun<-c(0.594,0.2332,0.0016,0.0031)
+  if (snowenv == "Tundra") densfun<-c(0.363,0.2425,0.0029,0.0049)
+  if (snowenv == "Taiga") densfun<-c(0.217,0.217,0,0)
+  densfun
+}
+#' Calculate zero-plane displacement for snow
+.szeroplanedis<-function(h,pai,snowdepth) {
+  pai<-(h-snowdepth)/h
+  pai[pai<0.001]<-0.001
+  hs<-h-snowdepth
+  d<-suppressWarnings(snowdepth+(1-(1-exp(-sqrt(7.5*pai)))/sqrt(7.5*pai))*hs)
+  sel<-which(snowdepth > h)
+  d[sel]<-snowdepth[sel]
+  d
+}
+#' Calculate roughness length for snow
+.sroughlength<-function(h,pai,snowdepth,d=NA,psi_h=0) {
+  if (class(d)[1]=="logical") d<-.szeroplanedis(h,pai,snowdepth)
+  pai<-(h-snowdepth)/h
+  Be<-sqrt(0.003+(0.2*pai)/2)
+  zm<-(h-d)*exp(-0.4/Be)*exp(psi_h)
+  zm[zm<0.0005]<-0.0005
+  sel<-which(snowdepth > h)
+  zm[sel]<-0.0005
+  zm
+}
+#' Calculate pai above snow surface where snow depth is an array or matrix
+.epaif<-function(pai,hgt,snowd) {
+  epai<-((hgt-snowd)/hgt)*pai
+  epai[epai<0]<-0
+  epai[is.na(epai)]<-0
+  epai
+}
+#' Calculates wind speed within canopy given vertical profile within the canopy
+.meancanopywind<-function(uz,pai,hgt,d,zm,snowd=0,zu=2) {
+  # Apply shelter coefficient
+  uf<-suppressWarnings((0.4*uz)/log((zu-d)))
+  ehgt<-pmax(hgt,snowd)
+  uh<-suppressWarnings((uf/0.4)*log((ehgt-d)/zm))
+  s<-which(uh<uf)
+  uh[s]<-uf[s]
+  Be<-0.205*pai^0.445+0.1
+  a<-pai/hgt
+  Lc<-(0.25*a)^-1
+  Lm<-2*Be^3*Lc
+  a<-(Be*hgt)/Lm
+  ef<-exp(a*((snowd/hgt)-1))
+  ha<-hgt/a
+  int<-ha*(1-ef)
+  ur<-int/(hgt-snowd)
+  ur[is.na(ur)]<-1
+  ur[ur>1]<-1
+  u<-uh*ur
+  sel<-which(is.na(u))
+  u[sel]<-uf[sel]
+  sel<-which(u<uf)
+  u[sel]<-uf[sel]
+  u
+}
+#' Calculates SWE (mm) of intercepted canopy snow (inputs as follows:)
+#' prec: daily precipitation (mm),
+#' uz: wind speed at height zu  (m/s),
+#' gsnowd: ground snow depth (cm),
+#' Lt: snow load in previous time step (mm SWE)
+#' pai: plant area index
+#' hgt: canopy height (m)
+#' Sh: branch snow load coefficient (kg/m^2). 6.6 for pine and 5.9 kg for spruce.
+#' zu: height above ground of wind speed measurement uz (m)
+.canopysnowint<-function(precd,uz,pai,hgt,gsnowd,Lt,Sh=6.6,zu=2) {
+  # Calculate mean canopy wind speed
+  d<-.szeroplanedis(hgt,pai,gsnowd)
+  zm<-.roughlength(hgt,pai,gsnowd,d)
+  uc<-.meancanopywind(uz,dtm,pai,hgt,d,zm,gsnowd,zu)
+  # Calculate parameters for canopy snow interception
+  epai<-.epaif(pai,hgt,gsnowd) # pai above snow surface
+  Cc<-1-exp(-0.8*epai) # Snow leaf contact
+  S<-Sh*(0.26+46/375) # Branch snow load
+  Lstr<-S*0.8*epai  # Max canopy load (mm SWE)
+  ehgt<-hgt-gsnowd
+  ehgt[ehgt<0]<-0
+  btm<-1-Cc*((uc*hgt)/(800))
+  Cp<-Cc/btm  # maximum plant area of the snow±leaf contact per unit area of ground
+  k<-Cp/Lstr
+  k[is.na(k)]<-1
+  Iinit<-(Lstr-Lt)*(1-exp(-k*precd))
+  Int<-Iinit*0.678
+  sel<-which(Int>precd)
+  Int[sel]<-precd[sel]
+  return(Int)
 }

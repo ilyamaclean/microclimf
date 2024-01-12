@@ -148,4 +148,10 @@
 #'   \item{leaft}{a PackedSpatRaster object of leaf transmittance}
 #'}
 "vegp"
-
+#' A 2.5 degree resolution global dataset indicating snow environments
+#'
+#' A spatial dataset of indicating snow environments (0 = Alpine, 1 = maritime, 2 = Prairie, 3 = Taiga, 4 = Tundra)
+#'
+#' @format A PackedSpatRaster object with 72 rows and 144 columns
+#' @source derived from \url{https://www.worldwildlife.org/publications/terrestrial-ecoregions-of-the-world}
+"snowenv"

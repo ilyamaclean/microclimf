@@ -1018,6 +1018,7 @@ leafrfromalb<-function(pai, gref, x, alb, ltrr = 1, out = "lref") {
 #'   \item{dtmc}{a coarse resolution digital elevation dataset matching the resolution of input
 #'   climate data, but with a coordinate reference system and extent matching `dtm`}
 #' }
+#' @export
 #' @details the model requires that input climate data are projected using a coordinate reference
 #' system in which x and y are in metres. Since values returned by [mcera5::request_era5()]
 #' are in lat long, the output data are reprojected using the coordinate reference system and
