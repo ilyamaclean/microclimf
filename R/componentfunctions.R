@@ -156,57 +156,61 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   # === (1k) Calculate ground absorbed radiation
   # Shortwave
   svfa<-.rta(rast(svf),length(jd))
-  Rbgm<-(1-micro$clump^Kc)*exp(-kkd$kd*pai_t)+micro$clump^Kc
-  Rdbm<-(1-micro$clump^2)*((p8/sig)*exp(-kkd$kd*pai_t)+p9*exp(-h*pai_t)+p10*exp(h*pai_t))
-  sel<-which(is.na(Rdbm) | Rdbm<0)
-  Rdbm[sel]<-0
-  sel<-which(Rdbm>1)
-  Rdbm[sel]<-1
-  Rddm<-(1-micro$clump^2)*(p3*exp(-h*pai_t)+p4*exp(h*pai_t))+micro$clump^2
-  sel<-which(is.na(Rddm))
-  Rddm[sel]<-1
+  # ~~ Contribution of direct to downward diffuse
+  Rdbm<-(1-micro$clump^Kc)*((p8/sig)*exp(-kkd$kd*pai_t)+p9*exp(-h*pai_t)+p10*exp(h*pai_t))+micro$clump^Kc
+  s<-which(is.na(Rdbm) | Rdbm<0)
+  Rdbm[s]<-0
+  Rdbm[Rdbm>1]<-1
+  # ~~ Downward diffuse
+  Rddm<-(p3*exp(-h*pai_t)+p4*exp(h*pai_t))+micro$clump^2
+  s<-which(is.na(Rddm))
+  Rddm[s]<-1
+  # ~~ Downward direct
+  Rbgm<-exp(-kkd$kd*pai_t)+micro$clump^Kc
+  # ~~ Ground absorbed
   micro$radGdir<-micro$dirr*si*Rbgm
   micro$radGdif<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
   micro$radGsw<-(1-micro$gref)*(micro$radGdir+micro$radGdif)
   # Longwave
-  trd<-(1-micro$clump^2)*exp(-pai_t)+micro$clump^2
-  trd[trd<0]<-0
-  trd[trd>1]<-1
+  trd<-exp(-pai_t)+micro$clump^2
   micro$lwout<-0.97*5.67*10^-8*(micro$tc+273.15)^4 # Longwave emitted
   lwsky<-micro$skyem*micro$lwout # Longwave radiation down from sky
   micro$radGlw<-0.97*(trd*svfa*lwsky+(1-trd)*(1-svfa)*micro$lwout)
   # === (1l) Calculate canopy and ground combined absorbed radiation
-  trb<-(1-micro$clump^Kc)*exp(-kkd$kd*pai_t)+micro$clump^Kc
-  trb[trb<0]<-0
-  trb[trb>1]<-1
+  trb<-exp(-kkd$kd*pai_t)+micro$clump^Kc
   micro$radCsw<-(1-albedo)*(micro$dirr*sin(alt)*(1-trb)+svfa*micro$difr*(1-trd))+micro$radGsw
   micro$radClw<-svfa*lwsky
   if (reqhgt > 0) {
     # === (1m) Calculate up and downstream at reqhgt
     # Downward
-    mub<-(1-micro$clump)^(Kc*n)
-    mud<-(1-micro$clump)^(2*n)
-    Rbgm<-mub*exp(-kkd$kd*pai_a)+(1-mub)
-    Rdbm<-mud*((p8/sig)*exp(-kkd$kd*pai_a)+p9*exp(-h*pai_a)+p10*exp(h*pai_a))+(1-mud)
-    sel<-which(is.na(Rdbm) | Rdbm<0)
-    Rdbm[sel]<-0
-    sel<-which(Rdbm>1)
-    Rdbm[sel]<-1
-    Rddm<-(1-(micro$clump^(2*n)))*(p3*exp(-h*pai_a)+p4*exp(h*pai_t))+micro$clump^(2*n)
-    sel<-which(is.na(Rddm))
-    Rddm[sel]<-1
-    micro$Rbdown<-micro$dirr*sin(alt)*Rbgm
+    trcb<-micro$clump^(Kc*n) # transmission through canopy gaps (direct)
+    trcd<-micro$clump^(2*n)  # transmission through canopy gaps (diffuse)
+    # ~~ Contribution of direct to downward diffuse
+    Rdbm<-(1-trcb)*((p8/sig)*exp(-kkd$kd*pai_a)+p9*exp(-h*pai_a)+p10*exp(h*pai_a))+trcb
+    s<-which(is.na(Rdbm) | Rdbm<0)
+    Rdbm[s]<-0
+    s<-which(Rdbm>1)
+    Rdbm[s]<-1
+    # ~~ Contribution of direct to upward diffuse
+    Rubm<-(1-trcb)*((p5/sig)*exp(-kkd$kd*pai_a)+p6*exp(-h*pai_a)+p7*exp(h*pai_a))+trcb
+    s<-which(is.na(Rubm) | Rubm<0)
+    Rubm[s]<-0
+    s<-which(Rubm>1)
+    Rubm[s]<-1
+    # ~~ Downward diffuse
+    Rddm<-(p3*exp(-h*pai_a)+p4*exp(h*pai_t))+trcd
+    Rddm[is.na(Rddm)]<-1
+    # ~~ Upward diffuse
+    Rudm<-(p1*exp(-h*pai_a)+p2*exp(h*pai_t))+trcd
+    s<-which(is.na(Rudm))
+    Rudm[s]<-1-micro$gref[s]
+    # Downward direct
+    Rbgm<-exp(-kkd$kd*pai_a)+trcb
+    Rbgm[is.na(Rbgm)]<-1
+    # Calculate actual fluxes
+    micro$Rbdown<-micro$dirr*sin(alt)*Rbgm # Direct down
     micro$Rddown<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
-    # Upward
-    Rdbm<-mud*((p5/sig)*exp(-kkd$kd*pai_a)+p6*exp(-h*pai_a)+p7*exp(h*pai_a))+(1-mud)
-    sel<-which(is.na(Rdbm) | Rdbm<0)
-    Rdbm[sel]<-0
-    sel<-which(Rdbm>1)
-    Rdbm[sel]<-1
-    Rddm<-mud*(p1*exp(-h*pai_a)+p2*exp(h*pai_t))+(1-mud)
-    sel<-which(is.na(Rddm))
-    Rddm[sel]<-1
-    micro$Rdup<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
+    micro$Rdup<-micro$difr*svfa*Rudm+micro$dirr*sin(alt)*Rubm
     # === (1n) Calculate leaf swabs
     a[is.na(a)]<-mean(a,na.rm=T)
     micro$radLsw<-0.5*a*(micro$Rddown+micro$Rdup+kkd$k*sin(alt)*micro$Rbdown)
