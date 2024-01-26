@@ -779,8 +779,8 @@ checkinputs <- function(weather, precip, vegp, soilc, dtm, daily = FALSE, windhg
 .paifromhabitat <- function(habitat, lat, long, tme) {
   yr<-unique(tme$year+1900)
   pai<-0
-  lai<-.PAIforayear(habitat, lat, long, yr)
   for (i in yr) {
+    lai<-.PAIforayear(habitat, lat, long, i)
     sel<-which(tme$year+1900==i)
     tme2<-tme[sel]
     mth<-unique(tme2$mon+1)

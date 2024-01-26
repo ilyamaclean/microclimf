@@ -505,7 +505,7 @@
 #' Calculates turbulent molar conductivity above canopy
 .gturb<-function(uf,d,zm,z,psi_h=0,gmin) {
   zh<-0.2*zm
-  ln<-log((z-d)/zm)
+  ln<-log((z-d)/zh)
   g<-(0.4*43*uf)/(ln+psi_h)
   g<-.lim(g,gmin)
   g<-.lim(g,0.0001)
@@ -1039,24 +1039,69 @@
 }
 #' Calculate zero-plane displacement for snow
 .szeroplanedis<-function(h,pai,snowdepth) {
-  pai<-(h-snowdepth)/h
+  mu<-(h-snowdepth)/h
+  mu[mu<0]<-0
+  pai<-pai*mu
   pai[pai<0.001]<-0.001
   hs<-h-snowdepth
-  d<-suppressWarnings(snowdepth+(1-(1-exp(-sqrt(7.5*pai)))/sqrt(7.5*pai))*hs)
-  sel<-which(snowdepth > h)
-  d[sel]<-snowdepth[sel]
-  d
+  hs[hs<0]<-0
+  d<-snowdepth+(1-(1-exp(-sqrt(7.5*pai)))/sqrt(7.5*pai))*hs
+  return(d)
+}
+#' Smooth matrix by xyf
+.applyxyf<-function(r,xyf) {
+  if (is.na(xyf) == FALSE) {
+    if (xyf > 1) {
+      r<-as.matrix(.smr(rast(r),xyf),wide=TRUE)
+    }
+  } else {
+    r<-r*0+mean(r,na.rm=T)
+  }
+  return(r)
 }
 #' Calculate roughness length for snow
 .sroughlength<-function(h,pai,snowdepth,d=NA,psi_h=0) {
   if (class(d)[1]=="logical") d<-.szeroplanedis(h,pai,snowdepth)
-  pai<-(h-snowdepth)/h
+  mu<-(h-snowdepth)/h
+  mu[mu<0]<-0
+  pai<-pai*mu
+  pai[pai<0.001]<-0.001
   Be<-sqrt(0.003+(0.2*pai)/2)
   zm<-(h-d)*exp(-0.4/Be)*exp(psi_h)
   zm[zm<0.0005]<-0.0005
-  sel<-which(snowdepth > h)
-  zm[sel]<-0.0005
-  zm
+  return(zm)
+}
+#' Calculate snow albedo
+.snowalb <- function(age) {
+  snowalb<-(-9.8740*log(age/24)+78.3434)/100
+  snowalb[snowalb>0.95]<-0.95
+  return(snowalb)
+}
+#' Calculate integrated diabatic correction coefficient for momentum
+.dpsim<-function(ze) {
+  # unstable
+  x<-(1-15*ze)^0.25
+  psi_m<-log(((1+x)/2)^2*(1+x^2)/2)-2*atan(x)+pi/2
+  # stable
+  s<-which(ze>=0)
+  p2<- -4.7*ze
+  psi_m[s]<-p2[s]
+  psi_m[psi_m < -4] <- -4
+  psi_m[psi_m > 3] <- 3
+  psi_m
+}
+#' Calculate integrated diabatic correction coefficient for heat
+.dpsih<-function(ze) {
+  # unstable
+  y<-(1-9*ze)^0.5
+  psi_h<-log(((1+y)/2)^2)
+  # stable
+  s<-which(ze>=0)
+  p2<- -(4.7*ze)/0.74
+  psi_h[s]<-p2[s]
+  psi_h[psi_h < -4] <- -4
+  psi_h[psi_h > 3] <- 3
+  psi_h
 }
 #' Calculate pai above snow surface where snow depth is an array or matrix
 .epaif<-function(pai,hgt,snowd) {
@@ -1065,6 +1110,7 @@
   epai[is.na(epai)]<-0
   epai
 }
+
 #' Calculates wind speed within canopy given vertical profile within the canopy
 .meancanopywind<-function(uz,pai,hgt,d,zm,snowd=0,zu=2) {
   # Apply shelter coefficient
