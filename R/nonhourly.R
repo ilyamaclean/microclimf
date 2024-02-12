@@ -255,8 +255,8 @@ modelina <- function(micropointa, vegp, soilc, dtm, dtmc, altcorrect = 0, runche
     k<-1
     for (i in 1:dim(Tg)[1]) {
       for (j in 1:dim(Tg)[2]) {
-        Tg[i,j,]<-micropointa[[k]]$Tbz
-        Tbp[i,j,]<-micropointa[[k]]$Tg
+        Tg[i,j,]<-micropointa[[k]]$microp$Tg
+        Tbp[i,j,]<-micropointa[[k]]$Tbz
         k<-k+1
       }
     }
