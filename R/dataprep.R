@@ -1023,7 +1023,7 @@ leafrfromalb<-function(pai, gref, x, alb, ltrr = 1, out = "lref") {
 #' system in which x and y are in metres. Since values returned by [mcera5::request_era5()]
 #' are in lat long, the output data are reprojected using the coordinate reference system and
 #' extent of dtm (but retain the approximate original grid resolution of the input climate data).
-#' Returned climate data match the resolution, corrdinate reference system and extent of `dtmc`.
+#' Returned climate data match the resolution, coordinate reference system and extent of `dtmc`.
 nctoclimarray <- function(ncfile, dtm, dtr_cor_fac = 1.285)  {
   t2m<-rast(ncfile,subds = "t2m") # Air temperature (K)
   d2m<-rast(ncfile,subds = "d2m") # Dewpoint temperature (K)
