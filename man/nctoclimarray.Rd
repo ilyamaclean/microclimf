@@ -35,5 +35,5 @@ the model requires that input climate data are projected using a coordinate refe
 system in which x and y are in metres. Since values returned by [mcera5::request_era5()]
 are in lat long, the output data are reprojected using the coordinate reference system and
 extent of dtm (but retain the approximate original grid resolution of the input climate data).
-Returned climate data match the resolution, corrdinate reference system and extent of `dtmc`.
+Returned climate data match the resolution, coordinate reference system and extent of `dtmc`.
 }
