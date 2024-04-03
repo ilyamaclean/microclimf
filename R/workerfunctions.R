@@ -956,7 +956,7 @@
     # Run point model
     micropoint<-runpointmodel(weather2,precip2,reqhgt,vegp,soilc,windhgt,soilm2,dTmx,maxiter,yearG=FALSE,lat,long)
   } else {
-    tc<-apply(weather$temp,3,mean)
+    tc<-apply(weather$temp,3,mean, na.rm = TRUE)
     sel<-.biosel(tme, tc)
     # Run full soil model
     if (class(soilc$soiltype) == "PackedSpatRaster") soilc$soiltype<-rast(soilc$soiltype)
@@ -964,18 +964,18 @@
     soiltype<-soilparameters$Soil.type[sn]
     # Create weather data.frame
     ea<-.satvap(weather$temp)*weather$relhum/100
-    rh<-(apply(ea,3,mean)/.satvap(tc))*100
+    rh<-(apply(ea,3,mean, na.rm = TRUE)/.satvap(tc))*100
     rh[rh>100]<-100
     w2<-data.frame(obs_time=tme,
                    temp=tc,
                    relhum=rh,
-                   pres=apply(weather$pres,3,mean),
-                   swdown=apply(weather$swrad,3,mean),
-                   difrad=apply(weather$difrad,3,mean),
-                   lwdown=apply(weather$skyem,3,mean)*5.67*10^-8*(tc+273.15)^4,
-                   windspeed=apply(weather$windspeed,3,mean),
+                   pres=apply(weather$pres,3,mean,na.rm=TRUE),
+                   swdown=apply(weather$swrad,3,mean,na.rm=TRUE),
+                   difrad=apply(weather$difrad,3,mean,na.rm=TRUE),
+                   lwdown=apply(weather$skyem,3,mean,na.rm=TRUE)*5.67*10^-8*(tc+273.15)^4,
+                   windspeed=apply(weather$windspeed,3,mean,na.rm=TRUE),
                    winddir=0,
-                   precip=rep(apply(precip,3,mean),each=24))
+                   precip=rep(apply(precip,3,mean,na.rm=TRUE),each=24))
     if (class(soilm)=="logical") soilm<-micropoint::soilmmodel(w2, soiltype)
     # Subset weather and precipitation
     weather2<-list(temp=weather$temp[,,sel$selh],
