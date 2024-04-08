@@ -174,12 +174,22 @@
 }
 #' Calculate point surface temperature without diabatic coefficients and G set to 0
 .point0<-function(micropoint) {
-  d<-with(micropoint$vegp_p,.zeroplanedis(h,pai))
-  zm<-with(micropoint$vegp_p,.roughlength(h,pai,d))
-  uf<-(0.4*micropoint$weather$windspeed)/log((micropoint$zref-d)/zm)
-  gHa<-(0.4*43*uf)/log((micropoint$zref-d)/(0.2*zm))
-  es<-.satvap(micropoint$weather$temp)
-  ea<-es*(micropoint$weather$relhum/100)
+  if (class(micropoint$vegp_p) == "numeric") {
+    vv<-micropoint$vegp_p
+    d<-.zeroplanedis(vv[1],vv[2])
+    zm<-.roughlength(vv[1],vv[2],d)
+    uf<-(0.4*micropoint$weather$windspeed)/log((micropoint$zref-d)/zm)
+    gHa<-(0.4*43*uf)/log((micropoint$zref-d)/(0.2*zm))
+    es<-.satvap(micropoint$weather$temp)
+    ea<-es*(micropoint$weather$relhum/100)
+  } else {
+    d<-with(micropoint$vegp_p,.zeroplanedis(h,pai))
+    zm<-with(micropoint$vegp_p,.roughlength(h,pai,d))
+    uf<-(0.4*micropoint$weather$windspeed)/log((micropoint$zref-d)/zm)
+    gHa<-(0.4*43*uf)/log((micropoint$zref-d)/(0.2*zm))
+    es<-.satvap(micropoint$weather$temp)
+    ea<-es*(micropoint$weather$relhum/100)
+  }
   T0p<-PenMont(micropoint$weather$temp,micropoint$weather$pres,ea,
                micropoint$microp$RabsG,gHa,gHa,es,NA)
   return(T0p$T0)
@@ -599,7 +609,7 @@
   int[s]<-inth[s]
   mu<-((uf/(a2*h))*(1/uf^2))
   rHa<-int*mu
-  rHa[rHa<0.001]<-0.01
+  rHa[rHa<0.001]<-0.001
   rHa
 }
 #' Langrangian approximation function
