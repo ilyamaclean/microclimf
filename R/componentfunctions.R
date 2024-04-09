@@ -151,7 +151,7 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   sel<-which(is.na(albb))
   albb[sel]<-gref2[sel]
   albb[albb>0.95]<-0.95
-  albedo<-(micro$dirr*si*albb+micro$difr*albd)/(micro$dirr*si+micro$difr)
+  albedo<-(micro$dirr*sin(alt)*albb+micro$difr*albd)/(micro$dirr*sin(alt)+micro$difr)
   albedo[is.na(albedo)]<-0.23
   albedo[albedo>0.99]<-0.99
   albedo[albedo<0.01]<-0.01
