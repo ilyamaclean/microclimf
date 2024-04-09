@@ -103,6 +103,8 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   pai_a<-micro$pai_a/(1-micro$clump*n)
   pai_t<-micro$pai/(1-micro$clump)
   gref2<-1-(((1-micro$gref)*sin(alt))/si)
+  s<-which(is.infinite(gref2))
+  gref2[s]<-micro$gref[s]
   # === (1f) Calculate two stream base parameters
   om<-micro$lref+micro$ltra
   a<-1-om
