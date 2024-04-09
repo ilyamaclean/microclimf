@@ -183,7 +183,7 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   if (reqhgt > 0) {
     # === (1m) Calculate up and downstream at reqhgt
     # Downward
-    trcb<-micro$clump^(Kc*n) # transmission through canopy gaps (direct)
+    trcb<-micro$clump^(Kc*n) # transmission through canopy gaps (direct, reqhgt)
     trcd<-micro$clump^(2*n)  # transmission through canopy gaps (diffuse)
     # ~~ Contribution of direct to downward diffuse
     Rdbm<-(1-trcb)*((p8/sig)*exp(-kkd$kd*pai_a)+p9*exp(-h*pai_a)+p10*exp(h*pai_a))+trcb
