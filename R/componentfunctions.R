@@ -198,10 +198,10 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
     s<-which(Rubm>1)
     Rubm[s]<-1
     # ~~ Downward diffuse
-    Rddm<-(p3*exp(-h*pai_a)+p4*exp(h*pai_t))+trcd
+    Rddm<-(p3*exp(-h*pai_a)+p4*exp(h*pai_a))+trcd
     Rddm[is.na(Rddm)]<-1
     # ~~ Upward diffuse
-    Rudm<-(p1*exp(-h*pai_a)+p2*exp(h*pai_t))+trcd
+    Rudm<-(p1*exp(-h*pai_a)+p2*exp(h*pai_a))+trcd
     s<-which(is.na(Rudm))
     Rudm[s]<-1-micro$gref[s]
     # Downward direct
