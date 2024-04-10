@@ -47,7 +47,9 @@ runpointmodela<-function(climarray, precarray, tme, reqhgt = 0.05, vegp, soilc, 
       if (class(soilm) == "logical") {
         soilmo<-NA
       } else soilmo<-soilm[i,j,]
-      pointo[[k]]<-runpointmodel(climdf,prec,reqhgt,vegp,soilc,windhgt,soilmo,dTmx,maxiter)
+      if (is.na(climdf$temp[1]) == FALSE) {
+        pointo[[k]]<-runpointmodel(climdf,prec,reqhgt,vegp,soilc,windhgt,soilmo,dTmx,maxiter)
+      } else pointo[[k]]<-NA
       k<-k+1
     }
   }
