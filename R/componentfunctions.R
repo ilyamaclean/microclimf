@@ -30,10 +30,7 @@ soilmdistribute <- function(micro, tfact = 1.5, twi = NA) {
   add<-.rta(rast(add),dim(soilm)[3])
   smout<-lt+add
   smout<-1/(1+exp(-smout))
-  s<-which(smout>Smax)
-  smout[s]<-Smax
-  s<-which(smout<Smin)
-  smout[s]<-Smin
+  smout<-smout*rge+Smin
   smout<-.rast(smout, micro$dtm)
   smout<-mask(smout,micro$dtm)
   micro$soild<-as.array(smout)
