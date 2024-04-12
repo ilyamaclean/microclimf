@@ -200,11 +200,11 @@
 }
 #' Calculate saturated vapour pressure
 .satvap <- function(tc) {
-  e0<-(tc<0)*610.78/1000+(tc>=0)*611.2/1000
-  L <- (tc<0)*2.834*10^6+(tc>=0)*((2.501*10^6)-(2340*tc))
-  T0<-(tc<0)*273.15+(tc>=0)*273.15
-  estl<-e0*exp((L/461.5)*(1/T0-1/(tc+273.15)))
-  estl
+  es<-0.61078*exp(17.27*tc/(tc+237.3))
+  ei<-0.61078*exp(21.875*tc/(tc+265.5))
+  s<-which(tc<0)
+  es[s]<-ei[s]
+  es
 }
 #' Calculate dewpoint
 .dewpoint <- function(ea, tc) {
