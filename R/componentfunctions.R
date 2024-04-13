@@ -532,7 +532,10 @@ temphumE<-function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, surfwet = NA,
   # Humidity below canopy
   Flux<-TH$L*(1-exp(-micro$pai))
   Fluxz<-Thl$L
-  mu<-44525.68*43/micro$pk
+  la<-45068.7-42.8428*micro$tc
+  sel<-which(micro$tc<0)
+  la[sel]<-51078.69-4.338*micro$tc[sel]-0.06367*micro$tc[sel]^2
+  mu<-la*43/micro$pk
   SH<-micro$ez*mu
   SG<-.satvap(micro$T0)*gwet*mu
   estb<-.Langapprox(micro,reqhgt,Flux,Fluxz,SH,SG)/mu
