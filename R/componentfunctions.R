@@ -534,7 +534,7 @@ temphumE<-function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5, surfwet = NA,
   Fluxz<-Thl$L
   mu<-44525.68*43/micro$pk
   SH<-micro$ez*mu
-  SG<-micro$T0*gwet*mu
+  SG<-.satvap(micro$T0)*gwet*mu
   estb<-.Langapprox(micro,reqhgt,Flux,Fluxz,SH,SG)/mu
   micro$ez[selb]<-estb[selb]
   rh<-(micro$ez/.satvap(micro$Tz))*100
