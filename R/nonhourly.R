@@ -149,27 +149,42 @@ modelina <- function(micropointa, vegp, soilc, dtm, dtmc, altcorrect = 0, runche
     for (i in 1:dim(a)[1]) {
       for (j in 1:dim(a)[2]) {
         onew<-weather[[k]]
-        s<-which(names(onew)==varn)
-        a[i,j,]<-onew[,s]
+        if (class(onew) != "logical") {
+          s<-which(names(onew)==varn)
+          a[i,j,]<-onew[,s]
+        } else a[i,j,]<-NA
         k<-k+1
       }
     }
     ro<-.rast(a,r)
     ro<-resample(ro,rfi)
+    ro<-mask(ro,rfi)
     as.array(ro)
   }
   weather<-list()
   precip<-list()
   for (i in 1:length(micropointa)) {
     onepoint<-micropointa[[i]]
-    weather[[i]]<-onepoint$weather
-    precip[[i]]<-onepoint$precip
-    if (runchecks) {
-      rc<-checkinputs(weather[[i]],precip[[i]],vegp,soilc,dtmc,FALSE,tstep=onepoint$tstep)
-      weather[[i]]<-rc$weather
-      precip[[i]]<-rc$precip
-      vegp<-rc$vegp
-      soilc<-rc$soilc
+    if (class(onepoint) != "logical") {
+      weather[[i]]<-onepoint$weather
+      tme<-as.POSIXlt(weather[[i]]$obs_time,tz="UTC")
+      zref=onepoint$zref
+      tstep<-onepoint$tstep
+      Tbz<-onepoint$Tbz
+      vegp_p=onepoint$vegp_p
+      groundp_p=onepoint$groundp_p
+      DDp=onepoint$DD
+      precip[[i]]<-onepoint$precip
+      if (runchecks) {
+        rc<-checkinputs(weather[[i]],precip[[i]],vegp,soilc,dtm,FALSE,tstep=onepoint$tstep)
+        weather[[i]]<-rc$weather
+        precip[[i]]<-rc$precip
+        vegp<-rc$vegp
+        soilc<-rc$soilc
+      }
+    } else {
+      weather[[i]]<-NA
+      precip[[i]]<-NA
     }
   }
   if (class(dtmc)[1] == "PackedSpatRaster") {
@@ -181,7 +196,6 @@ modelina <- function(micropointa, vegp, soilc, dtm, dtmc, altcorrect = 0, runche
   soilc<-up$soilc
   # Turn input climate variables into arrays
   rfi<-dtm
-  tme<-as.POSIXlt(weather[[1]]$obs_time,tz="UTC")
   h<-length(tme)
   tc<-.cca(weather,"temp",h,r,rfi)
   pk<-.cca(weather,"pres",h,r,r)
@@ -242,23 +256,36 @@ modelina <- function(micropointa, vegp, soilc, dtm, dtmc, altcorrect = 0, runche
   k<-1
   for (i in 1:dim(Gp)[1]) {
     for (j in 1:dim(Gp)[2]) {
-      ufp[i,j,]<-micropointa[[k]]$microp$uf
-      soilmp[i,j,]<-micropointa[[k]]$soilm
-      Gp[i,j,]<-micropointa[[k]]$microp$G
+      ompa<-micropointa[[k]]
+      if (class(ompa) != "logical") {
+        ufp[i,j,]<-ompa$microp$uf
+        soilmp[i,j,]<-ompa$soilm
+        Gp[i,j,]<-ompa$microp$G
+      } else {
+        ufp[i,j,]<-NA
+        soilmp[i,j,]<-NA
+        Gp[i,j,]<-NA
+      }
       k<-k+1
     }
   }
   ufp<-as.array(resample(.rast(ufp,r),rfi))
   soilmp<-as.array(resample(.rast(soilmp,r),rfi))
   Gp<-as.array(resample(.rast(Gp,r),rfi))
-  if (class(micropointa[[1]]$Tbz) != "logical")  {
+  if (class(Tbz) != "logical")  {
     Tbp<-array(NA,dim=c(dim(r)[1:2],h))
     Tg<-Tbp
     k<-1
     for (i in 1:dim(Tg)[1]) {
       for (j in 1:dim(Tg)[2]) {
-        Tg[i,j,]<-micropointa[[k]]$microp$Tg
-        Tbp[i,j,]<-micropointa[[k]]$Tbz
+        ompa<-micropointa[[k]]
+        if (class(ompa) != "logical") {
+          Tg[i,j,]<-ompa$microp$Tg
+          Tbp[i,j,]<-ompa$Tbz
+        } else {
+          Tg[i,j,]<-NA
+          Tbp[i,j,]<-NA
+        }
         k<-k+1
       }
     }
@@ -272,7 +299,10 @@ modelina <- function(micropointa, vegp, soilc, dtm, dtmc, altcorrect = 0, runche
   k<-1
   for (i in 1:dim(T0p)[1]) {
     for (j in 1:dim(T0p)[2]) {
-      T0p[i,j,]<-.point0(micropointa[[k]])
+      ompa<-micropointa[[k]]
+      if (class(ompa) != "logical") {
+        T0p[i,j,]<-.point0(micropointa[[k]])
+      } else T0p[i,j,]<-NA
       k<-k+1
     }
   }
@@ -284,7 +314,7 @@ modelina <- function(micropointa, vegp, soilc, dtm, dtmc, altcorrect = 0, runche
   gref<-.rta(soilc$groundr,h)
   # Calculate zero plane displacement height and roughness length
   dzm<-.sortrough(vegp,xyf)
-  if (micropointa[[1]]$tstep=="hour") {
+  if (tstep == "hourly") {
     pai<-.unpackpai(vegp$pai,h/24)
     d<-.unpackpai(dzm$d,h/24)
     zm<-.unpackpai(dzm$zm,h/24)
@@ -313,12 +343,12 @@ modelina <- function(micropointa, vegp, soilc, dtm, dtmc, altcorrect = 0, runche
   ltra[ltra>0.99]<-0.99
   # Calculate wind direction array
   out<-list(# Misc variables:
-    tme=tme,zref=micropointa[[1]]$zref,dtm=dtm,lat=mean(lats),long=mean(lons),
+    tme=tme,zref=zref,dtm=dtm,lat=mean(lats),long=mean(lons),
     # Weather variables:
     tc=tc,difr=difr,dirr=dirr,skyem=skyem,estl=estl,ea=ea,tdew=tdew,pk=pk,u2=u2,
     # Point model variables:
     ufp=ufp,soilmp=soilmp,Gp=Gp,Tbp=Tbp,Tg=Tg,T0p=T0p,
-    vegp_p=micropointa[[1]]$vegp_p,groundp_p=micropointa[[1]]$groundp_p,DDp=micropointa[[1]]$DD,
+    vegp_p=vegp_p,groundp_p=groundp_p,DDp=DDp,
     # Vegetation parameters:
     pai=pai,vegx=vegx,lref=lref,ltra=ltra,veghgt=vegp$hgt,gsmax=vegp$gsmax,clump=clump,leafd=vegp$leafd,
     # Soil thermal parameters:

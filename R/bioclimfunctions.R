@@ -162,7 +162,8 @@ runbioclim<-function(weather, precip, tme = NA, reqhgt = 0.05, micropoint = NA, 
   if (class(weather) == "data.frame") {
     tmeh<-as.POSIXlt(micropoint$weather$obs_time,tz="UTC")[1:288]
   } else {
-    xx<-micropoint[[1]]
+    s<-which(is.na(micropoint) == FALSE)[1]
+    xx<-micropoint[[s]]
     tmeh<-as.POSIXlt(xx$weather$obs_time,tz="UTC")[1:288]
   }
   sq<-.selquarter(tmeh,wq)
@@ -296,15 +297,16 @@ runbioclim_big<-function(weather, precip, tme = NA, reqhgt = 0.05, vegp, soilc, 
   micropoint<-.biomicropoint(weather,precip,tme,vegp,soilc,reqhgt,windhgt,soilm=NA,dTmx,maxiter,ll$lat,ll$long)
   # Create list for storing data
   blst<-list()
-  i<-5
-  rw<-17
-  cl<-6
+  i<-1
   for (rw in 1:rws) {
     for (cl in 1:cls) {
       dtmi<-.croprast(dtm,rw,cl,100) # crop with overlap
+      dc<-crop(dtmc,ext(dtmi))
       v<-as.vector(dtmi)
       v<-v[is.na(v)==F]
-      if (length(v)>1) {
+      v2<-as.vector(dc)
+      v2<-v2[is.na(v2)==F]
+      if (length(v)>1 & length(v2) > 1) {
         slri<-crop(slr,ext(dtmi))
         apri<-crop(apr,ext(dtmi))
         twii<-crop(twi,ext(dtmi))
