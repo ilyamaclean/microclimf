@@ -583,14 +583,11 @@ below_hr<-function(micro, reqhgt, pai_a = NA, tfact = 1.5,
   }
   # Calculate n
   n<- -118.35*reqhgt/mean(micro$DDp)
-  n<-round(n,0)
   hiy<-ifelse((micro$tme$year[1]+1900)%%4==0,366*24,365*24)
   # Test whether comple time sequence
   tst<-as.numeric(micro$tme[25])-as.numeric(micro$tme[24])
   if (tst > 3600) { # Not complete time sequence
-    if (n >= 24) {
-      micro$Tz<-.rta(rast(apply(micro$T0,c(1,2),mean)),dim(micro$T0)[3])
-    }
+    micro$Tz<-.rta(rast(apply(micro$T0,c(1,2),mean)),dim(micro$T0)[3])
     if (n < hiy) {
       dTa<-micro$Tz-mean(micro$Tg,na.rm=T)
       # Calculate daily annual wgts
@@ -613,6 +610,7 @@ below_hr<-function(micro, reqhgt, pai_a = NA, tfact = 1.5,
       micro$Tz<-wgt*dTh+(1-wgt)*dTd+micro$Tbp
     }
   } else { # Complete time sequence
+    n<-round(n,0)
     if (n < length(micro$tme)) {
       micro$Tz<-aperm(apply(micro$T0,c(1,2),.ma,n),c(2,3,1))
     } else {
@@ -766,9 +764,9 @@ below_dy<-function(micro_dy, reqhgt, pai_a = NA, tfact = 1.5,
     T0<-rast(apply((micro_mn$T0+micro_mx$T0)/2,c(1,2),mean))
     micro_mn$Tz<-.rta(T0,dim(micro_mn$T0)[3])
     micro_mx$Tz<-micro_mn$Tz
-    Tg<-(micro_mn$Tg+micro_mx$Tg)/2
   }
   if (n < hiy) {
+    Tg<-(micro_mn$Tg+micro_mx$Tg)/2
     dTa<-micro_mn$Tz-mean(Tg,na.rm=T)
     # Calculate daily annual wgts
     w1<-24/n
