@@ -759,12 +759,10 @@ below_dy<-function(micro_dy, reqhgt, pai_a = NA, tfact = 1.5,
   DDp<-(micro_mn$DDp+micro_mx$DDp)/2
   n<- -118.35*reqhgt/mean(DDp)
   hiy<-ifelse((micro_mn$tme$year[1]+1900)%%4==0,366*24,365*24)
-  if (n >= 24) {
-    T0<-(micro_mn$T0+micro_mx$T0)/2
-    T0<-rast(apply((micro_mn$T0+micro_mx$T0)/2,c(1,2),mean))
-    micro_mn$Tz<-.rta(T0,dim(micro_mn$T0)[3])
-    micro_mx$Tz<-micro_mn$Tz
-  }
+  T0<-(micro_mn$T0+micro_mx$T0)/2
+  T0<-rast(apply((micro_mn$T0+micro_mx$T0)/2,c(1,2),mean))
+  micro_mn$Tz<-.rta(T0,dim(micro_mn$T0)[3])
+  micro_mx$Tz<-micro_mn$Tz
   if (n < hiy) {
     Tg<-(micro_mn$Tg+micro_mx$Tg)/2
     dTa<-micro_mn$Tz-mean(Tg,na.rm=T)
