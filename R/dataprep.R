@@ -114,8 +114,8 @@ subsetpointmodel <- function(pointmodel, tstep = "month", what = "tmax", days = 
 #' @param days optionally a vector of the days in the time sequence  to return data for (if provided tstep is ignored)
 #' @seealso [subsetpointmodel()], [runpointmodela()]
 #' @return A list with the same format as `pointmodela` but with specified values
-#' @export
 #' 'only selected.
+#' @export
 subsetpointmodela <- function(pointmodela, tstep = "month", what = "tmax", days = NA) {
   micropointa<-list()
   for (i in 1:length(pointmodela)) {
