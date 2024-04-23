@@ -5,9 +5,11 @@
 #' @import terra
 .is <- function(r) {
   if (class(r)[1] == "PackedSpatRaster") r<-rast(r)
-  if (dim(r)[3] > 1) {
-    y<-as.array(r)
-  } else y<-as.matrix(r,wide=TRUE)
+  if (class(r)[1] != "matrix") {
+    if (dim(r)[3] > 1) {
+      y<-as.array(r)
+    } else y<-as.matrix(r,wide=TRUE)
+  } else y<-r
   y
 }
 #' Convert matrix to array
