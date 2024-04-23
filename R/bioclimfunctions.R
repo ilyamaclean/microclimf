@@ -117,15 +117,15 @@ runbioclim<-function(weather, precip, tme = NA, reqhgt = 0.05, micropoint = NA, 
       mout<-runmicro_dy(microd,reqhgt,TRUE,pai_a,tfact,surfwet,slr,apr,hor,twi,wsa)
     }
   } else {
-    tc<-apply(weather$temp,3,mean)
+    tc<-apply(weather$temp,3,mean,na.rm=TRUE)
     sel<-.biosel(tme, tc)
     if (class(micropoint) == "logical") micropoint<-.biomicropoint(weather,precip,tme,vegp,soilc,reqhgt,windhgt,soilm=NA,dTmx,maxiter)
     # Calculate relevent quarters
-    prech<-rep(apply(precip,3,mean),each=24)/24
-    agg<-stats::aggregate(prech,by=list(tme$mon),sum)$x
+    prech<-rep(apply(precip,3,mean,na.rm=TRUE),each=24)/24
+    agg<-stats::aggregate(prech,by=list(tme$mon),sum,na.rm=TRUE)$x
     wq<-which.max(filter(agg, rep(1/3, 3), sides = 2, circular = TRUE)) # wettest quarter
     dq<-which.min(filter(agg, rep(1/3, 3), sides = 2, circular = TRUE)) # driest quarter
-    agg<-stats::aggregate(tc,by=list(tme$mon),sum)$x
+    agg<-stats::aggregate(tc,by=list(tme$mon),sum,na.rm=TRUE)$x
     hq<-which.max(filter(agg, rep(1/3, 3), sides = 2, circular = TRUE)) # hottest quarter
     cq<-which.min(filter(agg, rep(1/3, 3), sides = 2, circular = TRUE)) # wettest quarter
     # Prepare model input
