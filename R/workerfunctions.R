@@ -371,6 +371,7 @@
   a<-a*res(dtm)[1]* res(dtm)[2]
   tpx<- a/tan(B)
   r<-.rast(tpx,dtm)
+  r<-mask(r,dtm)
   r
 }
 #' Calculates the solar azimuth

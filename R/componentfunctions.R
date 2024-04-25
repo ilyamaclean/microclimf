@@ -99,6 +99,7 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
     } else micro$pai_a<-0
   }
   # === (1g) Adjust parameters for gap fraction and inclined surface
+  # === (1g) Adjust parameters for gap fraction and inclined surface
   n<-(micro$vha-reqhgt)/micro$vha
   n[n<0]<-0
   pai_a<-micro$pai_a/(1-micro$clump*n)
@@ -129,8 +130,7 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   p1<-(gma/(D1*S1))*(u1-h)
   p2<-(-gma*S1/D1)*(u1+h)
   p3<-(1/(D2*S1))*(u2+h)
-  p4<-(-S1/D2)*(u2- h)
-  # === (1i) Calculate Direct radiation parameters
+  p4<-(-S1/D2)*(u2-h)
   u1<-a+gma*(1-1/gref2)
   u2<-a+gma*(1-gref2)
   D1<-(a+gma+h)*(u1-h)*1/S1-(a+gma-h)*(u1+h)*S1
@@ -165,11 +165,13 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   Rdbm[s]<-0
   Rdbm[Rdbm>1]<-1
   # ~~ Downward diffuse
-  Rddm<-(p3*exp(-h*pai_t)+p4*exp(h*pai_t))+micro$clump^2
-  s<-which(is.na(Rddm))
-  Rddm[s]<-1
+  mu<-p3*exp(-h*pai_t)+p4*exp(h*pai_t)
+  mu[is.na(mu)]<-1
+  Rddm<-mu+micro$clump^2
+  Rddm[Rddm>1]<-1
   # ~~ Downward direct
   Rbgm<-exp(-kkd$kd*pai_t)+micro$clump^Kc
+  Rbgm[Rbgm>1]<-1
   # ~~ Ground absorbed
   micro$radGdir<-micro$dirr*si*Rbgm
   micro$radGdif<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
@@ -203,13 +205,16 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
     # ~~ Downward diffuse
     Rddm<-(p3*exp(-h*pai_a)+p4*exp(h*pai_a))+trcd
     Rddm[is.na(Rddm)]<-1
+    Rddm[Rddm>1]<-1
     # ~~ Upward diffuse
     Rudm<-(p1*exp(-h*pai_a)+p2*exp(h*pai_a))+trcd
     s<-which(is.na(Rudm))
     Rudm[s]<-1-micro$gref[s]
+    Rudm[Rudm>1]<-1
     # Downward direct
     Rbgm<-exp(-kkd$kd*pai_a)+trcb
     Rbgm[is.na(Rbgm)]<-1
+    Rbgm[Rbgm>1]<-1
     # Calculate actual fluxes
     micro$Rbdown<-micro$dirr*sin(alt)*Rbgm # Direct down
     micro$Rddown<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
