@@ -105,8 +105,8 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   pai_a<-micro$pai_a/(1-micro$clump*n)
   pai_t<-micro$pai/(1-micro$clump)
   gref2<-1-(((1-micro$gref)*sin(alt))/si)
-  s<-which(is.infinite(gref2))
-  gref2[s]<-micro$gref[s]
+  gref2[gref2<0]<-0
+  gref2[gref2>1]<-1
   # === (1f) Calculate two stream base parameters
   om<-micro$lref+micro$ltra
   a<-1-om
@@ -196,8 +196,9 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
     Rdbm[Rdbm<0]<-0
     Rdbm[Rdbm>1]<-1
     # ~~ Contribution of direct to upward diffuse
-    Rubm<-(1-trcb)*((p5/sig)*exp(-kkd$kd*pai_a)+p6*exp(-h*pai_a)+p7*exp(h*pai_a))+trcb
-    Rubm[is.na(Rubm)]<-1
+    Rubm<-(1-trcb)*((p5/sig)*exp(-kkd$kd*pai_a)+p6*exp(-h*pai_a)+p7*exp(h*pai_a))+trcb*gref2
+    s<-which(is.na(Rubm) | pai_a==0)
+    Rubm[s]<-gref2[s]
     Rubm[Rubm<0]<-0
     Rubm[Rubm>1]<-1
     # ~~ Downward diffuse
@@ -205,10 +206,12 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
     Rddm[is.na(Rddm)]<-1
     Rddm[Rddm>1]<-1
     # ~~ Upward diffuse
-    Rudm<-(1-trcd)*(p1*exp(-h*pai_a)+p2*exp(h*pai_a))+trcd
-    s<-which(is.na(Rudm))
-    Rudm[s]<-1-micro$gref[s]
+    Rudm<-(1-trcd)*(p1*exp(-h*pai_a)+p2*exp(h*pai_a))+trcd*micro$gref
+    s<-which(is.na(Rudm) | pai_a == 0)
+    Rudm[s]<-micro$gref[s]
+    Rudm[Rudm<0]<-0
     Rudm[Rudm>1]<-1
+    #Rudm[Rudm>1]<-1
     # Downward direct
     Rbgm<-(1-trcb)*exp(-kkd$kd*pai_a)+trcb
     Rbgm[is.na(Rbgm)]<-1
