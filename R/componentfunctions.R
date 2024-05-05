@@ -109,6 +109,7 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   gref2[gref2>1]<-1
   # === (1f) Calculate two stream base parameters
   om<-micro$lref+micro$ltra
+  om[is.na(om)]<-0
   a<-1-om
   del<-micro$lref-micro$ltra
   mla<-(9.65*(3+micro$vegx)^(-1.65))
