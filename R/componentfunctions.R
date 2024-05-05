@@ -145,10 +145,10 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   p9<-(-1/D2)*((p8/(sig*S1))*(u2+h)+v3)
   p10<-(1/D2)*(((p8*S1)/sig)*(u2-h)+v3)
   # === (1j) Calculate albedo
-  albd<-p1+p2+micro$clump^2*micro$gref
+  albd<-(1-micro$clump^2)*(p1+p2)+micro$clump^2*micro$gref
   sel<-which(is.na(albd))
   albd[sel]<-micro$gref[sel]
-  albb<-p5/sig+p6+p7+micro$clump^Kc*gref2
+  albb<-(1-micro$clump^Kc)*(p5/sig+p6+p7)+micro$clump^Kc*gref2
   sel<-which(is.na(albb))
   albb[sel]<-gref2[sel]
   albb[albb>0.95]<-0.95
@@ -167,22 +167,22 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   # ~~ Downward diffuse
   mu<-p3*exp(-h*pai_t)+p4*exp(h*pai_t)
   mu[is.na(mu)]<-1
-  Rddm<-mu+micro$clump^2
+  Rddm<-(1-micro$clump^2)*mu+micro$clump^2
   Rddm[Rddm>1]<-1
   # ~~ Downward direct
-  Rbgm<-exp(-kkd$kd*pai_t)+micro$clump^Kc
+  Rbgm<-(1-micro$clump^Kc)*exp(-kkd$kd*pai_t)+micro$clump^Kc
   Rbgm[Rbgm>1]<-1
   # ~~ Ground absorbed
   micro$radGdir<-micro$dirr*si*Rbgm
   micro$radGdif<-micro$difr*svfa*Rddm+micro$dirr*sin(alt)*Rdbm
   micro$radGsw<-(1-micro$gref)*(micro$radGdir+micro$radGdif)
   # Longwave
-  trd<-exp(-pai_t)+micro$clump^2
+  trd<-(1-micro$clump^2)*exp(-pai_t)+micro$clump^2
   micro$lwout<-0.97*5.67*10^-8*(micro$tc+273.15)^4 # Longwave emitted
   lwsky<-micro$skyem*micro$lwout # Longwave radiation down from sky
   micro$radGlw<-0.97*(trd*svfa*lwsky+(1-trd)*(1-svfa)*micro$lwout)
   # === (1l) Calculate canopy and ground combined absorbed radiation
-  trb<-exp(-kkd$kd*pai_t)+micro$clump^Kc
+  trb<-(1-micro$clump^Kc)*exp(-kkd$kd*pai_t)+micro$clump^Kc
   micro$radCsw<-(1-albedo)*(micro$dirr*sin(alt)*(1-trb)+svfa*micro$difr*(1-trd))+micro$radGsw
   micro$radClw<-svfa*lwsky
   if (reqhgt > 0) {
@@ -203,16 +203,16 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
     s<-which(Rubm>1)
     Rubm[s]<-1
     # ~~ Downward diffuse
-    Rddm<-(p3*exp(-h*pai_a)+p4*exp(h*pai_a))+trcd
+    Rddm<-(1-trcd)*(p3*exp(-h*pai_a)+p4*exp(h*pai_a))+trcd
     Rddm[is.na(Rddm)]<-1
     Rddm[Rddm>1]<-1
     # ~~ Upward diffuse
-    Rudm<-(p1*exp(-h*pai_a)+p2*exp(h*pai_a))+trcd
+    Rudm<-(1-trcd)*(p1*exp(-h*pai_a)+p2*exp(h*pai_a))+trcd
     s<-which(is.na(Rudm))
     Rudm[s]<-1-micro$gref[s]
     Rudm[Rudm>1]<-1
     # Downward direct
-    Rbgm<-exp(-kkd$kd*pai_a)+trcb
+    Rbgm<-(1-trcb)*exp(-kkd$kd*pai_a)+trcb
     Rbgm[is.na(Rbgm)]<-1
     Rbgm[Rbgm>1]<-1
     # Calculate actual fluxes
