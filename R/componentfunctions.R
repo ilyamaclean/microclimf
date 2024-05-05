@@ -192,16 +192,14 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
     trcd<-micro$clump^(2*n)  # transmission through canopy gaps (diffuse)
     # ~~ Contribution of direct to downward diffuse
     Rdbm<-(1-trcb)*((p8/sig)*exp(-kkd$kd*pai_a)+p9*exp(-h*pai_a)+p10*exp(h*pai_a))+trcb
-    s<-which(is.na(Rdbm) | Rdbm<0)
-    Rdbm[s]<-0
-    s<-which(Rdbm>1)
-    Rdbm[s]<-1
+    Rdbm[is.na(Rdbm)]<-1
+    Rdbm[Rdbm<0]<-0
+    Rdbm[Rdbm>1]<-1
     # ~~ Contribution of direct to upward diffuse
     Rubm<-(1-trcb)*((p5/sig)*exp(-kkd$kd*pai_a)+p6*exp(-h*pai_a)+p7*exp(h*pai_a))+trcb
-    s<-which(is.na(Rubm) | Rubm<0)
-    Rubm[s]<-0
-    s<-which(Rubm>1)
-    Rubm[s]<-1
+    Rubm[is.na(Rubm)]<-1
+    Rubm[Rubm<0]<-0
+    Rubm[Rubm>1]<-1
     # ~~ Downward diffuse
     Rddm<-(1-trcd)*(p3*exp(-h*pai_a)+p4*exp(h*pai_a))+trcd
     Rddm[is.na(Rddm)]<-1
