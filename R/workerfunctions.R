@@ -161,7 +161,7 @@
 .unpack<-function(dtm,vegp,soilc) {
   if (class(dtm)[1] == "PackedSpatRaster") dtm<-rast(dtm)
   if (class(vegp$pai)[1] == "PackedSpatRaster") {
-    vegp$pai<-rast(vegp$pai,dtm)
+    vegp$pai<-rast(vegp$pai)
     crs(vegp$pai)<-crs(dtm)
   }
   if (class(vegp$hgt)[1] == "PackedSpatRaster") vegp$hgt<-rast(vegp$hgt)
