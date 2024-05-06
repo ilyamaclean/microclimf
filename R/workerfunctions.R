@@ -160,10 +160,18 @@
 #' unpack model inputs
 .unpack<-function(dtm,vegp,soilc) {
   if (class(dtm)[1] == "PackedSpatRaster") dtm<-rast(dtm)
+  if (class(vegp$pai)[1] == "PackedSpatRaster") {
+    vegp$pai<-rast(vegp$pai,dtm)
+    crs(vegp$pai)<-crs(dtm)
+  }
   if (class(vegp$hgt)[1] == "PackedSpatRaster") vegp$hgt<-rast(vegp$hgt)
   if (class(vegp$x)[1] == "PackedSpatRaster") vegp$x<-rast(vegp$x)
   if (class(vegp$gsmax)[1] == "PackedSpatRaster") vegp$gsmax<-rast(vegp$gsmax)
   if (class(vegp$leafr)[1] == "PackedSpatRaster") vegp$leafr<-rast(vegp$leafr)
+  if (class(vegp$clump)[1] == "PackedSpatRaster") {
+    vegp$clump<-rast(vegp$clump)
+    crs(vegp$clump)<-crs(dtm)
+  }
   if (class(vegp$leaft)[1] == "PackedSpatRaster") vegp$leaft<-rast(vegp$leaft)
   if (class(vegp$leafd)[1] == "PackedSpatRaster") vegp$leafd<-rast(vegp$leafd)
   if (class(soilc$soiltype)[1] == "PackedSpatRaster") soilc$soiltype<-rast(soilc$soiltype)
