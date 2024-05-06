@@ -119,7 +119,9 @@ subsetpointmodel <- function(pointmodel, tstep = "month", what = "tmax", days = 
 subsetpointmodela <- function(pointmodela, tstep = "month", what = "tmax", days = NA) {
   micropointa<-list()
   for (i in 1:length(pointmodela)) {
-    micropointa[[i]]<-subsetpointmodel(pointmodela[[i]],tstep,what,days)
+    if (class(pointmodela[[i]]) != "logical") {
+      micropointa[[i]]<-subsetpointmodel(pointmodela[[i]],tstep,what,days)
+    } else micropointa[[i]]<-NA
   }
   micropointa
 }
