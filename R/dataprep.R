@@ -92,6 +92,7 @@ subsetpointmodel <- function(pointmodel, tstep = "month", what = "tmax", days = 
                       psim=microp$psim[ai],OL=microp$OL[ai],uf=microp$uf[ai],
                       RabsG=microp$RabsG[ai])
   weather<-pointmodel$weather
+  ntot<-dim(weather)[1]
   weatherout<-weather[ai,]
   pointmodel$microp<-as.list(microdf)
   pointmodel$weather<-weatherout
@@ -100,6 +101,8 @@ subsetpointmodel <- function(pointmodel, tstep = "month", what = "tmax", days = 
   precd<-matrix(prec,ncol=24,byrow=T)
   pointmodel$precip<-apply(precd,1,sum)
   pointmodel$soilm<-pointmodel$soilm[ai]
+  pointmodel$sel<-ai
+  pointmodel$ntot<-ntot
   if (class(pointmodel$Tbz) != "logical") pointmodel$Tbz<-pointmodel$Tbz[ai]
   if (class(pointmodel$DD) != "logical") pointmodel$Tbz<-pointmodel$DD[ai]
   return(pointmodel)
