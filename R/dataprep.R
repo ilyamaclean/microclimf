@@ -359,21 +359,13 @@ checkinputs <- function(weather, precip, vegp, soilc, dtm, daily = FALSE, windhg
   xx<-xx[is.na(xx)==F]
   check.vals(xx,0,2,"maximum stomatal conductance","mol / m^2 /s")
   # PAI
-  if (class(vegp$pai)[1] != "array") {
-    if (class(vegp$pai)[1] == "PackedSpatRaster") vegp$pai<-rast(vegp$pai)
-    if (class(vegp$pai)[1] == "SpatRaster") {
-      vegp$pai<-array(as.matrix(vegp$pai))
-      warning("vegp$pai assumed time-invariant and converted to an array")
-    } else stop("vegp$pai must be an array or a SpatRaster object")
-  }
-  xx<-vegp$pai
+  if (class(vegp$pai)[1] == "PackedSpatRaster") vegp$pai<-rast(vegp$pai)
+  xx<-.is(vegp$pai)
   xx<-xx[is.na(xx)==F]
   if (min(xx)<0) stop("Minimum vegp$pai must be greater than or equal to zero")
   if (max(xx)>15) warning(paste0("Maximum vegp$pai of ",max(xx)," seems high"))
   return(list(weather=weather,precip=precip,vegp=vegp,soilc=soilc))
 }
-
-
 .PAIforayear <- function(habitat, lat, long, yr) {
   laigaus <- function(minlai, maxlai, pkday, dhalf, yr) {
     diy <- 365
