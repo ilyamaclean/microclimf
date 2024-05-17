@@ -91,11 +91,11 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5, slr = NA, apr =
   Kc<-kkd$kd/kkd$k0
   # === (1g) Calculate pai a
   micro$vha<-.rta(micro$veghgt,length(jd))
+  fd<-foliageden(reqhgt,micro$vha,micro$pai)
+  micro$leafden<-fd$leafden
   if (class(pai_a)[1]=="logical") {
     if (reqhgt > 0) {
-      fd<-foliageden(reqhgt,micro$vha,micro$pai)
       micro$pai_a<-fd$pai_a
-      micro$leafden<-fd$leafden
     } else micro$pai_a<-0
   }
   # === (1g) Adjust parameters for gap fraction and inclined surface
