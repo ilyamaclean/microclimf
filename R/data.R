@@ -16,11 +16,12 @@
 #'  \item{temp}{temperature (degrees C)}
 #'  \item{relhum}{relative humidity (percentage)}
 #'  \item{pres}{atmospheric press (kPa)}
-#'  \item{swrad}{Total incoming shortwave radiation (W / m^2)}
+#'  \item{swdown}{Total downward shortwave radiation (W / m^2)}
 #'  \item{difrad}{Diffuse radiation (W / m^2)}
-#'  \item{skyem}{Sky emissivity (0-1)}
+#'  \item{lwdown}{Total downward longwave radiation (W / m^2)}
 #'  \item{windspeed}{Wind speed (m/s)}
 #'  \item{winddir}{Wind direction (decimal degrees)}
+#'  \item{precip}{Precipitation (mm)}
 #' }
 "climdata"
 #'
@@ -55,46 +56,6 @@
 #'
 #' @format A PackedSpatRaster object with 50 rows and 50 columns
 "habitats"
-#' Output of point microclimate model
-#'
-#' An object of class `micropoint` with outputs of a point microclimate model
-#' run for Caerthillean Cove (latitude 49.96807N, longitude 5.215668) as returned
-#' by [runpointmodel()]
-#'
-#' @format a list of the following:
-#' \describe{
-#'   \item{weather}{a data.frame of hourly weather (same as `climdata`)}
-#'   \item{precip}{a vector of daily precipitation values in mm (same as 'rainfall`)}
-#'   \item{microp}{a list of the following:
-#'   (1) Tc - a vector of canopy heat exchange surface temperatures (deg C),
-#'   (2) Tg - a vector of ground surface temperatures (deg C),
-#'   (3) H - a vector of sensible heat fluxes (W/m^2),
-#'   (4) G - a vector of ground heat fluxes (W/m^2),
-#'   (5) psih - a vector of diabatic correction factors for heat,
-#'   (6) psim - a vector of diabatic correction factors for momentum,
-#'   (7) phih - a vector of diabatic influencing factors for heat,
-#'   (8) OL - a vector of Obukhov lengths,
-#'   (9) uf - A vector of wind friction velocities (m/s),
-#'   (10) RabsG - a vector of ground absorbed radiation fluxes
-#'   (11) error.mar-  error margin of model (deg C)}
-#'   \item{soilm}{a vector of soil moistures in the top 10 cm of the soil}
-#'   \item{vegp}{a list of vegetation paremeters used by the point model}
-#'   \item{groundp}{a list of ground paremeters used by the point model}
-#'   \item{soiltype}{soil type assumed when running the point model}
-#'   \item{lat}{latitude of location for which model was run (decimal degrees)}
-#'   \item{long}{longitude of location for which model was run (decimal degrees)}
-#'   \item{zref}{Height (m) of temperature and wind speed values in `weather`)}
-#'   \item{tstep}{time-step of model output (hour)}
-#'   \item{Tbz}{temperature below ground, here set to NA as model run above ground}
-#' }
-"micropoint"
-#'
-#' Daily rainfall
-#'
-#' A vector of daily rainfall for 169500, 12500 (x, y) using the Ordance Survey GB Grid Reference system (CRS: 27700).
-#'
-#' @format A vector of daily rainfall (mm/day)
-"rainfall"
 #' A dataset of soil characteristics.
 #'
 #' An object of class soilcharac for the area bounded by 169475, 169525, 12475, 12525
@@ -138,16 +99,43 @@
 #'
 #' @format A list of  the following objects:
 #' \describe{
-#'   \item{pai}{an array of monthly plant area index values}
+#'   \item{pai}{a PackedSpatRaster of monthly plant area index values, 12 layers}
 #'   \item{hgt}{a PackedSpatRaster object of vegetation heights (m)}
 #'   \item{x}{a PackedSpatRaster object of the ratio of vertical to horizontal projections of leaf foliage}
 #'   \item{gsmax}{a PackedSpatRaster object maximum stomatal conductances (mol / m^2 / s)}
 #'   \item{leafr}{a PackedSpatRaster object of leaf reflectance values}
-#'   \item{clump}{an array of monthly values between 0 and 1 indicating the fraction of radiation passing through larger gaps in the canopy, here esyimated using [clumpestimate()]}
+#'   \item{clump}{a PackedSpatRaster of monthly values between 0 and 1 indicating the fraction of radiation passing through larger gaps in the canopy, here estimated using [clumpestimate()], 12 layers}
 #'   \item{leafd}{a PackedSpatRaster object of leaf diameters (m)}
 #'   \item{leaft}{a PackedSpatRaster object of leaf transmittance}
-#'}
-"vegp"
+#' }
+#' "vegp"
+#'
+#' A dataset of soilparameters parameters for the point model.
+#'
+#' An object of class groundparams
+#'
+#' @format A data frame with the following columns:
+#' \describe{
+#'   \item{Soil.type}{description of soil type}
+#'   \item{Smax}{Volumetric water content at saturation (m^3 / m^3)}
+#'   \item{Smin}{Residual water content (m^3 / m^3)}
+#'   \item{alpha}{Shape parameter of the van Genuchten model (cm^-1)}
+#'   \item{n}{Pore size distribution parameter (dimensionless, > 1)}
+#'   \item{Ksat}{Saturated hydraulic conductivity (cm / day)}
+#'   \item{Vq}{Volumetric quartz fraction of soil}
+#'   \item{Vm}{Volumetric mineral fraction of soil}
+#'   \item{Vo}{Volumetric organic fraction of soil}
+#'   \item{Mc}{Mass fraction of clay}
+#'   \item{rho}{Soil bulk density (Mg / m^3)}
+#'   \item{b}{Shape parameter for Campbell model (dimensionless, > 1)}
+#'   \item{psi_e}{Matric potential (J / m^3)}
+#'   \item{mult}{soil moisture model radiation coefficient}
+#'   \item{rmu}{soil moisture model rainfall coefficient}
+#'   \item{a}{soil moisture model deeper layer multiplier coefficient}
+#'   \item{pwr}{soil moisture model deeper layer power coefficient}
+#' }
+#' @source: \url{https://onlinelibrary.wiley.com/doi/full/10.1002/ird.1751}
+"soilparamsp"
 #' A 2.5 degree resolution global dataset indicating snow environments
 #'
 #' A spatial dataset of indicating snow environments (0 = Alpine, 1 = maritime, 2 = Prairie, 3 = Taiga, 4 = Tundra)

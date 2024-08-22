@@ -19,15 +19,15 @@ License: GPL-2
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.2.3
-Imports: ncdf4,
-    sf,
-    sp,
-    terra,
-    stats,
-    abind,
-    zoo,
-    stats
-Remotes: github::ilyamaclean/micropoint
+LinkingTo: Rcpp 
+Imports: abind,
+  ncdf4,
+  Rcpp,
+  sf,
+  stats,
+  terra,
+  utils,
+  zoo
 Suggests: 
     knitr,
     rmarkdown,

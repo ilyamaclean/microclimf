@@ -4,7 +4,13 @@
 \alias{subsetpointmodel}
 \title{Subsets outputs from point microclimate model}
 \usage{
-subsetpointmodel(pointmodel, tstep = "month", what = "tmax", days = NA)
+subsetpointmodel(
+  pointmodel,
+  tstep = "month",
+  what = "tmax",
+  days = NA,
+  Tc = NA
+)
 }
 \arguments{
 \item{pointmodel}{a list of model outputs from the point microclimate model as returned by [runpointmodel()].}
@@ -13,7 +19,9 @@ subsetpointmodel(pointmodel, tstep = "month", what = "tmax", days = NA)
 
 \item{what}{one of `tmax`, `tmin` or `tmedian` (maximum, minimum or median temperature respectively - see details)}
 
-\item{days}{optionally a vector of the days in the time sequence  to return data for (if provided `tstep` is ignored)}
+\item{days}{optionally a vector of the days in the time sequence  to return data for (if provided `tstep` and other inputs are ignored)}
+
+\item{Tc}{optionally a vector of canopy heat exchange surface temperatures (used to ensure same data subset when applying over arrays)}
 }
 \value{
 A list with the same format as `pointmodel` but with specified values
@@ -35,8 +43,9 @@ the median hour identified.
 }
 \examples{
 # Extract all hourly values for day in which hottest hour in each month occurs
+micropoint <- runpointmodel(climdata, 0.05, dtmcaerth, vegp, soilc)
 sub_micropoint_hr <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
-Tcanopy <- sub_micropoint_hr$microp$Tc
+Tcanopy <- sub_micropoint_hr$dfo$Tc
 tme <- as.POSIXct(sub_micropoint_hr$weather$obs_time, tz = "UTC")
 # Plot
 plot(Tcanopy ~ tme, type = "l")

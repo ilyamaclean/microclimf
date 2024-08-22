@@ -1,4 +1,3 @@
-globalVariables("globclim")
 #' Subsets outputs from point microclimate model
 #'
 #' The function `subsetpointmodel` provides a means of selecting monthly or
@@ -7,7 +6,8 @@ globalVariables("globclim")
 #' @param pointmodel a list of model outputs from the point microclimate model as returned by [runpointmodel()].
 #' @param tstep one of `year` or `month` (see details)
 #' @param what one of `tmax`, `tmin` or `tmedian` (maximum, minimum or median temperature respectively - see details)
-#' @param days optionally a vector of the days in the time sequence  to return data for (if provided `tstep` is ignored)
+#' @param days optionally a vector of the days in the time sequence  to return data for (if provided `tstep` and other inputs are ignored)
+#' @param Tc optionally a vector of canopy heat exchange surface temperatures (used to ensure same data subset when applying over arrays)
 #' @seealso [runpointmodel()]
 #' @return A list with the same format as `pointmodel` but with specified values
 #' 'only selected.
@@ -22,62 +22,65 @@ globalVariables("globclim")
 #' @export
 #' @examples
 #' # Extract all hourly values for day in which hottest hour in each month occurs
+#' micropoint <- runpointmodel(climdata, 0.05, dtmcaerth, vegp, soilc)
 #' sub_micropoint_hr <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
-#' Tcanopy <- sub_micropoint_hr$microp$Tc
+#' Tcanopy <- sub_micropoint_hr$dfo$Tc
 #' tme <- as.POSIXct(sub_micropoint_hr$weather$obs_time, tz = "UTC")
 #' # Plot
 #' plot(Tcanopy ~ tme, type = "l")
-subsetpointmodel <- function(pointmodel, tstep = "month", what = "tmax", days = NA) {
-  .extractday<-function(microp,sel,what) {
+subsetpointmodel <- function(pointmodel, tstep = "month", what = "tmax", days = NA, Tc = NA) {
+  .extractday<-function(Tc,tme,sel,what) {
     if (what == "tmax") {
-      s2<-which.max(microp$Tc[sel])[1]
+      s2<-which.max(Tc[sel])[1]
     } else if (what == "tmin") {
-      s2<-which.min(microp$Tc[sel])[1]
+      s2<-which.min(Tc[sel])[1]
     } else if (what == "tmedian") {
-      o<-order(microp$Tc[sel])
+      o<-order(Tc[sel])
       n<-trunc(length(o)/2)
       s2<-o[n]
     } else stop ("what must be one of tmax, tmin or tmedian")
-    st<-microp$tme[sel[s2]]
-    i<-which(microp$tme$year==st$year & microp$tme$mon==st$mon & microp$tme$mday==st$mday)
+    st<-tme[sel[s2]]
+    i<-which(tme$year==st$year & tme$mon==st$mon & tme$mday==st$mday)
     return(i)
   }
+  dfo<-pointmodel$dfo
   if (class(days) == "logical") {
-    microp<-pointmodel$microp
-    yrs<-unique(microp$tme$year)
+    tme<-as.POSIXlt(pointmodel$weather$obs_time,tz="UTC")
+    yrs<-unique(tme$year)
+    if (class(Tc) == "logical") Tc<-dfo$Tc
     if (tstep == "year") {
-      sel<-which(microp$tme$year==yrs[1])
-      ai<-.extractday(microp,sel,what)
+      sel<-which(tme$year==yrs[1])
+      ai<-.extractday(Tc,tme,sel,what)
       if (length(yrs) > 1) {
         for (y in 2:length(yrs)) {
-          sel<-which(microp$tme$year==yrs[y])
-          i<-.extractday(microp,sel,what)
+          sel<-which(tme$year==yrs[y])
+          i<-.extractday(Tc,tme,sel,what)
           ai<-c(ai,i)
         }
       }
     }
     if (tstep == "month") {
-      sely<-which(microp$tme$year==yrs[1])
-      mths<-unique(microp$tme$mon[sely])
-      sel<-which(microp$tme$mon[sely]==mths[1])
-      ai<-.extractday(microp,sel,what)
+      sely<-which(tme$year==yrs[1])
+      mths<-unique(tme$mon[sely])
+      sel<-which(tme$mon[sely]==mths[1])
+      ai<-.extractday(Tc,tme,sel,what)
       if (length(mths) > 1) {
         for (m in 2:length(mths)) {
-          sel<-which(microp$tme$mon[sely]==mths[m])
-          i<-.extractday(microp,sel,what)
+          sel<-which(tme$mon[sely]==mths[m])
+          i<-.extractday(Tc,tme,sel,what)
           ai<-c(ai,i)
         }
       }
       if (length(yrs) > 1) {
         for (y in 2:length(yrs)) {
-          sely<-which(microp$tme$year==yrs[y])
-          mths<-unique(microp$tme$mon[sely])
-          sel<-which(microp$tme$mon[sely]==mths[1])
-          am<-.extractday(microp,sel,what)
+          sely<-which(tme$year==yrs[y])
+          mths<-unique(tme$mon[sely])
+          sel<-which(tme$mon[sely]==mths[1])
+          am<-.extractday(Tc,tme,sel,what)
           if (length(mths) > 1) {
             for (m in 2:length(mths)) {
-              sel<-which(microp$tme$mon[sely]==mths[m])
-              i<-.extractday(microp,sel,what)
+              sel<-which(tme$mon[sely]==mths[m])
+              i<-.extractday(Tc,tme,sel,what)
               am<-c(am,i)
             }
           }
@@ -87,29 +90,18 @@ subsetpointmodel <- function(pointmodel, tstep = "month", what = "tmax", days = 
     }
   } else ai<-rep((days-1)*24,each=24)+rep(c(1:24),length(days))
   # Extract data
-  microdf<-data.frame(tme=microp$tme[ai],Tc=microp$Tc[ai],Tg=microp$Tg[ai],
-                      H=microp$H[ai],G=microp$G[ai],psih=microp$psih[ai],
-                      psim=microp$psim[ai],OL=microp$OL[ai],uf=microp$uf[ai],
-                      RabsG=microp$RabsG[ai])
+  microdf<-dfo[ai,]
   weather<-pointmodel$weather
-  ntot<-dim(weather)[1]
   weatherout<-weather[ai,]
-  pointmodel$microp<-as.list(microdf)
   pointmodel$weather<-weatherout
-  prec<-rep(pointmodel$precip,each=24)/24
-  prec<-prec[ai]
-  precd<-matrix(prec,ncol=24,byrow=T)
-  pointmodel$precip<-apply(precd,1,sum)
-  pointmodel$soilm<-pointmodel$soilm[ai]
-  pointmodel$sel<-ai
-  pointmodel$ntot<-ntot
+  pointmodel$dfo<-microdf
+  pointmodel$subs<-pointmodel$subs[ai]
   if (class(pointmodel$Tbz) != "logical") pointmodel$Tbz<-pointmodel$Tbz[ai]
-  if (class(pointmodel$DD) != "logical") pointmodel$Tbz<-pointmodel$DD[ai]
+  class(pointmodel)<-"micropoint"
   return(pointmodel)
 }
-#' Subsets outputs from point microclimate model run over arrays
-#'
-#' The function `subsetpointmodela` is the equivalent of [subsetpointmodel()] used
+#' @title Subsets outputs from point microclimate model run over arrays
+#' @description The function `subsetpointmodela` is the equivalent of [subsetpointmodel()] used
 #' for outputs from [`runpointmodela()]
 #' @param pointmodela a list of model outputs from the point microclimate model applied over arrays as returned by [runpointmodela()].
 #' @param tstep one of `year` or `month` (see details)
@@ -120,14 +112,53 @@ subsetpointmodel <- function(pointmodel, tstep = "month", what = "tmax", days = 
 #' 'only selected.
 #' @export
 subsetpointmodela <- function(pointmodela, tstep = "month", what = "tmax", days = NA) {
+  # Calculate mean Tc
+  Tc<-0
+  n<-0
+  for (i in 1:length(pointmodela)) {
+    if (class(pointmodela[[i]]) != "logical") {
+      pma<-pointmodela[[i]]
+      Tc<-Tc+pma$dfo$Tc
+      n<-n+1
+    }
+  }
+  Tc<-Tc/n
   micropointa<-list()
   for (i in 1:length(pointmodela)) {
     if (class(pointmodela[[i]]) != "logical") {
-      micropointa[[i]]<-subsetpointmodel(pointmodela[[i]],tstep,what,days)
+      micropointa[[i]]<-subsetpointmodel(pointmodela[[i]],tstep,what,days,Tc=Tc)
     } else micropointa[[i]]<-NA
   }
   micropointa
 }
+#' @title Subsets outputs of snow model
+#' @description The function `subsetsnowmodel` subsets snow model outputs as returned
+#' by [runsnowmodel()]
+#' @param snowmod a list of model outputs from the snow model as returned by [runsnowmodel()].
+#' @param subs a vector of index values indicating which hours to select form the snow model
+#' @export
+#' @examples
+#' # Run full snow model (takes ~90 seconds)
+#' climdata$temp <- climdata$temp - 8 # Make it colder so there is snow
+#' micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc) # Make it colder so there is snow
+#' smod <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth)
+#' # Subset snow model using subset point model
+#' smicropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
+#' smods <- subsetsnowmodel(smod, smicropoint$subs)
+subsetsnowmodel <- function(snowmod, subs) {
+  snowmods<-list()
+  snowmods$Tc<-snowmod$Tc[,,subs]
+  snowmods$Tg<-snowmod$Tg[,,subs]
+  snowmods$groundsnowdepth<-snowmod$groundsnowdepth[,,subs]
+  snowmods$totalSWE<-snowmod$totalSWE[,,subs]
+  snowmods$snowden<-snowmod$snowden[,,subs]
+  if (is.array(snowmods$umu)) {
+    snowmods$umu<-snowmod$umu[,,subs]
+  } else snowmods$umu<-snowmod$umu[subs]
+  return(snowmods)
+}
+
+
 #' Check format and values in model inputs
 #'
 #' The function `checkinputs` checks all the inputs into the model and returns errors
@@ -157,24 +188,24 @@ subsetpointmodela <- function(pointmodela, tstep = "month", what = "tmax", days 
 #'
 #' @examples
 #' # No warnings or errors given:
-#' checks<-checkinputs(climdata, rainfall, vegp, soilc, dtmcaerth)
+#' checks<-checkinputs(climdata, vegp, soilc, dtmcaerth)
 #' # Warning given (not run)
 #' # weather<-climdata
 #' # weather$relhum[1]<-101
-#' # checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
+#' # checks<-checkinputs(weather, vegp, soilc, dtmcaerth)
 #' # Error given (NB not run)
 #' # weather<-climdata
 #' # weather$pres<-weather$pres*1000
-#' # checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
+#' # checks<-checkinputs(weather, vegp, soilc, dtmcaerth)
 #' # Error given for vegp (not run)
 #' # vegp2<-vegp
 #' # vegp2$clump<-1
-#' # checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
+#' # checks<-checkinputs(climdata, vegp2, soilc, dtmcaerth)
 #' # Warning given for vegp (not run)
 #' # vegp2<-vegp
 #' # vegp2$pai<-vegp$pai*10
-#' # checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
-checkinputs <- function(weather, precip, vegp, soilc, dtm, daily = FALSE, windhgt = 2, tstep = "hour") {
+#' # checks<-checkinputs(climdata, vegp2, soilc, dtmcaerth)
+checkinputs <- function(weather, vegp, soilc, dtm, windhgt = 2) {
   check.names<-function(nms,char) {
     sel<-which(nms==char)
     if (length(sel) == 0) stop(paste0("Cannot find ",char," in weather"))
@@ -217,11 +248,16 @@ checkinputs <- function(weather, precip, vegp, soilc, dtm, daily = FALSE, windhg
   check.names(nms,"temp")
   check.names(nms,"relhum")
   check.names(nms,"pres")
-  check.names(nms,"swrad")
+  check.names(nms,"swdown")
   check.names(nms,"difrad")
-  check.names(nms,"skyem")
+  check.names(nms,"lwdown")
   check.names(nms,"windspeed")
   check.names(nms,"winddir")
+  check.names(nms,"precip")
+  # check for NAS
+  cd<-weather[,2:10]
+  s<-which(is.na(cd))
+  if (length(s) > 0) stop("weather contains NAs")
   # check timezone
   tz<-attr(weather$obs_time,"tzone")
   if (tz != "UTC") stop("timezone of obs_time in weather must be UTC")
@@ -243,17 +279,15 @@ checkinputs <- function(weather, precip, vegp, soilc, dtm, daily = FALSE, windhg
   mnelev<-min(.is(dtm),na.rm=T)
   mxp<-108.5*((293-0.0065*mnelev)/293)^5.26
   mnp<-87*((293-0.0065*mnelev)/293)^5.26
-  # Check weather  values
+  # Check weather values
   check.vals(weather$temp,-50,65,"temperature","deg C")
   weather$relhum<-up.lim(weather$relhum,100,"relative humidity")
   check.vals(weather$relhum,0,100,"relative humidity","percentage (0-100)")
   check.mean(weather$relhum,5,100,"relative humidity","percentage (0-100)")
   check.vals(weather$pres,mnp,mxp,"pressure","kPa ~101.3")
-  check.vals(weather$swrad,0,1350,"shortwave radiation","W / m^2")
+  check.vals(weather$swdown,0,1350,"shortwave radiation","W / m^2")
   check.vals(weather$difrad,0,1350,"diffuse radiation","W / m^2")
-  weather$skyem<-up.lim(weather$skyem,1,"sky emissivity")
-  check.mean(weather$skyem,0.3,0.99,"sky emissivity","in range 0 - 1")
-  check.vals(weather$skyem,0.3,1,"sky emissivity","in range 0 - 1")
+  check.vals(weather$lwdown,0,600,"longwave radiation","W / m^2")
   check.vals(weather$windspeed,0,100,"wind speed","m/s")
   if (windhgt != 2) {
     ws<-(weather$windspeed*4.87)/log(67.8*windhgt-5.42)
@@ -263,7 +297,7 @@ checkinputs <- function(weather, precip, vegp, soilc, dtm, daily = FALSE, windhg
     warning(txt)
   }
   # Check direct radiation at low solar angles
-  dirr<-weather$swrad-weather$difrad
+  dirr<-weather$swdown-weather$difrad
   sel<-which(dirr<0)
   if (length(sel)>0) {
     weather$difrad[sel]<-weather$swrad[sel]
@@ -278,7 +312,7 @@ checkinputs <- function(weather, precip, vegp, soilc, dtm, daily = FALSE, windhg
     dif<-ceiling((dirr[sel]-csr[sel])*100)/100
     weather$difrad[sel]<-round(weather$difrad[sel]+dif,3)
   }
-  sel<-which(weather$swrad>csd)
+  sel<-which(weather$swdown>csd)
   if (length(sel)>0) {
     warning("Short wave radiation values significantly higher than expected clear-sky radiation values")
   }
@@ -291,13 +325,8 @@ checkinputs <- function(weather, precip, vegp, soilc, dtm, daily = FALSE, windhg
   }
   # Check other variables
   hrs<-dim(weather)[1]
-  if (daily) {
-    dys<-hrs
-  } else dys<-hrs/24
-  if (tstep == "hour") {
-    if(dys != floor(dys)) stop ("weather needs to include data for entire days (24 hours)")
-    if(length(precip) != dys) stop("duration of precipitation sequence doesn't match weather'")
-  }
+  dys<-hrs
+  if(dys != floor(dys)) stop ("weather needs to include data for entire days (24 hours)")
   # Check vegp data
   xy<-dim(dtm)[1:2]
   if (dim(vegp$pai)[1] != xy[1]) stop("y dimension of vegp$pai does not match dtm")
@@ -929,73 +958,71 @@ clumpestimate <- function(hgt, leafd, pai, maxclump = 0.95) {
   clump[sel]<-maxclump
   clump
 }
-#' Derives leaf reflectance from albedo
+#' Derives leaf and ground reflectance from albedo
 #' @param pai a SpatRaster of plant area index values
-#' @param gref a SpatRaster of ground reflectance values
 #' @param x a SpatRaster of the ratio of vertical to horizontal projections of leaf foliage
 #' @param alb a SpatRaster of white-sky albedo
 #' @param ltrr an optional numeric value giving an approximate estimate of the ratio of leaf transmittance to leaf reflectance (e.g. value of 1 makes leaf transmittance equal to reflectance). See details
-#' @return leaf reflectance in the range 0 to 1,
+#' @return a list of the following
+#' \describe{
+#'   \item{leafr}{Leaf reflectance (range 0 - 1)}
+#'   \item{leaft}{Leaf transmittance (range 0 - 1)}
+#'   \item{gref}{Ground reflectance (range 0 - 1)}
+#' }
 #' @import terra
+#' @importFrom Rcpp sourceCpp
+#' @useDynLib microclimf, .registration = TRUE
 #' @export
-#' @details the microclimate model is not unduly sensitive to `lttr` so if unknown, an apprxoimate
+#' @details the microclimate model is not unduly sensitive to `lttr` so if unknown, an approximate
 #' value or the default can be used.
 #' @examples
-#' pai <- .rast(vegp$pai[,,9],rast(dtmcaerth)) # Plant Area Index in Sep (month in whihc albedo image was flow)
-#' gref <- rast(soilc$groundr)
+#' pai <- rast(vegp$pai)[[9]] # Plant Area Index in Sep (month in which albedo image was flown)
 #' x <- rast(vegp$x)
 #' alb <- rast(albedo)
-#' leafr <- leafrfromalb(pai, gref, x, alb)
-#' plot(leafr)
-leafrfromalb<-function(pai, gref, x, alb, ltrr = 1, out = "lref") {
+#' lgr <- leafrfromalb(pai, x, alb)
+#' plot(lgr$leafr)
+#' plot(lgr$gref)
+leafrfromalb<-function(pai, x, alb, ltrr = 0.5) {
   .Solveforlref <- function(pai,albin,x=1,gref=0.15,ltrr=0.5) {
-    fun <- function(om,pai,gref,albin,x,ltrr) {
-      # Base parameters
-      lref<-om/(ltrr+1)
-      ltr<-ltrr*lref
-      lref<-om-ltr # need to change this
-      del<-lref-ltr
-      mla<-(9.65*(3+x)^(-1.65))
-      mla[mla>pi/2]<-pi/2
-      J<-cos(mla)^2
-      # Two two-stream parameters
-      a<-1-om
-      gma<-0.5*(om+J*del)
-      # Intermediate parameters
-      h<-sqrt(a^2+2*a*gma)
-      S1<-exp(-h*pai)
-      u1<-a+gma*(1-1/gref)
-      D1<-(a+gma+h)*(u1-h)*1/S1-(a+gma-h)*(u1+h)*S1
-      # p parameters (diffuse)
-      p1<-gma/(D1*S1)*(u1-h)
-      p2<-(-gma*S1/D1)*(u1+h)
-      # albedo
-      albw<-p1+p2
-      albw-albin
-    }
-    uniroot(fun, c(0.0001,0.9999),pai,gref,albin,x,ltrr,f.lower=-1,f.upper=1)$root
+    uniroot(leafrcpp, c(0.0001,0.9999),pai,gref,albin,x,ltrr,f.lower=-1,f.upper=1)$root
   }
   .Solveforlref2<-function(pai,albin,x,gref,ltrr) {
     out<-tryCatch(.Solveforlref(pai,albin,x,gref,ltrr),error=function(cond) -999)
   }
-  lai<-as.matrix(pai,wide=TRUE)
-  gref<-as.matrix(gref,wide=TRUE)
-  x<-as.matrix(x,wide=TRUE)
-  albi<-as.matrix(alb,wide=TRUE)
+  cat("Computing ground reflectance \n")
+  # calculate ground reflectance
+  canc<-1-exp(-.is(pai))
+  gref<-(.is(alb)-canc*0.6)/(1-canc)
+  s<-which(canc>0.25)
+  gref[s]<-NA
+  gref<-.fillr(.rast(gref,pai),pai)
+  gref[gref<0.01]<-0.01
+  gref<-mask(gref,pai)
+  # Convert to matricesz
+  lai<-.is(pai)
+  gref<-.is(gref)
+  x<-.is(x)
+  albi<-.is(alb)
   lref<-array(NA,dim=dim(lai))
+  cat("Computing leaf reflectance \n")
   # Calculate leaf reflectance
-  l<-dim(lref)[1]*dim(lref)[2]
+  nn<-dim(gref)[1]
+  pb <- txtProgressBar(min = 0, max = nn, style = 3)
   for (i in 1:dim(gref)[1]) {
     for (j in 1:dim(gref)[2]) {
       if (lai[i,j]>0 & is.na(lai[i,j]) == FALSE) {
         lref[i,j]<-.Solveforlref2(lai[i,j],albi[i,j],x[i,j],gref[i,j],ltrr)
       }
     }
+    setTxtProgressBar(pb, i)
   }
-
-  if (out!="omega") lref<-lref/(ltrr+1)
   lref<-.rast(lref,alb)
-  return(lref)
+  me<-mean(as.vector(leafr),na.rm=TRUE)
+  lref[is.na(lref)]<-me
+  mx<-0.95/(1+ltrr)
+  lref[lref>mx]<-mx
+  lref<-mask(lref,pai)
+  return(list(leafr=lref,leaft=ltrr*lref,gref=.rast(gref,pai)))
 }
 #' Create climate arrays for inputting to microclimate model from a netCDF4 file
 #'
@@ -1017,6 +1044,7 @@ leafrfromalb<-function(pai, gref, x, alb, ltrr = 1, out = "lref") {
 #'   climate data, but with a coordinate reference system and extent matching `dtm`}
 #' }
 #' @export
+#' @import ncdf4
 #' @details the model requires that input climate data are projected using a coordinate reference
 #' system in which x and y are in metres. Since values returned by [mcera5::request_era5()]
 #' are in lat long, the output data are reprojected using the coordinate reference system and
@@ -1074,3 +1102,159 @@ nctoclimarray <- function(ncfile, dtm, dtr_cor_fac = 1.285)  {
   out<-list(tme=tme,climarray=climarray,precarray=precarray,dtmc=dtmc)
   return(out)
 }
+#' Writes model output as ncdf4 file
+#'
+#' @description The function `writetonc` writes hourly model outputs as an ncdf4 file to a specified file
+#'
+#' @param mout an object of class microut as returned by runmicro_hr or runmicro_dy with expand = TRUE
+#' @param fileout output filename
+#' @param dtm a SpatRast covering the extent of the model outputs
+#' @param reqhgt at at which model was run (m)
+#' @import ncdf4 terra
+#' @export
+writetonc <- function(mout, fileout, dtm, reqhgt) {
+  atonc<-function(a,rd) {
+    a<-apply(a,c(2,3),rev)
+    a<-aperm(a,c(2,1,3))
+    a <- round(a*rd,0)
+    a <-array(as.integer(a),dim=dim(a))
+    a
+  }
+  # Create eastings and nothings sequence
+  if (class(dtm)[1] == "PackedSpatRaster") dtm<-rast(dtm)
+  est<-seq(ext(dtm)$xmin+res(dtm)[1]/2,ext(dtm)$xmax-res(dtm)[1]/2,res(dtm)[1])
+  nth<-seq(ext(dtm)$ymin+res(dtm)[2]/2,ext(dtm)$ymax-res(dtm)[2]/2,res(dtm)[2])
+  east<-ncdim_def(name="east",units="metres",vals=est,longname="Eastings")
+  north<-ncdim_def(name="north",units="metres",vals=nth,longname="Northings")
+  # Create time variable
+  tme<-as.POSIXct(mout$tme)
+  times<-ncdim_def(name="Time",units="Decimal hours since 1970-01-01 00:00",vals=as.numeric(tme)/3600)
+  # Variable names
+  if (reqhgt > 0) {
+    tname<-paste0("Air temperature at height ",reqhgt," m")
+    lname<-paste0("Leaf temperature at height ",reqhgt," m")
+    rname<-paste0("Relative humidity at height ",reqhgt," m")
+    wname<-paste0("Wind speed at height ",reqhgt," m")
+    # Define variables
+    airtemp<-ncvar_def(name="Tz",longname=tname,units="deg C x 100",dim=list(east,north,times),
+                       missval=-9999,compression=9,prec="integer")
+    leaftemp<-ncvar_def(name="tleaf",longname=lname,units="deg C x 100",dim=list(east,north,times),
+                        missval=-9999,compression=9,prec="integer")
+    relhum<-ncvar_def(name="relhum",longname=rname,units="Percentage",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    windspeed<-ncvar_def(name="windspeed",longname=wname,units="m/s x 100",dim=list(east,north,times),
+                         missval=-9999,compression=9,prec="integer")
+    raddir<-ncvar_def(name="Rdirdown",longname="Downward direct shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    raddif<-ncvar_def(name="Rdifdown",longname="Downward diffuse shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    radlw<-ncvar_def(name="Rlwdown",longname="Downward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                     missval=-9999,compression=9,prec="integer")
+    radusw<-ncvar_def(name="Rswup",longname="Upward shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    radulw<-ncvar_def(name="Rlwup",longname="Upward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    # Create nc file
+    nc.name<-fileout
+    ncnew<-nc_create(filename=nc.name,list(airtemp,leaftemp,relhum,windspeed,raddir,raddif,radlw,radusw,radulw))
+    # Put variables in
+    ncvar_put(ncnew,airtemp,vals=atonc(mout$Tz,100))
+    ncvar_put(ncnew,leaftemp,vals=atonc(mout$tleaf,100))
+    ncvar_put(ncnew,relhum,vals=atonc(mout$relhum,1))
+    ncvar_put(ncnew,windspeed,vals=atonc(mout$windspeed,100))
+    ncvar_put(ncnew,raddir,vals=atonc(mout$Rdirdown,1))
+    ncvar_put(ncnew,raddif,vals=atonc(mout$Rdifdown,1))
+    ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))
+    ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))
+    ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))
+    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    nc_close(ncnew)
+  }
+  if (reqhgt == 0) {
+    soiltemp<-ncvar_def(name="Tz",longname="Soil surface temperature",units="deg C x 100",dim=list(east,north,times),
+                        missval=-9999,compression=9,prec="integer")
+    soilmoist<-ncvar_def(name="soilm",longname="Soil surface moisture",units="Volume percentage soil moisture in top 10 cm of soil",
+                         dim=list(east,north,times),
+                         missval=-9999,compression=9,prec="integer")
+    raddir<-ncvar_def(name="Rdirdown",longname="Downward direct shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    raddif<-ncvar_def(name="Rdifdown",longname="Downward diffuse shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    radlw<-ncvar_def(name="Rlwdown",longname="Downward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                     missval=-9999,compression=9,prec="integer")
+    radusw<-ncvar_def(name="Rswup",longname="Upward shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    radulw<-ncvar_def(name="Rlwup",longname="Upward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                      missval=-9999,compression=9,prec="integer")
+    # Create nc file
+    nc.name<-fileout
+    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist,raddir,raddif,radlw,radusw,radulw))
+    # Put variables in
+    ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))
+    ncvar_put(ncnew,soilmoist,vals=atonc(mout$soilm,100))
+    ncvar_put(ncnew,raddir,vals=atonc(mout$Rdirdown,1))
+    ncvar_put(ncnew,raddif,vals=atonc(mout$Rdifdown,1))
+    ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))
+    ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))
+    ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))
+    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    nc_close(ncnew)
+  }
+  if (reqhgt < 0) {
+    tname<-paste0("Soil temperature at depth ",abs(reqhgt)," m")
+    soiltemp<-ncvar_def(name="Tz",longname=tname,units="deg C x 100",dim=list(east,north,times),
+                        missval=-9999,compression=9,prec="integer")
+    soilmoist<-ncvar_def(name="soilm",longname="Soil surface moisture",units="Percentage volume",dim=list(east,north,times),
+                         missval=-9999,compression=9,prec="integer")
+    nc.name<-fileout
+    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist))
+    # Put variables in
+    ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))
+    ncvar_put(ncnew,soilmoist,vals=atonc(mout$soilm,100))
+    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    nc_close(ncnew)
+  }
+}
+#' @title Mosaics a list of overlapping SpatRasters blending overlap areas
+#' @description Mosaics a list of overlapping SpatRasters blending
+#' the areas of overlap using a distance weighting to eliminate tiling effects
+#' @param rlist a list of SpatRasters
+#' @details
+#' If rlist contains SpatRasters that are not
+#' overlapping the conventional terra::moasic function is used.
+#' If rlist contains SpatRasters that do overlap, they should comprise
+#' a list of adjacent rasters in a single row or column.
+#' @import terra
+#' @export
+mosaicblend <- function(rlist) {
+  # order by row and then by column
+  xmn<-0
+  ymn<-0
+  for (i in 1:length(rlist)) {
+    e<-ext(rlist[[i]])
+    xmn[i]<-e$xmin
+    ymn[i]<-e$ymin
+  }
+  xmn1<-unique(xmn)
+  ymn1<-unique(ymn)
+  le<-min(length(xmn1),length(ymn1))
+  if (le > 1) warning("rlist not a row or column. Blended mosaicing may not work")
+  if (length(xmn1) > length(ymn1)) {
+    o<-order(xmn)
+  } else o<-order(ymn)
+  rlist2<-list()
+  for (i in 1:length(o)) rlist2[[i]]<-rlist[[o[i]]]
+  rlist<-NULL
+  rma<-rlist2[[1]]
+  for (i in 2:length(rlist2)) {
+    r<-rlist2[[i]]
+    it<-intersect(ext(rma),ext(r))
+    a<-as.numeric((it$xmax-it$xmin)*(it$ymax-it$ymin))
+    if (a>0) {
+      rma<-.blendmosaic(rma, r)
+    } else rma<-mosaic(rma,r)
+  }
+  return(rma)
+}
+
+
