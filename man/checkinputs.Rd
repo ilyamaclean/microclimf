@@ -4,21 +4,10 @@
 \alias{checkinputs}
 \title{Check format and values in model inputs}
 \usage{
-checkinputs(
-  weather,
-  precip,
-  vegp,
-  soilc,
-  dtm,
-  daily = FALSE,
-  windhgt = 2,
-  tstep = "hour"
-)
+checkinputs(weather, vegp, soilc, dtm, windhgt = 2)
 }
 \arguments{
 \item{weather}{a data.frame of weather variables (see details)}
-
-\item{precip}{a vector of daily precipitation}
 
 \item{vegp}{an object of class vegparams as returned by [vegpfromhab()] (see details)}
 
@@ -26,9 +15,11 @@ checkinputs(
 
 \item{dtm}{a SpatRaster object of elevations (see details)}
 
-\item{daily}{optional logical indicating whether input weather data are daily}
-
 \item{windhgt}{height above ground (m) of wind speed measurement}
+
+\item{precip}{a vector of daily precipitation}
+
+\item{daily}{optional logical indicating whether input weather data are daily}
 
 \item{tstep}{one of `hour` or `day` indicating whether data are hourly or daily}
 }
@@ -51,21 +42,21 @@ metres and the coordinate reference system must be defined.
 }
 \examples{
 # No warnings or errors given:
-checks<-checkinputs(climdata, rainfall, vegp, soilc, dtmcaerth)
+checks<-checkinputs(climdata, vegp, soilc, dtmcaerth)
 # Warning given (not run)
 # weather<-climdata
 # weather$relhum[1]<-101
-# checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
+# checks<-checkinputs(weather, vegp, soilc, dtmcaerth)
 # Error given (NB not run)
 # weather<-climdata
 # weather$pres<-weather$pres*1000
-# checks<-checkinputs(weather, rainfall, vegp, soilc, dtmcaerth)
+# checks<-checkinputs(weather, vegp, soilc, dtmcaerth)
 # Error given for vegp (not run)
 # vegp2<-vegp
 # vegp2$clump<-1
-# checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
+# checks<-checkinputs(climdata, vegp2, soilc, dtmcaerth)
 # Warning given for vegp (not run)
 # vegp2<-vegp
 # vegp2$pai<-vegp$pai*10
-# checks<-checkinputs(climdata, rainfall, vegp2, soilc, dtmcaerth)
+# checks<-checkinputs(climdata, vegp2, soilc, dtmcaerth)
 }

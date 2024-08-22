@@ -11,11 +11,12 @@ a data frame with the following elements:
  \item{temp}{temperature (degrees C)}
  \item{relhum}{relative humidity (percentage)}
  \item{pres}{atmospheric press (kPa)}
- \item{swrad}{Total incoming shortwave radiation (W / m^2)}
+ \item{swdown}{Total downward shortwave radiation (W / m^2)}
  \item{difrad}{Diffuse radiation (W / m^2)}
- \item{skyem}{Sky emissivity (0-1)}
+ \item{lwdown}{Total downward longwave radiation (W / m^2)}
  \item{windspeed}{Wind speed (m/s)}
  \item{winddir}{Wind direction (decimal degrees)}
+ \item{precip}{Precipitation (mm)}
 }
 }
 \usage{
