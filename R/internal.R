@@ -796,7 +796,7 @@
   B<-.is(slope)
   B[B<minslope]<-minslope
   B[is.na(B)]<-median(B,na.rm=T)
-  a<-.flowacc(dtm)
+  a<-flowaccCpp(.is(dtm))+1
   a<-a*res(dtm)[1]* res(dtm)[2]
   tpx<- a/tan(B)
   r<-.rast(tpx,dtm)

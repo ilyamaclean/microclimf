@@ -305,6 +305,28 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// flowdirCpp
+IntegerMatrix flowdirCpp(NumericMatrix dm);
+RcppExport SEXP _microclimf_flowdirCpp(SEXP dmSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type dm(dmSEXP);
+    rcpp_result_gen = Rcpp::wrap(flowdirCpp(dm));
+    return rcpp_result_gen;
+END_RCPP
+}
+// flowaccCpp
+NumericMatrix flowaccCpp(const NumericMatrix& dm);
+RcppExport SEXP _microclimf_flowaccCpp(SEXP dmSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type dm(dmSEXP);
+    rcpp_result_gen = Rcpp::wrap(flowaccCpp(dm));
+    return rcpp_result_gen;
+END_RCPP
+}
 // soildCppv
 std::vector<double> soildCppv(std::vector<double> soilm, double Smin, double Smax, double tadd);
 RcppExport SEXP _microclimf_soildCppv(SEXP soilmSEXP, SEXP SminSEXP, SEXP SmaxSEXP, SEXP taddSEXP) {
@@ -836,6 +858,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_slice_2d", (DL_FUNC) &_microclimf_slice_2d, 3},
     {"_microclimf_applycpp3", (DL_FUNC) &_microclimf_applycpp3, 2},
     {"_microclimf_manCpp", (DL_FUNC) &_microclimf_manCpp, 2},
+    {"_microclimf_flowdirCpp", (DL_FUNC) &_microclimf_flowdirCpp, 1},
+    {"_microclimf_flowaccCpp", (DL_FUNC) &_microclimf_flowaccCpp, 1},
     {"_microclimf_soildCppv", (DL_FUNC) &_microclimf_soildCppv, 4},
     {"_microclimf_soildCppm", (DL_FUNC) &_microclimf_soildCppm, 4},
     {"_microclimf_solargrid", (DL_FUNC) &_microclimf_solargrid, 4},

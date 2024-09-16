@@ -85,6 +85,14 @@ manCpp <- function(x, n) {
     .Call(`_microclimf_manCpp`, x, n)
 }
 
+flowdirCpp <- function(dm) {
+    .Call(`_microclimf_flowdirCpp`, dm)
+}
+
+flowaccCpp <- function(dm) {
+    .Call(`_microclimf_flowaccCpp`, dm)
+}
+
 soildCppv <- function(soilm, Smin, Smax, tadd) {
     .Call(`_microclimf_soildCppv`, soilm, Smin, Smax, tadd)
 }

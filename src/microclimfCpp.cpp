@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <string>
 #include <stdexcept>
+#include <tuple>
+#include <cfloat> 
 using namespace Rcpp;
 // ** Calculates Astronomical Julian day ** //
 int juldayCpp(int year, int month, int day)
@@ -882,6 +884,8 @@ DataFrame weatherhgtCpp(DataFrame obstime, DataFrame climdata, double zin, doubl
         double ez = ea + (es - ea) * (1 - lnr);
         es = satvapCpp(Tz[i]);
         Rh[i] = (ez / es) * 100;
+        // Cap Rh
+        if (Rh[i] < 0.75 * rh[i]) Rh[i] = 0.75 * rh[i];
         // Wind speed
         double lnru = log((zout - d) / zm) / log((uzin - d) / zm);
         Uz[i] = ws[i] * lnru;
@@ -1290,6 +1294,108 @@ NumericVector slicea(NumericVector array, IntegerVector slices) {
     }
     return result;
 }
+// ************************************************************* //
+// ~ Functions needed for calaculated topographic wetness index
+// ************************************************************* //
+// [[Rcpp::export]]
+IntegerMatrix flowdirCpp(NumericMatrix dm)
+{
+    // get dimensions of matrix
+    int nrows = dm.nrow();
+    int ncols = dm.ncol();  // Get the number of columns
+    // Initialize flow direction matrix
+    IntegerMatrix fd(nrows - 2, ncols - 2);
+    for (int rw = 1; rw < (nrows - 1); ++rw) {
+        for (int cl = 1; cl < (ncols - 1); ++cl) {
+            // test whether focal cell is NA
+            double val = dm(rw, cl);
+            if (!NumericMatrix::is_na(val)) {
+                int index = 1;
+                double  vc = 9999.9;
+                for (int j = 0; j < 3; ++j) {
+                    for (int i = 0; i < 3; ++i) {
+                        double vt = dm(rw - 1 + i, cl - 1 + j);
+                        if (NumericMatrix::is_na(vt)) vt = 0.0;
+                        if (vt < vc) {
+                            fd(rw - 1, cl - 1) = index;
+                            vc = vt;
+                        }
+                        ++index;
+                    } // end j
+                } // end i
+            } // end if
+            else {
+                fd(rw - 1, cl - 1) = NA_REAL;
+            } // end else
+        } // end cl
+    } // end rw
+    return fd;
+}
+// [[Rcpp::export]]
+NumericMatrix flowaccCpp(const NumericMatrix& dm) {
+    int nx = dm.nrow();
+    int ny = dm.ncol();
+    // Create a padded array with dimensions (nx+4) x (ny+4)
+    int padded_nx = nx + 4;
+    int padded_ny = ny + 4;
+    NumericMatrix dm3(padded_nx, padded_ny);
+    dm3.fill(DBL_MAX);  // Use DBL_MAX for NAs
+    // Copy dm into the center of dm3
+    for (int i = 0; i < nx; ++i) {
+        for (int j = 0; j < ny; ++j) {
+            if (NumericMatrix::is_na(dm(i, j))) {
+                dm3(i + 2, j + 2) = DBL_MAX;  // Maintain NA in padded matrix
+            }
+            else {
+                dm3(i + 2, j + 2) = dm(i, j);
+            }
+        }
+    }
+    // Compute flow direction
+    IntegerMatrix fd = flowdirCpp(dm3);
+    // Initialize flow accumulation array
+    NumericMatrix fa(padded_nx, padded_ny);
+    fa.fill(0.0);  // Start with 0.0
+    // Flatten and sort dm3
+    std::vector<std::tuple<double, int, int>> values;
+    for (int i = 0; i < padded_nx; ++i) {
+        for (int j = 0; j < padded_ny; ++j) {
+            if (dm3(i, j) != DBL_MAX) {  // Only include non-NA cells
+                values.push_back(std::make_tuple(dm3(i, j), i, j));
+            }
+        }
+    }
+    std::sort(values.begin(), values.end(), std::greater<>());
+    // Flow accumulation computation
+    for (const auto& tuple : values) {
+        auto x = std::get<1>(tuple);
+        auto y = std::get<2>(tuple);
+        if (fd(x, y) != -1) {  // Skip if flow direction is NA (or an invalid value)
+            int f = fd(x, y);
+            int x2 = x + (f - 1) % 3 - 1;
+            int y2 = y + (f - 1) / 3 - 1;
+            if (x2 > 0 && x2 < padded_nx - 1 && y2 > 0 && y2 < padded_ny - 1) {
+                fa(x2, y2) = fa(x, y) + 1;
+            }
+        }
+    }
+    // Extract the central part of fa
+    NumericMatrix result(nx, ny);
+    for (int i = 0; i < nx; ++i) {
+        for (int j = 0; j < ny; ++j) {
+            if (dm(i, j) != DBL_MAX) {  // Only include non-NA cells
+                result(i, j) = fa(i + 2, j + 2);
+            }
+            else {
+                result(i, j) = NumericMatrix::get_na();  // Set to NA
+            }
+        }
+    }
+    return result;
+}
+// ************************************************************* //
+// ~~~~~~~~~~~~~~~  Grid model from here ~~~~~~~~~~~~~~~~~~~~~~~
+// ************************************************************* //
 // soilmdistribute code (vector)
 // [[Rcpp::export]]
 std::vector<double> soildCppv(std::vector<double> soilm, double Smin, double Smax, double tadd)
@@ -1777,7 +1883,6 @@ List twostreamgrid(double reqhgt, List micro)
     micro["lwout"] = Rcpp::wrap(lwout);
     return micro;
 }
-
 // Point version of two-stream radiation model with snow
 NumericVector twostreampoint(double reqhgt, double hgt, double pai, double paia, double lref, double ltra, double clump,
     double albg, double albc, double Rsw, double Rdif, double shadowmask, double tc, double lwdown, double zenr, 

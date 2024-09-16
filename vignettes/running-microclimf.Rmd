@@ -95,11 +95,11 @@ The first step to run the point model in hourly time increments using function `
 In the code below, weather data are provided as a data frame. The point microclimate model is run and then subset to return only those hours corresponding to the day in each month with the hottest and coldest temperature (as determined by the point model). These are then passed to the grid model. The model returns temperatures (leaf, ground and air), relative humidity, wind speed, and components of the radiation budget, all as 3D arrays, representing values for each pixel and time-period. In the final lines of codes, selected outputs are plotted
 ```{r eval=FALSE}
 library(microclimf)
-# Runs point microclimate model with inbuilt datasets (takes ~ 5 seconds)
+# Runs point microclimate model with inbuilt datasets
 micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc)
 # Subset point model outputs
 micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
-# Run model 5 cm above ground with subset values and inbuilt datasets (takes ~10 seconds)
+# Run model 5 cm above ground with subset values and inbuilt datasets (takes ~9 seconds)
 mout <- runmicro(micropoint, reqhgt = 0.05, vegp, soilc, dtmcaerth)
 
 ```
@@ -108,7 +108,7 @@ library(microclimf)
 library(terra)
 library(zoo)
 library(abind)
-# Runs point microclimate model with inbuilt datasets (takes ~ 6 seconds)
+# Runs point microclimate model with inbuilt datasets
 micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc)
 # Subset point model outputs
 micropoint_mx <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
