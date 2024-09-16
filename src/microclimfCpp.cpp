@@ -896,8 +896,6 @@ DataFrame weatherhgtCpp(DataFrame obstime, DataFrame climdata, double zin, doubl
     climdata_copy["temp"] = Tz;
     climdata_copy["relhum"] = Rh;
     climdata_copy["windspeed"] = Uz;
-    climdata_copy["psih"] = psih;
-    climdata_copy["Tc"] = Tc;
     return climdata_copy;
 }
 // Soil moisture model
