@@ -448,7 +448,7 @@ runmicro_big <- function(micropoint, reqhgt, pathout = getwd(), vegp, soilc, dtm
       tme<-as.POSIXlt(micropoint$weather$obs_time,tz="UTC")
     } else {
       for (i in 1:length(micropoint)) {
-        onepoint<-micropointa[[i]]
+        onepoint<-micropoint[[i]]
         if (class(onepoint) != "logical") {
           nt<-length(onepoint$weather$temp)
           tme<-as.POSIXlt(onepoint$weather$obs_time,tz="UTC")
