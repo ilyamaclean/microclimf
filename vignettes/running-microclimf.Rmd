@@ -299,7 +299,7 @@ The point microclimate model is usually run in hourly time-increments using comp
 In the example below, the model is subset to return only those hours corresponding to the day in each month with the hottest temperature (as determined by the point model). The function has several inputs that control its behaviour. If 'tstep' is set to `year` the day in each year with the e.g. the hottest or coldest hourly temperature is identified, and if 'tstep' is set to `month` the days in each month in each year with e.g. the hottest or coldest hourly temperatures are returned. If `what` is set to `tmax` or `tmin` the hottest or coldest hour within each month or year are identified. If `what` is set to `tmedian` hourly temperatures within the month or year are ranked and the median hour identified. The final option is to provide a vector of the days in the time sequence to return data for using input `days`. If provided `tstep` is ignored. 
 It is necessary that all hours of a given day are returned for two reasons. First, it ensures that the ground heat flux in the grid microclimate model can be estimated as it depends on the full diurnal cycle. Second because the hottest hour on a flat surface may not be the hottest hour on e.g. a steeply south-westerly facing slope - temperatures will typically peak later in the day when the slope is directly facing the sun. Returning hourly values for an entire day ensures that these terrain effects can be properly handled by the grid model. 
 
-```{r}
+```{r eval=FALSE}
 micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
 ```
 
@@ -308,8 +308,7 @@ The entire grid model is run using `runmicro`, but to illustrate its working, we
 
 In the examples that follow, the inbuilt datasets of parameter values and a dtm for the study area, `dtmcaerth` are used and the model is run using a data.frame of weather data. Subsequently, the equivalent workflow for when weather data are in the form of course-gridded SpatRasters is shown.
 
-```{r, fig.show='hold'}
-plot(rast(dtmcaerth))
+```{r eval=FALSE}
 micro <- modelin(micropoint, vegp, soilc, dtmcaerth)
 ```
 

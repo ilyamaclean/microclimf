@@ -765,7 +765,7 @@
   }
   fd
 }
-#' Caclulates flow accumulation
+#' Caclulates flow accumulation (NB - probably needs modifying wiht below)
 .flowacc <- function (dtm) {
   dm<-.is(dtm)
   dm[is.na(dm)]<-0
@@ -788,6 +788,36 @@
   }
   fa<-fa[3:(nx+2),3:(ny+2)]
   fa
+}
+#' Function above needs replaces with this:
+flowacc<-function (dtm, basins = NA) {
+  dm <- .is(dtm)
+  fd <- .flowdir(dm)
+  fa <- fd * 0 + 1
+  if (class(basins) != "logical")
+    ba <- .is(basins)
+  o <- order(dm, decreasing = T, na.last = NA)
+  for (i in 1:(length(o)-1)) {
+    x<-arrayInd(o[i],dim(dm))[2]
+    y<-arrayInd(o[i],dim(dm))[1]
+    f<-fd[y,x]
+    y2<-y+(f-1)%%3-1
+    x2<-x+(f-1)%/%3-1
+    if (class(basins) != "logical" & x2 > 0 & y2 > 0 & x2 <=
+        dim(dm)[2] & y2 <= dim(dm)[1]) {
+      b1 <- ba[y, x]
+      b2 <- ba[y2, x2]
+      if (!is.na(b1) && !is.na(b2)) {
+        if (b1 == b2 & x2 > 0 & x2 < dim(dm)[2] & y2 >
+            0 & y2 < dim(dm)[1])
+          fa[y2,x2]<-fa[y2,x2]+fa[y,x]
+      }
+    }
+    else if (x2 > 0 & x2 < dim(dm)[2] & y2 > 0 & y2 < dim(dm)[1])
+      fa[y2,x2]<-fa[y2,x2]+fa[y,x]
+  }
+  fa <- .rast(fa, dtm)
+  return(fa)
 }
 #' Calculates topographic wetness index
 .topidx <- function(dtm) {

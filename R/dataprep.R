@@ -823,19 +823,19 @@ checkinputs <- function(weather, vegp, soilc, dtm, windhgt = 2) {
 #'
 #' @param habitats a SpatRaster object of habitat types expressed as integers (see details)
 #' @param hgts an optional SpatRaster object of vegetation heights. Estimated from habitat type if not provided.
-#' @param pai an optional array of plant area index values. Estimated at monthly intervals
-#' from habitat type, with seasonal variation dtermined form location and date if not provided.
-#' @param lat latitude in decimal degrees. Only needed if `pai` not provided.
-#' @param long longitude in decimal degrees. Only needed if `pai` not provided.
-#' @param tme POSIXlt object of dates. Only needed if `pai` not provided (see details).
+#' @param pai an optional SpatRaster of plant area index values. Estimated at monthly intervals
+#' from habitat type, with seasonal variation determined form location and date if not provided.
+#' @param lat latitude in decimal degrees. Only needed if `pai` not provided. Estimated form `habitats` if not provided
+#' @param long longitude in decimal degrees. Only needed if `pai` not provided. Estimated form `habitats` if not provided
+#' @param tme POSIXlt object of dates. Only needed if `pai` not provided (see details). Taken to be current year if not provided
 #' @param clump0 optional logical, which if TRUE sets the canopy clumping factor to 0, and if false, estimates it using [clumpestimate()]
 #' @return an object of class vegparams - a list with the following elements:
-#' @return `pai` an array of monthly plant area index values (see details).
+#' @return `pai` a SpatRaster object of monthly plant area index values (see details).
 #' @return `hgt` a SpatRaster object if vegetation heights (m)
 #' @return `x` a SpatRaster object of ratios of vertical to horizontal projections of leaf foliage
 #' @return `gsmax` a SpatRaster object of maximum stomatal conductances (mol / m^2 / s)
 #' @return `leafr` a SpatRaster object of leaf reflectance values (to shortwave radiation)
-#' @return `clump` an array of monthly values indicating the degree of canopy clumpiness, by default set to 0 (vegetation not clumped)
+#' @return `clump` a SpatRaster object of monthly values indicating the degree of canopy clumpiness, by default set to 0 (vegetation not clumped)
 #' @return `leafd` a SpatRaster object of mean leaf widths (m)
 #' @return `leaft` a SpatRaster object of mean leaf transmittance (m)
 #'
@@ -875,15 +875,15 @@ checkinputs <- function(weather, vegp, soilc, dtm, windhgt = 2) {
 #' library(terra)
 #' tme<-as.POSIXlt(c(0:8783)*3600,origin="2000-01-01 00:00", tz = "GMT")
 #' veg<-vegpfromhab(habitats,lat=50,long=-5,tme=tme)
-#' plot(rast(veg$pai[,,1]), main = "Jan PAI")
+#' plot(veg$pai[[1]]), main = "Jan PAI")
 #' plot(veg$hgt, main = "Vegetation height")
 #' plot(veg$x, main = "Leaf angle coefficient")
 #' plot(veg$gsmax, main = "Maximum stomatal conductance")
 #' plot(veg$leafr, main = "Leaf reflectance")
-#' plot(rast(veg$clump[,,1]), main = "Canopy clumping factor")
+#' plot(veg$clump[[1]]), main = "Canopy clumping factor")
 #' plot(veg$leafd, main = "Leaf diameter")
 #' plot(veg$leaft, main = "Leaf transmittance")
-vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme, clump0 = TRUE) {
+vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme = NA, clump0 = TRUE) {
   .poparray<-function(a,sel,v) {
     for (i in 1:length(v)) {
       m<-a[,,i]
@@ -893,6 +893,17 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme, clump0 = 
     a
   }
   if (class(habitats)[1] == "PackedSpatRaster") habitats<-rast(habitats)
+  if (class(lat) == "logical") {
+    h_latlong <- project(habitats, "EPSG:4326")
+    e <- ext(h_latlong)
+    lat <- (e$ymin + e$ymax) / 2
+    long <- (e$ymin + e$ymax) / 2
+  }
+  if (class(tme)[1] == "logical") {
+    current_year <- as.numeric(format(Sys.time(), "%Y"))
+    hiy <- ifelse(current_year%%4 == 0, 366 * 24, 365 * 24) - 1
+    tme <- as.POSIXlt(c(0:hiy), origin = paste0(current_year,"-01-01 00:00"), tz = "UTC")
+  }
   # unique habitats
   m<-.is(habitats)
   uh<-unique(as.vector(m))
@@ -919,10 +930,12 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme, clump0 = 
     leafd[sel]<-vegi$leafd
     hgt[sel]<-vegi$hgt
   }
+  pai<-.rast(pai,habitats)
   leaft<-0.5*leafr
   clump<-pai*0
   if (clump0 == F) {
-    for (i in 1:dim(pai)[3]) clump[,,i]<-clumpestimate(hgt, leafd, pai[,,i])
+    for (i in 1:dim(pai)[3]) clump[,,i]<-clumpestimate(hgt, leafd, .is(pai)[,,i])
+    clump <- .rast(clump,habitats)
   }
   # Convert to rasters
   if (class(hgts)=="logical") {
@@ -933,7 +946,7 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat, long, tme, clump0 = 
   leafr<-.rast(leafr,habitats)
   leaft<-.rast(leaft,habitats)
   leafd<-.rast(leafd,habitats)
-  vegp<-list(pai=pai,hgt=hgt,x=x,gsmax=gsmax,leafr=leafr,clump=clump,leafd=leafd,leaft=leaft)
+  vegp<-list(pai=wrap(pai),hgt=wrap(hgt),x=wrap(x),gsmax=wrap(gsmax),leafr=wrap(leafr),clump=wrap(clump),leafd=wrap(leafd),leaft=wrap(leaft))
   class(vegp)<-"vegparams"
   return(vegp)
 }

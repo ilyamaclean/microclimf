@@ -4,28 +4,36 @@
 \alias{vegpfromhab}
 \title{Generate vegpetation paramaters form habitat type}
 \usage{
-vegpfromhab(habitats, hgts = NA, pai = NA, lat, long, tme, clump0 = TRUE)
+vegpfromhab(
+  habitats,
+  hgts = NA,
+  pai = NA,
+  lat = NA,
+  long = NA,
+  tme = NA,
+  clump0 = TRUE
+)
 }
 \arguments{
 \item{habitats}{a SpatRaster object of habitat types expressed as integers (see details)}
 
 \item{hgts}{an optional SpatRaster object of vegetation heights. Estimated from habitat type if not provided.}
 
-\item{pai}{an optional array of plant area index values. Estimated at monthly intervals
-from habitat type, with seasonal variation dtermined form location and date if not provided.}
+\item{pai}{an optional SpatRaster of plant area index values. Estimated at monthly intervals
+from habitat type, with seasonal variation determined form location and date if not provided.}
 
-\item{lat}{latitude in decimal degrees. Only needed if `pai` not provided.}
+\item{lat}{latitude in decimal degrees. Only needed if `pai` not provided. Estimated form `habitats` if not provided}
 
-\item{long}{longitude in decimal degrees. Only needed if `pai` not provided.}
+\item{long}{longitude in decimal degrees. Only needed if `pai` not provided. Estimated form `habitats` if not provided}
 
-\item{tme}{POSIXlt object of dates. Only needed if `pai` not provided (see details).}
+\item{tme}{POSIXlt object of dates. Only needed if `pai` not provided (see details). Taken to be current year if not provided}
 
 \item{clump0}{optional logical, which if TRUE sets the canopy clumping factor to 0, and if false, estimates it using [clumpestimate()]}
 }
 \value{
 an object of class vegparams - a list with the following elements:
 
-`pai` an array of monthly plant area index values (see details).
+`pai` a SpatRaster object of monthly plant area index values (see details).
 
 `hgt` a SpatRaster object if vegetation heights (m)
 
@@ -35,7 +43,7 @@ an object of class vegparams - a list with the following elements:
 
 `leafr` a SpatRaster object of leaf reflectance values (to shortwave radiation)
 
-`clump` an array of monthly values indicating the degree of canopy clumpiness, by default set to 0 (vegetation not clumped)
+`clump` a SpatRaster object of monthly values indicating the degree of canopy clumpiness, by default set to 0 (vegetation not clumped)
 
 `leafd` a SpatRaster object of mean leaf widths (m)
 
@@ -78,12 +86,12 @@ Habitat types should be expressed as integers as follows:
 library(terra)
 tme<-as.POSIXlt(c(0:8783)*3600,origin="2000-01-01 00:00", tz = "GMT")
 veg<-vegpfromhab(habitats,lat=50,long=-5,tme=tme)
-plot(rast(veg$pai[,,1]), main = "Jan PAI")
+plot(veg$pai[[1]]), main = "Jan PAI")
 plot(veg$hgt, main = "Vegetation height")
 plot(veg$x, main = "Leaf angle coefficient")
 plot(veg$gsmax, main = "Maximum stomatal conductance")
 plot(veg$leafr, main = "Leaf reflectance")
-plot(rast(veg$clump[,,1]), main = "Canopy clumping factor")
+plot(veg$clump[[1]]), main = "Canopy clumping factor")
 plot(veg$leafd, main = "Leaf diameter")
 plot(veg$leaft, main = "Leaf transmittance")
 }

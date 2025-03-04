@@ -2,10 +2,10 @@
 % Please edit documentation in R/internal.R
 \name{.flowacc}
 \alias{.flowacc}
-\title{Caclulates flow accumulation}
+\title{Caclulates flow accumulation (NB - probably needs modifying wiht below)}
 \usage{
 .flowacc(dtm)
 }
 \description{
-Caclulates flow accumulation
+Caclulates flow accumulation (NB - probably needs modifying wiht below)
 }
