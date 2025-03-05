@@ -1299,100 +1299,94 @@ NumericVector slicea(NumericVector array, IntegerVector slices) {
 // ~ Functions needed for calaculated topographic wetness index
 // ************************************************************* //
 // [[Rcpp::export]]
-IntegerMatrix flowdirCpp(NumericMatrix dm)
-{
-    // get dimensions of matrix
-    int nrows = dm.nrow();
-    int ncols = dm.ncol();  // Get the number of columns
-    // Initialize flow direction matrix
-    IntegerMatrix fd(nrows - 2, ncols - 2);
-    for (int rw = 1; rw < (nrows - 1); ++rw) {
-        for (int cl = 1; cl < (ncols - 1); ++cl) {
-            // test whether focal cell is NA
-            double val = dm(rw, cl);
-            if (!NumericMatrix::is_na(val)) {
-                int index = 1;
-                double  vc = 9999.9;
-                for (int j = 0; j < 3; ++j) {
-                    for (int i = 0; i < 3; ++i) {
-                        double vt = dm(rw - 1 + i, cl - 1 + j);
-                        if (NumericMatrix::is_na(vt)) vt = 0.0;
-                        if (vt < vc) {
-                            fd(rw - 1, cl - 1) = index;
-                            vc = vt;
+IntegerMatrix flowdirCpp(NumericMatrix md) {
+    int nrow = md.nrow();
+    int ncol = md.ncol();
+    // Create a padded matrix with NA around the edges
+    NumericMatrix md2(nrow + 2, ncol + 2);
+    std::fill(md2.begin(), md2.end(), NA_REAL);
+    // Copy original matrix into the center of md2
+    for (int i = 0; i < nrow; i++) {
+        for (int j = 0; j < ncol; j++) {
+            md2(i + 1, j + 1) = md(i, j);
+        }
+    }
+    // Initialize outputs
+    IntegerMatrix fd(nrow, ncol);
+    for (int i = 0; i < nrow; ++i) {
+        for (int j = 0; j < ncol; ++j) {
+            // Check whether focal cell is NA
+            double val = md(i, j);
+            if (!R_IsNA(val)) {
+                double minval = 9999.99;
+                int indx = 1;
+                for (int jj = 0; jj < 3; ++jj) {
+                    for (int ii = 0; ii < 3; ++ii) {
+                        double val2 = md2(i + ii, j + jj);
+                        if (!R_IsNA(val2)) {
+                            if (val2 < minval) {
+                                minval = val2;
+                                fd(i, j) = indx;
+                            }
                         }
-                        ++index;
-                    } // end j
-                } // end i
-            } // end if
+                        ++indx;
+                    } // end ii
+                } // end jj
+            } // end NA check
             else {
-                fd(rw - 1, cl - 1) = NA_REAL;
-            } // end else
-        } // end cl
-    } // end rw
+                fd(i, j) = NA_REAL;
+            }
+        }
+    }
     return fd;
 }
 // [[Rcpp::export]]
-NumericMatrix flowaccCpp(const NumericMatrix& dm) {
-    int nx = dm.nrow();
-    int ny = dm.ncol();
-    // Create a padded array with dimensions (nx+4) x (ny+4)
-    int padded_nx = nx + 4;
-    int padded_ny = ny + 4;
-    NumericMatrix dm3(padded_nx, padded_ny);
-    dm3.fill(DBL_MAX);  // Use DBL_MAX for NAs
-    // Copy dm into the center of dm3
-    for (int i = 0; i < nx; ++i) {
-        for (int j = 0; j < ny; ++j) {
-            if (NumericMatrix::is_na(dm(i, j))) {
-                dm3(i + 2, j + 2) = DBL_MAX;  // Maintain NA in padded matrix
-            }
-            else {
-                dm3(i + 2, j + 2) = dm(i, j);
+NumericMatrix flowaccCpp(NumericMatrix dm) {
+    int nrow = dm.nrow();
+    int ncol = dm.ncol();
+    // Get flow direction
+    IntegerMatrix fd = flowdirCpp(dm);
+    // Initialize flow accumulation matrix with 1s
+    NumericMatrix fa(nrow, ncol);
+    std::fill(fa.begin(), fa.end(), 1); // Set all elements to 1 initially
+    // Set NA values in `fa` where `dm` is NA
+    for (int i = 0; i < nrow; i++) {
+        for (int j = 0; j < ncol; j++) {
+            if (R_IsNA(dm(i, j))) {
+                fa(i, j) = NA_INTEGER;  // Propagate NA to output
             }
         }
     }
-    // Compute flow direction
-    IntegerMatrix fd = flowdirCpp(dm3);
-    // Initialize flow accumulation array
-    NumericMatrix fa(padded_nx, padded_ny);
-    fa.fill(0.0);  // Start with 0.0
-    // Flatten and sort dm3
-    std::vector<std::tuple<double, int, int>> values;
-    for (int i = 0; i < padded_nx; ++i) {
-        for (int j = 0; j < padded_ny; ++j) {
-            if (dm3(i, j) != DBL_MAX) {  // Only include non-NA cells
-                values.push_back(std::make_tuple(dm3(i, j), i, j));
+    // Create an index vector for ordering `dm` in decreasing order
+    std::vector<std::pair<double, int>> orderVec;
+    for (int i = 0; i < nrow; i++) {
+        for (int j = 0; j < ncol; j++) {
+            if (!R_IsNA(dm(i, j))) {
+                orderVec.push_back({ dm(i, j), i * ncol + j }); // Store value and 1D index
             }
         }
     }
-    std::sort(values.begin(), values.end(), std::greater<>());
-    // Flow accumulation computation
-    for (const auto& tuple : values) {
-        auto x = std::get<1>(tuple);
-        auto y = std::get<2>(tuple);
-        if (fd(x, y) != -1) {  // Skip if flow direction is NA (or an invalid value)
-            int f = fd(x, y);
-            int x2 = x + (f - 1) % 3 - 1;
-            int y2 = y + (f - 1) / 3 - 1;
-            if (x2 > 0 && x2 < padded_nx - 1 && y2 > 0 && y2 < padded_ny - 1) {
-                fa(x2, y2) = fa(x, y) + 1;
+    // Sort in decreasing order
+    std::sort(orderVec.begin(), orderVec.end(), std::greater<std::pair<double, int>>());
+    // Process ordered indices
+    for (size_t i = 0; i < orderVec.size() - 1; i++) {
+        int index = orderVec[i].second;
+        int y = index / ncol; // Row index
+        int x = index % ncol; // Column index
+        if (R_IsNA(dm(y, x))) continue; // Skip NA cells
+        int f = fd(y, x); // Flow direction from fd
+        if (f < 1 || f > 9) continue; // Skip invalid flow direction values
+        // Compute new coordinates based on flow direction (1-based indexing)
+        int y2 = y + (f - 1) % 3 - 1;
+        int x2 = x + (f - 1) / 3 - 1;
+        // Ensure the new coordinates are within bounds
+        if (x2 >= 0 && x2 < ncol && y2 >= 0 && y2 < nrow) {
+            if (fa(y2, x2) != NA_INTEGER) { // Only update if the target is not NA
+                fa(y2, x2) += fa(y, x);
             }
         }
     }
-    // Extract the central part of fa
-    NumericMatrix result(nx, ny);
-    for (int i = 0; i < nx; ++i) {
-        for (int j = 0; j < ny; ++j) {
-            if (dm(i, j) != DBL_MAX) {  // Only include non-NA cells
-                result(i, j) = fa(i + 2, j + 2);
-            }
-            else {
-                result(i, j) = NumericMatrix::get_na();  // Set to NA
-            }
-        }
-    }
-    return result;
+    return fa;
 }
 // ************************************************************* //
 // ~~~~~~~~~~~~~~~  Grid model from here ~~~~~~~~~~~~~~~~~~~~~~~

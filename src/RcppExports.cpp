@@ -306,23 +306,23 @@ BEGIN_RCPP
 END_RCPP
 }
 // flowdirCpp
-IntegerMatrix flowdirCpp(NumericMatrix dm);
-RcppExport SEXP _microclimf_flowdirCpp(SEXP dmSEXP) {
+IntegerMatrix flowdirCpp(NumericMatrix md);
+RcppExport SEXP _microclimf_flowdirCpp(SEXP mdSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type dm(dmSEXP);
-    rcpp_result_gen = Rcpp::wrap(flowdirCpp(dm));
+    Rcpp::traits::input_parameter< NumericMatrix >::type md(mdSEXP);
+    rcpp_result_gen = Rcpp::wrap(flowdirCpp(md));
     return rcpp_result_gen;
 END_RCPP
 }
 // flowaccCpp
-NumericMatrix flowaccCpp(const NumericMatrix& dm);
+NumericMatrix flowaccCpp(NumericMatrix dm);
 RcppExport SEXP _microclimf_flowaccCpp(SEXP dmSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const NumericMatrix& >::type dm(dmSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type dm(dmSEXP);
     rcpp_result_gen = Rcpp::wrap(flowaccCpp(dm));
     return rcpp_result_gen;
 END_RCPP
