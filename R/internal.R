@@ -884,14 +884,25 @@ flowacc<-function (dtm, basins = NA) {
   }
   horizon
 }
-.foliageden<-function(z,hgt,pai,shape=1.5,rate=shape/7) {
+#' sort out pai_a
+.expandpaia <- function(pai_a, micropoint) {
+  if (class(pai_a) != "logical") {
+    if (class(pai_a) == "PackedSpatRaster") pai_a<-rast(pai_a)
+    n<-length(micropoint$tmeorig)
+    subs<-micropoint$subs
+    pai_a<-.intr(pai_a,n,subs)
+  }
+  return(pai_a)
+}
+
+.foliageden<-function(z,hgt,pai,paia,shape=1.5,rate=shape/7) {
   # reverse and rescale z
   x<-((hgt-z)/hgt)*10
   # totAL DENS
   td<-pgamma(10,shape,rate) # total density
   rfd<-dgamma(x,shape,rate)/td # relative foliage density
   tdf<-(pai/hgt)*rfd*10 # total foliage density
-  paia<-pgamma(x,shape,rate)*(pai/td) # pai above
+  if (class(paia)[1] == "logical") paia<-pgamma(x,shape,rate)*(pai/td) # pai above
   return(list(leafden=tdf,pai_a=paia))
 }
 # *** wind()
@@ -1053,8 +1064,9 @@ flowacc<-function (dtm, basins = NA) {
   s<-which(vegp$hgt==0)
   vegp$pai[s]<-0
   # add additional terms to vegp
-  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai)
-  if (class(pai_a) == "logical") vegp$paia<-fd$pai_a
+  pai_a<-.expandpaia(pai_a,micropoint)
+  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai,pai_a)
+  vegp$paia<-fd$pai_a
   vegp$leafden<-fd$leafden
   # sort out soilc
   soilp<-.sortsoilc(soilc,method="R")
@@ -1228,8 +1240,9 @@ flowacc<-function (dtm, basins = NA) {
   n<-length(tmeorig)
   vegp<-.sortvegp(vegp,method="C",n,subs)
   # add additional terms to vegp
-  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai)
-  if (class(pai_a) == "logical") vegp$paia<-fd$pai_a
+  pai_a<-.expandpaia(pai_a,micropoint)
+  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai,pai_a)
+  vegp$paia<-fd$pai_a
   vegp$leafden<-fd$leafden
   # ===================== Sort out soilc ================================== #
   soilp<-.sortsoilc(soilc,method="R")
@@ -1332,8 +1345,9 @@ flowacc<-function (dtm, basins = NA) {
   s<-which(vegp$hgt==0)
   vegp$pai[s]<-0
   # add additional terms to vegp
-  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai)
-  if (class(pai_a) == "logical") vegp$paia<-fd$pai_a
+  pai_a<-.expandpaia(pai_a,micropoint)
+  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai,pai_a)
+  vegp$paia<-fd$pai_a
   vegp$leafden<-fd$leafden
   # Create dfsel
   ss<-vegp$lsubs
@@ -1515,10 +1529,10 @@ flowacc<-function (dtm, basins = NA) {
   n<-length(tmeorig)
   vegp<-.sortvegp(vegp,method="C",n,subs)
   # add additional terms to vegp
-  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai)
-  if (class(pai_a) == "logical") vegp$paia<-fd$pai_a
+  pai_a<-.expandpaia(pai_a,micropoint)
+  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai,pai_a)
+  vegp$paia<-fd$pai_a
   vegp$leafden<-fd$leafden
-
   # ===================== Create dfsel ================================== #
   ss<-vegp$lsubs
   dflyr<-data.frame(lyr=unique(ss),st=0,ed=0)
@@ -1774,8 +1788,9 @@ flowacc<-function (dtm, basins = NA) {
   s<-which(vegp$hgt==0)
   vegp$pai[s]<-0
   # add additional terms to vegp
-  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai)
-  if (class(pai_a) == "logical") vegp$paia<-fd$pai_a
+  pai_a<-.expandpaia(pai_a,micropoint)
+  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai,pai_a)
+  vegp$paia<-fd$pai_a
   vegp$leafden<-fd$leafden
   # ========================== sort out soilc ================================ #
   soilp<-.sortsoilc(soilc,method="R")
@@ -1961,8 +1976,9 @@ flowacc<-function (dtm, basins = NA) {
   n<-length(tmeorig)
   vegp<-.sortvegp(vegp,method="C",n,subs)
   # add additional terms to vegp
-  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai)
-  if (class(pai_a) == "logical") vegp$paia<-fd$pai_a
+  pai_a<-.expandpaia(pai_a,micropoint)
+  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai,pai_a)
+  vegp$paia<-fd$pai_a
   vegp$leafden<-fd$leafden
   # ======================== Sort out soilc ================================== #
   soilp<-.sortsoilc(soilc,method="R")
@@ -2076,8 +2092,9 @@ flowacc<-function (dtm, basins = NA) {
   # ===================== Sort out vegp and add attidional terms ============= #
   vegp<-.sortvegp2(vegp,selw,vegpisannual,n)
   # add additional terms to vegp
-  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai)
-  if (class(pai_a) == "logical") vegp$paia<-fd$pai_a
+  pai_a<-.expandpaia(pai_a,micropoint)
+  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai,pai_a)
+  vegp$paia<-fd$pai_a
   vegp$leafden<-fd$leafden
   # ========================== sort out soilc ================================ #
   soilp<-.sortsoilc(soilc,method="R")
@@ -2265,8 +2282,9 @@ flowacc<-function (dtm, basins = NA) {
   # ===================== Sort out vegp ================================== #
   vegp<-.sortvegp2(vegp,selw,vegpisannual,n)
   # add additional terms to vegp
-  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai)
-  if (class(pai_a) == "logical") vegp$paia<-fd$pai_a
+  pai_a<-.expandpaia(pai_a,micropoint)
+  fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai,pai_a)
+  vegp$paia<-fd$pai_a
   vegp$leafden<-fd$leafden
   # ======================== Sort out soilc ================================== #
   soilp<-.sortsoilc(soilc,method="R")
@@ -2362,7 +2380,7 @@ flowacc<-function (dtm, basins = NA) {
   return(vegp2)
 }
 #' calculate average vegetation value for hours with snow with paia and foliage density
-.sortl2<-function(vegp,sdep,reqhgt,paia) {
+.sortl2<-function(vegp,sdep,reqhgt,pai_a) {
   nms<-c("pai","hgt","leaft","clump","leafd")
   vegp2<-list()
   for (i in 1:5) {
@@ -2392,10 +2410,33 @@ flowacc<-function (dtm, basins = NA) {
     } else vegp2[[i]]<-.is(vegp[[ss]])
   }
   names(vegp2)<-nms
-  fde<-.foliageden(reqhgt,vegp2$hgt,vegp2$pai)
-  if (class(paia)[1] == "logical") {
-    vegp2$paia<-fde$pai_a
-  } else vegp2$paia<-paia
+  # sort out pai_a here
+  if(class(pai_a)[1] != "logical") {
+    a<-.is(pai_a)
+    d<-dim(a)
+    if (length(d) > 2) {
+      dmx<-dim(a)[3]
+    } else dmx<-1
+    if (dmx > 1) {
+      n<-length(sdep)
+      s<-round(seq(0.50001,dmx+0.5,length.out=n),0)
+      s[s>dmx]<-dmx
+      s[s<1]<-1
+      sel<-which(sdep>0)
+      if (length(sel) > 0) {
+        s<-s[sel]
+      } else s<-s[1]
+      tb<-table(s)
+      num<-as.numeric(names(tb))
+      fre<-as.numeric(tb)
+      m<-a[,,1]*0
+      for (j in 1:length(num)) m<-m+a[,,j]*fre[j]
+      m<-m/sum(fre)
+      pai_a<-m
+    } else pai_a<-.is(pai_a)
+  }
+  fde<-.foliageden(reqhgt,vegp2$hgt,vegp2$pai,pai_a)
+  vegp2$paia<-fde$pai_a
   vegp2$leafden<-fde$leafden
   return(vegp2)
 }

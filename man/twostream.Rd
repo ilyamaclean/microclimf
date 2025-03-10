@@ -11,7 +11,8 @@ twostream(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5)
 
 \item{reqhgt}{height at which temperatures are required (m). Negative if below ground}
 
-\item{pai_a}{plant area index above `reqhgt`. Determined from total `pai` if not supplied}
+\item{pai_a}{a SpatRaster of plant area index values above `reqhgt`. Determined from
+total `pai` if not supplied. Must patch the dimensions of `vegp$pai` if supplied.}
 
 \item{tfact}{coefficient determining sensitivity of soil moisture to variation}
 }

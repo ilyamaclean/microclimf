@@ -56,7 +56,8 @@ if all entries of `out` are true. Alternatively data are saved as RDS files.}
 
 \item{runchecks}{optional logical indicating whether to call [checkinputs()] to run}
 
-\item{pai_a}{an array of plant area index values above `reqhgt`. Determined from total `pai` if not supplied.}
+\item{pai_a}{a SpatRaster of plant area index values above `reqhgt`. Determined from
+total `pai` if not supplied. Must patch the dimensions of `vegp$pai` if supplied.}
 
 \item{tfact}{coefficient determining sensitivity of soil moisture to variation
 in topographic wetness (see [soilmdistribute()])}

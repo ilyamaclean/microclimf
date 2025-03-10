@@ -273,7 +273,8 @@ runpointmodela<-function(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc, matem
 #' @param snow optional logical indicating whether to account for snow (TRUE = yes)
 #' @param snowmod optional list of snow model outputs as returned by [runsnowmodel()]. Only required if `snow` set to TRUE. Must match entries in `micropoint`.
 #' @param runchecks optional logical indicating whether to call [checkinputs()] to run
-#' @param pai_a an array of plant area index values above `reqhgt`. Determined from total `pai` if not supplied.
+#' @param pai_a a SpatRaster of plant area index values above `reqhgt`. Determined from
+#' total `pai` if not supplied. Must patch the dimensions of `vegp$pai` if supplied.
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()]).
 #' @param out optional vector of logicals indicating which variables to
@@ -408,7 +409,8 @@ runmicro <- function(micropoint, reqhgt, vegp, soilc, dtm, dtmc = NA, altcorrect
 #' @param writeasnc optional logical indicating whether to write output data as netCDF4 files (default TRUE). Can only be used
 #' if all entries of `out` are true. Alternatively data are saved as RDS files.
 #' @param runchecks optional logical indicating whether to call [checkinputs()] to run
-#' @param pai_a an array of plant area index values above `reqhgt`. Determined from total `pai` if not supplied.
+#' @param pai_a a SpatRaster of plant area index values above `reqhgt`. Determined from
+#' total `pai` if not supplied. Must patch the dimensions of `vegp$pai` if supplied.
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
 #' @param out optional vector of logicals indicating which variables to
@@ -557,7 +559,8 @@ runmicro_big <- function(micropoint, reqhgt, pathout = getwd(), vegp, soilc, dtm
 #' elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed
 #' lapse rate correction, 2 = humidity-dependent variable lapse rate correction,
 #' see [runmicro()]).
-#' @param pai_a an array of plant area index values above `reqhgt`. Determined from total `pai` if not supplied.
+#' @param pai_a a SpatRaster of plant area index values above `reqhgt`. Determined from
+#' total `pai` if not supplied. Must patch the dimensions of vegp$pai if supplied.
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' in topographic wetness (see [soilmdistribute()])
 #' @param out optional vector of logicals indicating which bioclim variables to return.

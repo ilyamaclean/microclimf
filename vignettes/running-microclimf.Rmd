@@ -54,6 +54,7 @@ knitr::opts_chunk$set(
   }
 </style>
 * [Overview](#overview)
+* [Package install](#package-install)
 * [Quick start](#quick-start)
 * [Model inputs](#model-inputs)
   + [Meteorological data](#meteorological-data)
@@ -87,6 +88,18 @@ In line with standard approaches for mechanistic microclimate modelling, the mod
 
 A key aim if microclimf is to ensure computational efficiency, which is achieved in four ways. First, it is assumed that the energy budget can be solved mathematically using the Penman-Monteith method (Penman 1948; Monteith 1965) if these interdependencies are ignored, resulting in only modest errors. If doing so for a single point location, the ratio of the temperature offset from ambient air temperature for that location relative to that for any other location is preserved when solving the model iteratively. Thus, running the model iteratively for a single point location and solving the model mathematically for all grid cells, provides a route to estimating the iterative solution for the entire landscape in a computationally efficient manner. Second, and a further advantage of running a point model separately is that one can subset outputs from the point model. While the point model must be run in hourly time-increments there is no need to do so for the grid model: one can instead opt to select from the point model, only those hours that correspond to e.g. the monthly maximum, minimum or median temperature. Thirdly, some simplifying assumptions are about the nature of vegetated canopies to avoid the need to describe vertical variation in leaf foliage density in detail when characterising below-canopy microclimates. This eliminates the need to evoke a multi-layer canopy model. Lastly, most of the heavy lifting is done by c++ code, which typically runs much more quickly than R code. The R functions are essentially wrappers for the underlying c++ code meaning users get the high-level expressiveness of R, but the computational performance of compiled c++.
 
+## Package install
+Start by installing the package form Github as follows:
+
+```{r eval=FALSE}
+require(devtools)
+install_github("ilyamaclean/microclimf")
+```
+
+The package has a few dependencies, which may also need to be installed or updated. 
+If there are any install issue, a useful starting point for troubleshooting is to 
+install the dependencies first. These are `abind`, `ncdf4`, `Rcpp`, `sf`, `stats`, `terra`, `utils` and `zoo` all of which are on CRAN.
+
 ## Quick start
 Here I provide brief instructions for how to run `microclimf`. More in-depth instructions are provided below. Four sets of input variables are needed: (1) a dataset of hourly weather, (2) a digital elevation dataset, (3) a dataset of vegetation parameters and (4) a dataset of soil properties. The datasets should have exactly the same format and units as the example datasets included with the package. The spatial resolution and extent of outputs is determined by the spatial resolution of the digital elevation dataset, and the spatial datasets of vegetation parameters and soil properties should also match the digital elevation dataset in terms of resolution and extent. It is important also that the x, y and z dimensions of the digital elevation dataset are equivalent – i.e. an equal area projection is used rather than say latitude and longitude, with units of x, y and height all identical and typically in metres. 
 
@@ -95,25 +108,13 @@ The first step to run the point model in hourly time increments using function `
 In the code below, weather data are provided as a data frame. The point microclimate model is run and then subset to return only those hours corresponding to the day in each month with the hottest and coldest temperature (as determined by the point model). These are then passed to the grid model. The model returns temperatures (leaf, ground and air), relative humidity, wind speed, and components of the radiation budget, all as 3D arrays, representing values for each pixel and time-period. In the final lines of codes, selected outputs are plotted
 ```{r eval=FALSE}
 library(microclimf)
-# Runs point microclimate model with inbuilt datasets
-micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc)
-# Subset point model outputs
-micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
-# Run model 5 cm above ground with subset values and inbuilt datasets (takes ~9 seconds)
-mout <- runmicro(micropoint, reqhgt = 0.05, vegp, soilc, dtmcaerth)
-
-```
-```{r eval=FALSE}
-library(microclimf)
 library(terra)
-library(zoo)
-library(abind)
 # Runs point microclimate model with inbuilt datasets
 micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc)
 # Subset point model outputs
 micropoint_mx <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
 micropoint_mn <- subsetpointmodel(micropoint, tstep = "month", what = "tmin")
-# Run model 5 cm above ground with subset values and inbuilt datasets (takes ~20 seconds)
+# Run grid model 5 cm above ground with subset values and inbuilt datasets (takes ~20 seconds)
 mout_mx <- runmicro(micropoint_mx, reqhgt = 0.05, vegp, soilc, dtmcaerth)
 mout_mn <- runmicro(micropoint_mn, reqhgt = 0.05, vegp, soilc, dtmcaerth)
 attributes(mout_mx)

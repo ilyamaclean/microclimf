@@ -124,7 +124,8 @@ soilmdistribute <- function(micro, tfact = 1.5) {
 #'
 #' @param micro an object of class `micro` as returned by [modelin()]
 #' @param reqhgt height at which temperatures are required (m). Negative if below ground
-#' @param pai_a plant area index above `reqhgt`. Determined from total `pai` if not supplied
+#' @param pai_a a SpatRaster of plant area index values above `reqhgt`. Determined from
+#' total `pai` if not supplied. Must patch the dimensions of `vegp$pai` if supplied.
 #' @param tfact coefficient determining sensitivity of soil moisture to variation
 #' @return an object of class micro with additional terms added for subsequent modelling
 #' @import terra
@@ -160,7 +161,8 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5) {
   svf<-0.5*cos(2*msl)+0.5
   micro$svfa<-.rta(svf,length(obstime$year))
   # === (1e) Calculate leaf area above
-  fd<-.foliageden(reqhgt,micro$veghgt,micro$pai)
+  pai_a<-.expandpaia(pai_a, micropoint)
+  fd<-.foliageden(reqhgt,micro$veghgt,micro$pai,pai_a)
   micro$leafden<-fd$leafden
   micro$paia<-fd$pai_a
   micro<-twostreamgrid(reqhgt,micro)
