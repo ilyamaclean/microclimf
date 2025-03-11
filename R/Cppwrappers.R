@@ -504,8 +504,8 @@ runmicro_big <- function(micropoint, reqhgt, pathout = getwd(), vegp, soilc, dtm
         wsai<-as.array(crop(.rast(wsa,dtm),ext(dtmi)))
         vegpi<-.listcrop(vegp,ext(dtmi))
         soilci<-.listcrop(soilc,ext(dtmi))
-        mout<-runmicro(micropoint,reqhgt,vegpi,soilci,dtmi,dtmc,altcorrect,snow=FALSE,snowmod=NA,
-                       runchecks,pai_a,tfact,out,slri,apri,hori,twii,wsai,svf=svfi)
+        mout<-suppressWarnings(runmicro(micropoint,reqhgt,vegpi,soilci,dtmi,dtmc,altcorrect,snow=FALSE,snowmod=NA,
+                       runchecks,pai_a,tfact,out,slri,apri,hori,twii,wsai,svf=svfi))
         mout$tme<-tme
         # Write output
         rwt<-ifelse(rw<10,paste0("0",rw),paste0("",rw))
