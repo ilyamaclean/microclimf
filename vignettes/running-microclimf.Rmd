@@ -586,58 +586,55 @@ If `altcorrect == 0', no elevation correction is performed. If `altcorrect > 0' 
 ## Running the model over large areas
 R stores all data into internal memory and although, by using C++ code, memory requirements are substantially improved, the RAM requirements of the microclimate model can be pretty high if outputs are desired for numerous timesteps at high-resolution over large areas. To circumvent this issue the model can be run as tiles. However, the way that terrain shading effects and topographic wetness are calculated means that model outputs are prone to edge effects. To circumvent this issue, the function `runmicro_big` and `runmicro_biga` can be used, the former handling climate data provided as a data.frame and the latter as a list of arrays.  These functions calculated the wind shelter and topographic wetness over the entire study area before running the model in tiles,
 
-In the example below, the application of `runmicro_big` is shown. First some example data are downloaded from Zenodo. These data are a one km^2 one meter resolution digital elevation dataset for Caerthillian Cove and the corresponding soil and vegetation datasets required for running the model. This area is essentially encompasses a larger area than the example datasets used before but is for the same location, hence the inbuilt climate datasets included with the package can be used. These data are then run in and the `runmicro_big`. The function first runs the point microclimate model. The relevant terrain variables are then calaculated over the whole study area and the model is then run over 200 x 200 pixel tiles. The example takes quite a while to run, but is included here for illustration purposes. Data are stored in a subfolder called `microut` in the directory specified by `path`. 
+In the example below, the application of `runmicro_big` is shown. First some example data are downloaded from Zenodo. These data are 10m resolution model inputs for the entire Lizard Peninsula in Cornwall, an area of approximately 400 square kilometers. 
+
+In the first example, using `runmicro_big`, the model is run in tiles with the climate data provided as a data.frame. The code first runs the point microclimate model. The relevant terrain variables are then calculated over the whole study area and the model is then run in tiles. The example takes quite a while to run, but is included here for illustration purposes. Data are stored in a subfolder called `microut` in the directory specified by `pathout`. 
+
+Some warnings are given when running the function to notify the user that direct radiation values in a few instances close to dawn and dusk are higher than expected clear-sky radiation values. This is taken care of by the model - the excess is assigned as diffuse radiation, so is nothing to worry about.
 
 ```{r eval=FALSE}
-# Download example data form Zenodo
-url <- "https://zenodo.org/record/8338612/files/runmicrobig.zip"
-path<-"C:/Temp/tiles/"
-dir.create(path)
-setwd(path)
-download.file(url, "modeldata.zip")
-unzip("modeldata.zip")
-# Read in data
-vegp<-readRDS("vegp.RDS")
-soilc<-readRDS("soilc.RDS")
-dtm<-rast("dem.tif")
-# Run and subset point microclimate model
-micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtm, vegp, soilc)
-micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
-# Run the model
-runmicro_big(micropoint, reqhgt = 0.05, pathout = path, vegp, soilc, dtm)
-```
-
-The optimal tile size is automatically calculated. Entirely blank tiles (i.e anything with NA in the digital elevation dataset are skipped). Users have the option to specify the tile size or format of the data written to disk and there are quite a few other options for flexibly handling how the model is run. The help file associated with `runmicro_big` gives details. One useful feature is the ability to specify a tile overlap to avoid possible tiling effects. Model output variables for overlapping tiles can then, once converted to `terra::SpatRasters`, can be merged using function `mosaicblend`. This applies a distance weigting to the overlapping area so that sharp boundary effects are avoided. Another potentially useful option is to write the model outputs as compressed nc files. 
-
-The same workflow can be used when providing climate data as arrays of data, though one must additionally provide a coarse-resolution dtm matching the extent and resolution of the climate data to account for possible elevation effects. In the example below some data are downloaded from Zenodo. These data are a 10m grid resolution digital elevation dataset of west Cornwall, UK and the corresponding soil and vegetation datasets required for running the model. Here arrays of climate data formatted for use with the model are also downloaded. The datasets are all derived from open source data available globally, and an annotated example of how the datasets were derived is included with the forthcoming `microclimdata` package. 
-
-The function first runs the point microclimate model over each grid cell of the array of climate data. The relevant terrain variables are then calculated over the whole study area and the model is then run for each of the 200 x 200 tiles, skipping those that are blank. Again, the example takes quite a while to run and is included here for illustration purposes. As before, data are stored in a subfolder called `microut` in the working directory.
-
-```{r eval=FALSE}
-# Download example data form Zenodo
-url <- "https://zenodo.org/record/8338612/files/runmicrobiga.zip"
+# Download example data from Zenodo
+url <- "https://zenodo.org/records/15008936/files/runmicrobig.zip"
 pathout<-"C:/Temp/tiles/"
 dir.create(pathout)
 setwd(pathout)
 download.file(url, "modeldata.zip")
 unzip("modeldata.zip")
 # Read in spatial data
-vegp<-readRDS("vegp_big.RDS")
-soilc<-readRDS("soilc_big.RDS")
+big_vegp <- readRDS("vegp_big.RDS")
+big_soilc <-readRDS("soilc_big.RDS")
 dtm<-rast("dem.tif")
-plot(dtm)
-# Read in climate data
-climatedata<-readRDS("climdataarray.RDS")
-climarray<-climatedata$climarray
-dtmc<-rast(climatedata$dtmc)
-tme<-as.POSIXlt(climatedata$tme,tz="UTC")
-# Run point models
-micropointa <- runpointmodela(climarray, tme, reqhgt = 0.05, dtm, vegp, soilc)
-micropointa <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
-runmicro_big(micropointa, reqhgt = 0.05, pathout = pathout, vegp, soilc, dtm, dtmc, altcorrect = 0)
+# Read in climate dataframe
+climdatadf <- readRDS("climdatapoint.RDS")
+# Run and subset point model
+micropoint <- runpointmodel(climdatadf, reqhgt = 0.05, dtm, big_vegp, big_soilc)
+micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
+# Run the model in tiles
+runmicro_big(micropoint, reqhgt = 0.05, pathout = pathout, big_vegp, big_soilc, dtm)
 ```
 
-Some warnings are given when running the function to notify the user that direct radiation values in a few instances close to dawn and dusk are higher than expected clear-sky radiation values. This is taken care of by the model - the excess is assigned as diffuse radiation, so is nothing to worry about.
+The optimal tile size is automatically calculated. Entirely blank tiles (i.e anything with NA in the digital elevation dataset are skipped). Users have the option to specify the tile size or format of the data written to disk and there are quite a few other options for flexibly handling how the model is run. The help file associated with `runmicro_big` gives details. One useful feature is the ability to specify a tile overlap to avoid possible tiling effects. Model output variables for overlapping tiles can then, once converted to `terra::SpatRasters`, can be merged using function `mosaicblend`. This applies a distance weigting to the overlapping area so that sharp boundary effects are avoided. Another potentially useful option is to write the model outputs as compressed nc files. 
+
+In the second example, using `runmicro_biga`, 1km resolution gridded climate data are used to drive the model. It is assumed that data have already been dowenloaded and unzipped. Again, the the code first runs the point microclimate model, but here the point model must be run for each of the ~400 1km grid cells, which itself takes a little while. Again, the relevant terrain variables are then calculated over the whole study area and the model is then run in tiles. As with `runmicro_big`, the size of tiles and the degree of overlap can be specified as user inputs. 
+
+```{r eval=FALSE}
+# Assumes data already downloaded from Zenodo - see above
+pathout<-"C:/Temp/tiles/"
+setwd(pathout)
+big_vegp <- readRDS("vegp_big.RDS")
+big_soilc <-readRDS("soilc_big.RDS")
+dtm<-rast("dem.tif")
+# Read in gridded climate data
+climdatag <- readRDS("climdatagrid.RDS")
+# Create other input variables
+tme <- as.POSIXlt(c(0:8783) * 3600, origin = "2020-01-01 00:00", tz = "UTC")
+dtmc <- aggregate(dtm, 100, fun = "mean", na.rm = TRUE)
+# Run and subset point model over each 1km grid cell
+micropointa <- runpointmodela(climdatag, tme, reqhgt = 0.05, dtm, big_vegp, big_soilc)
+micropointa <- subsetpointmodela(micropointa, tstep = "month", what = "tmax")
+# Run microclimate model in tiles (data saved to "C:/Temp/tiles2/")
+runmicro_big(micropointa, reqhgt = 0.05, pathout = "C:/Temp/tiles2/", big_vegp, big_soilc, dtm, dtmc, altcorrect = 0)
+```
 
 Note that in contrast to when run using a point model input, altitudinal corrections can be handled using the control parameter `altcorrect`. 
 
