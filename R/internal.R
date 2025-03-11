@@ -3662,3 +3662,10 @@ flowacc<-function (dtm, basins = NA) {
   }
   return(ro)
 }
+#' unpack climarray
+.unpackclim <- function(climarrayr) {
+  for (i in 1:9) {
+    if (class(climarrayr[[i]]) == "PackedSpatRaster") climarrayr[[i]] <- rast(climarrayr[[i]])
+  }
+  return(climarrayr)
+}

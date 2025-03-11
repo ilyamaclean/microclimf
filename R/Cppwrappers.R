@@ -209,6 +209,7 @@ runpointmodela<-function(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc, matem
   dtm<-up$dtm
   vegp<-up$vegp
   soilc<-up$soilc
+  climarrayr<-.unpackclim(climarrayr)
   mxhgt<-max(.is(vegp$hgt),na.rm=T)
   # Sort out all the rasters
   # Calculate modal wind direction
