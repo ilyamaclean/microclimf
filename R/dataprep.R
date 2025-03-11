@@ -300,7 +300,7 @@ checkinputs <- function(weather, vegp, soilc, dtm, windhgt = 2) {
   dirr<-weather$swdown-weather$difrad
   sel<-which(dirr<0)
   if (length(sel)>0) {
-    weather$difrad[sel]<-weather$swrad[sel]
+    weather$difrad[sel]<-weather$swdown[sel]
     warning("Diffuse radiation values higher than shortwave radiation, and so was set to shortwave radiation values")
   }
   # Calculate clear-sky radiation

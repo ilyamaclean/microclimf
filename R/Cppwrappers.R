@@ -441,7 +441,6 @@ runmicro_big <- function(micropoint, reqhgt, pathout = getwd(), vegp, soilc, dtm
   soilc<-up$soilc
   .checkbiginputs(dtm,vegp,soilc) # check no odd NAs
   # Clean variables
-
   # ========= Determine appropriate tile size if not specified =============== #
   # Calculate tile size
   if (is.na(tilesize) == TRUE) {
