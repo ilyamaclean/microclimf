@@ -1473,7 +1473,7 @@ flowacc<-function (dtm, basins = NA) {
   climdata<-list()
   h<-length(tme)
   climdata$tc<-.cca(weather,"temp",h,dtmc,dtm)
-  pk<-.cca(weather,"pres",h,r,r)
+  pk<-.cca(weather,"pres",h,dtmc,dtm)
   relhum<-.cca(weather,"relhum",h,dtmc,dtm)
   climdata$es<-.satvap(climdata$tc)
   climdata$ea<-climdata$es*relhum/100
