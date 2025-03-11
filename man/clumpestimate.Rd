@@ -7,21 +7,19 @@
 clumpestimate(hgt, leafd, pai, maxclump = 0.95)
 }
 \arguments{
-\item{hgt}{vegetation height (m).}
+\item{hgt}{a single layer SpatRaster of vegetation heights (m).}
 
-\item{leafd}{mean leaf width (m).}
+\item{leafd}{a single layer SpatRaster of mean leaf widths (m).}
 
-\item{pai}{plant area index value(s).}
+\item{pai}{a single or multi-layer SpatRaster of plant area index value(s).}
 
 \item{maxclump}{optional parameter indicating maximum clumpiness}
 }
 \value{
-`clump` parameter indicating the fraction of radiation passing directly through larger gaps in the canopy.
+`clump` a SpatRaster indicating the fraction of radiation passing directly
+through larger gaps in the canopy. Matches the dimensions of `pai`.
 }
 \description{
 The function `clumpestimate` estimates how clumpy a canopy is based on height and
 plant area index
-}
-\details{
-`hgt`, `pai` and `leafd` must all be single numeric values or arrays with identical dimensions
 }

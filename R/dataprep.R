@@ -955,21 +955,26 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme 
 #' The function `clumpestimate` estimates how clumpy a canopy is based on height and
 #' plant area index
 #'
-#' @param hgt vegetation height (m).
-#' @param pai plant area index value(s).
-#' @param leafd mean leaf width (m).
+#' @param hgt a single layer SpatRaster of vegetation heights (m).
+#' @param pai a single or multi-layer SpatRaster of plant area index value(s).
+#' @param leafd a single layer SpatRaster of mean leaf widths (m).
 #' @param maxclump optional parameter indicating maximum clumpiness
-#' @return `clump` parameter indicating the fraction of radiation passing directly through larger gaps in the canopy.
+#' @return `clump` a SpatRaster indicating the fraction of radiation passing directly
+#' through larger gaps in the canopy. Matches the dimensions of `pai`.
 #' @export
-#' @details `hgt`, `pai` and `leafd` must all be single numeric values or arrays with identical dimensions
 clumpestimate <- function(hgt, leafd, pai, maxclump = 0.95) {
   pai[pai>1]<-1
-  sel<-which(leafd>hgt)
-  leafd[sel]<-hgt[sel]
-  clump<-(1-pai)^(hgt/leafd)
+  sel<-which(.is(leafd)>.is(hgt))
+  lmd<-.is(leafd)
+  lmd[sel]<-.is(hgt)[sel]
+  n<-dim(pai)[3]
+  clump<-.is(pai)*0
+  for (i in 1:n) {
+    clump[,,i]<-(1-.is(pai[[i]]))^(.is(hgt)/lmd)
+  }
   sel<-which(clump>maxclump)
   clump[sel]<-maxclump
-  clump
+  clump<-.rast(clump,hgt)
 }
 #' Derives leaf and ground reflectance from albedo
 #' @param pai a SpatRaster of plant area index values

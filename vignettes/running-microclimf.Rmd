@@ -126,12 +126,13 @@ mairt<-apply((mout_mn$Tz + mout_mx$Tz) / 2, c(1,2),mean)
 plot(rast(mairt), col = mypal)
 ```
 ![](images/image1a.png)\
-Maximum (right) and mean (left) temperature 5 cm above ground. On warm sunny days, the temperature immediately above sunward facing slopes gets pretty hot. The colder areas are those that are significantly shaded.
+Maximum (right) and mean (left) temperature 5 cm above ground. On warm sunny days, the temperature immediately above sunward facing slopes gets pretty hot. The colder areas are those that have shade cover.
 
 ## Model inputs
 Three sets of parameters are needed to run the model: (i) standard hourly meterological climate-forcing variables representative of macroclimatic conditions across the study site, usually in the form of a data.frame with single values for each hour (though the option to include an array of coarse-gridded values is also available - see below). (ii) A suite of parameters describing properties of the canopy in the form of high-resolution gridded values. (iii) A suite of parameters describing properties of the soil in the form of high-resolution gridded values. A raster of digital elevation data is also required. Optionally, some additional parameters can be set when running the models, as detailed below.
 
-Each set of parameters is described in turn. 
+Each set of parameters is described in turn. Obtaining the right data to drive the microclimate model is often one of the most challenging aspects of modelling microclimate. Users may wish to explore the `microclimdata` package for automated downloading and processing of various datasets available globally or regionally for doing so. The package is available on Github:  https://github.com/ilyamaclean/microclimdata
+
 
 ### Meteorological data
 The inbuilt data,frame `climdata` gives an example of the hourly meteorological variables needed to run the model:
@@ -145,7 +146,7 @@ The data frame contains the following columns: `obs_time` – POSIXlt object of 
 
 Importantly, the entries of obs_time must all be in UTC (Coordinated Universal Time).
 
-Any input weather dataset provided must use the same format, column names and units as in this example dataset. Most of these are standard meteorology variables that are readily available globally. If unknown for the study area, users may wish to explore the `mcera5` package on github (https://github.com/dklinges9/mcera5) or the `hourlyNCEP` function available in the microclima package (https://github.com/ilyamaclean/microclima).  Diffuse radiation, is sometimes harder to come by as many standard weather stations only estimate total radiation. If unknown, it can be estimated using the `difprop` function in the microctools package (https://github.com/ilyamaclean/microctools). The microctools package, also contains a function `converthumidity`, for converting absolute or specific humidity or vapour pressure to relative humidity.
+Any input weather dataset provided must use the same format, column names and units as in this example dataset. Most of these are standard meteorology variables that are readily available globally. If unknown for the study area, users may wish to explore the `mcera5` package on github (https://github.com/dklinges9/mcera5) or the `micorclimdata` package detailed above.  Diffuse radiation, is sometimes harder to come by as many standard weather stations only estimate total radiation. If unknown, it can be estimated using the `difprop` function in the microctools package (https://github.com/ilyamaclean/microctools). The microctools package, also contains a function `converthumidity`, for converting absolute or specific humidity or vapour pressure to relative humidity.
 
 
 ### Vegetation parameters
@@ -197,16 +198,16 @@ It returns an object of class vegparams as required by the model. Here this is i
 plot(rast(habitats), main = "Habitat types") # inbuilt habitat SpatRast layer
 tme<-as.POSIXlt(c(0:8783)*3600,origin="2000-01-01 00:00", tz = "GMT")
 # Create an object of class vegparams:
-veg<-vegpfromhab(habitats,lat=50,long=-5,tme=tme)
+veg<-vegpfromhab(habitats,tme=tme)
 ```
 
-Note however, that be doing so, all values for a habitat type will be identical, when in reality this is unlikely to be the case. If one is unable to quantify the main determinants of microclimatic variation then there is little prospect of being able to model microclimatic conditions accurately and any outputs form the model should be treated with a high-degree of scepticism. 
+Note however, that be doing so, all values for a habitat type will be identical, when in reality this is unlikely to be the case. If one is unable to quantify the main determinants of microclimatic variation then there is little prospect of being able to model microclimatic conditions accurately and any outputs form the model should be treated with a high-degree of skepticism. 
 
 The model is most sensitive to `pai` (the total one sided area of both leaves and woody and dead vegetation per unit ground area) and `hgt` (vegetation height in metres). The former is needed primarily so that canopy cover can be estimated, but even for temperatures above canopy, `pai` partially determines the temperature profile. `hgt` is important as determines whether `reqhgt` is above or below vegetation and also dictates the shape of the temperature profile above vegetation. 
 
 The most sensible use-case for the `vegpfromhab` function is thus when one has alternative data that could be used to estimate `pai` and `hgt` that can be slotted into the output returned by this function. This is straightforward as the vegetation inputs to the model as returned by `vegpfromhab` is just a list of SpatRasters.
 
-The model is less sensitive to other parameters. The parameter `x` represents how vertically or horizontally the leaves of the canopy are orientated and controls how much direct radiation is transmitted through the canopy at a given solar angle (when the sun is low above the horizon, less radiation is transmitted through vertically orientated leaves). Users may refer to Campbell (1986) Agric For Meteorol, 36: 317-321 for a detailed explanation. Values for deciduous woodland are typically around 1, but for grassland may be closer to 0.2. The parameter `gsmax` is the maximum stomatal conductance (mol / m^2 / s) of leaves and is needed for evapotranspiration calculations. Values typically range from 0.23 for deciduous broadleaf forest to 0.55 for wetland vegetation. Körner (1995) https://link.springer.com/chapter/10.1007/978-3-642-79354-7_22 gives values for major vegetation types of the world. The parameter ‘leafr’ is the leaf reflectance to shortwave radiation, with typical values around 0.4. 
+The model is less sensitive to other parameters. The parameter `x` represents how vertically or horizontally the leaves of the canopy are orientated and controls how much direct radiation is transmitted through the canopy at a given solar angle (when the sun is low above the horizon, less radiation is transmitted through vertically orientated leaves). Users may refer to [Campbell (1986)](https://doi.org/10.1016/0168-1923(86)90010-9) for a detailed explanation. Values for deciduous woodland are typically around 1, but for grassland may be closer to 0.2. The parameter `gsmax` is the maximum stomatal conductance (mol / m^2 / s) of leaves and is needed for evapotranspiration calculations. Values typically range from 0.23 for deciduous broadleaf forest to 0.55 for wetland vegetation. [Körner (1995)](https://link.springer.com/chapter/10.1007/978-3-642-79354-7_22) gives values for major vegetation types of the world. The parameter ‘leafr’ is the leaf reflectance to shortwave radiation, with typical values around 0.4. 
 
 The parameter `clump` dictates how much radiation passes through gaps in the canopy, and therefore represents the sub-pixel canopy clumpiness, with values ranging from 0 (uniform) to 1 (highly clumped). In general, it varies with vegetation height and plant area index. The function `clumpestimate` can be used to derive an approximate estimate. The parameter `leafd` is the mean diameter of leaves. 
 
@@ -219,7 +220,7 @@ The inbuilt dataset `soilc` gives an example of the soil parameters needed to ru
 ```{r, fig.show='hold'}
 attributes(soilc)
 plot(rast(soilc$soiltype), main = "Soiltype") # Clay loam throughout
-plot(rast(soilc$groundr), col=gray(0:255/255), main = "Soil reflectivity")
+plot(rast(soilc$groundr), col=gray(0:255/255), main = "Soil reflectqnce")
 ```
 
 * This is a list of the following:
@@ -234,10 +235,10 @@ Soil type 7 corresponds to Clay loam. A full list of which numeric values corres
 soilparameters
 ```
 
-The model also copes with these values being provided as individual data layers if these are added to the list of SpatRasters contained in `soilc`. Note that in all instances soil properties (apart form soil moisture, which is modelled explicitly) are assumed time-invariant. 
+The model also copes with these values being provided as individual data layers if these are added to the list of SpatRasters contained in `soilc`. Note that in all instances soil properties (apart from soil moisture, which is modelled explicitly) are assumed time-invariant. 
 
 ### Additional optional parameters
-In addition to specifying `reqhgt` the required height (m) above or below ground for which microclimate estimates are required, there are also a set of optional parameters that can be provided to the run functions that control model behaviour. 
+In addition to specifying `reqhgt` the height (m) above or below ground for which microclimate estimates are required, there are also a set of optional parameters that can be provided to the run functions that control model behaviour. 
 For the point model, these are as follows:
 * `runchecks` - logical indicating whether to call function `checkinputs` to run checks on format and units of input data (see details under model input functions). 
  * `windhgt` - height above ground of wind speed data in weather (see details under wind)
@@ -546,11 +547,18 @@ plot(Tz[[12]]/100, col = mypal)
 In the examples above, the climate data provided as inputs to the model are provided as a data.frame. However, it may be the case that microclimate surfaces are required over larger areas over which the input climate varies. This situation is at the model input stage and when running the point microclimate model, and by converting the climate variables to multi-layer SpatRasters rather than vectors as in the example below. Here a dummy list of climate arrays is created. Functions `runpointmodela` and `subsetpointmodela` are then called. These functions run and subset the point microclimate model over every grid cell of the array. A coarse resolution dtm is then created that matches the extent, coordinate reference system and resolution of the climate arrays as this is used during the model input handling stage. The grid model can then be run as spreviously: the function checks the format of the data passed to it prior to running the model. HOwever, there are some additional inputs that need to be passed to the function to handle elevation adjustments to the coarse-resolution climate data. 
 
 ```{r eval=FALSE}
-# Create dummy array datasets
+# Internal functions
+.rast <- function(m,tem) {
+  r<-rast(m)
+  ext(r)<-ext(tem)
+  crs(r)<-crs(tem)
+  r
+}
 .ta<-function(x,dtm,xdim=5,ydim=5) {
    a<-array(rep(x,each=ydim*xdim),dim=c(ydim,xdim,length(x)))
    .rast(a,dtm)
 }
+# Create dummy array datasets
 dtm <- rast(dtmcaerth) # unpack raster
 climarrayr<-list(temp = .ta(climdata$temp, dtm),
   relhum = .ta(climdata$relhum, dtm),
@@ -649,15 +657,15 @@ mypal <- colorRampPalette(c("darkblue", "blue", "green", "yellow", "orange",  "r
 # Set back to inbuilt datasets
 vegp <- microclimf::vegp
 soilc <- microclimf::soilc
-bioclim <- runbioclim(climdata, rainfall, tme = NA, reqhgt = 0.05, micropoint = NA, 
-                      vegp, soilc, dtmcaerth, dtmc = NA, temp = "air")
+bioclim <- runbioclim(climdata, 0.05, vegp, soilc, dtm, temp = "air")
 plot(bioclim[[1]], col = mypal) # BIO1
 ```
 ![](images/image11.png)\
 
 
 ## Snow
-In all the examples above, no account of snow cover is taken in the modelling of microclimate, primarily because the location used for the examples, being nearly sub-tropical, is almost entirely snow free. However, the same may not be true of other others, and the option to account for snow cover is included. This is handled by setting `snow = TRUE` in the input of `runmicro` and then also passing the outputs of the snow depth model. There are two options for running the snow model, a qucik method and a slower method, the distinction between the two only mattering when the microclimate modelling is performed on a subset of days. Using the slow method an hourly model is run for each cell and snow depth in any given time-step determined in part from the snow depth in the previous time-step. The resulting output is then subset if required using `micropoint` provided as an input to the snow model in addition to the original hourly climate data.  Using the quick method, a point snow model is run for every hour, but the full grid model is only run for the subset of days for which snow depth is required. To ensure a sensible snow budget the point model is used to calculate hourly melt, and the nature of the terrain and vegetation used to calculate a melt factor by which to multiply snow melt derived form the point model. The application of both approaches is shown below. 
+In all the examples above, no account of snow cover is taken, primarily because the location used for the examples, being nearly sub-tropical, is snow free. However, the same may not be true of other places, and the option to account for snow cover is included. This is handled by setting `snow = TRUE` in the input of `runmicro` and then also passing the outputs of the snow depth model. There are two options for running the snow model: a quick and  slower method. The distinction between the only matters when microclimate is modelling for a subset of days. Using the slow method a full  hourly model is run for each grid cell and snow depth, as one would expect, is partially contingent on snow depth in the previous time-step. The resulting output is then subset if required.  Using the quick method, a point snow model is run for every hour, but the full grid model is only run for the subset of days for which snow depths
+are required. To ensure a sensible snow budget the point model is used to calculate hourly melt, and the nature of the terrain and vegetation used to calculate a melt factor by which to multiply snow melt derived form the point model. The application of both approaches is shown below. 
 
 ```{r eval=FALSE}
 # Run and subset micropoint model using inbuilt datasets
@@ -677,7 +685,7 @@ plot(sdepth2, type = "l", ylim = c(0, 0.2), col = "blue")
 ```
 ![](images/image14a.png)\
 
-In addition to ground snow depth, total snow water equivalent and average snowpack and ground snow temperature are returned. Though the quick method is a bit crude, the resulting microclimate outputs are very similar to those obtained using the slow method. Here we demonstrate this by running and comparing the microclimate model using both snow outputs.
+In addition to ground snow depth, total snow water equivalent and average snowpack and ground snow temperature are returned. Though the quick method is a bit crude, the resulting microclimate outputs are very similar to those obtained using the slow method, only really deviating when the two methjods give different estimates of snow cover. Here we demonstrate this by running and comparing the microclimate model using both snow outputs.
 
 ```{r eval=FALSE}
 # Run microclimate model with snow using outputs from the quick model
