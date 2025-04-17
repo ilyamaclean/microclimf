@@ -120,9 +120,9 @@ mout_mn <- runmicro(micropoint_mn, reqhgt = 0.05, vegp, soilc, dtmcaerth)
 attributes(mout_mx)
 # Plot air temperatures on hottest hour in micropoint (2017-06-20 13:00:00 UTC)
 mypal <- colorRampPalette(c("darkblue", "blue", "green", "yellow", "orange",  "red"))(255)
-plot(rast(mout_mx$Tz[,,134]), col = mypal, range = c(20, 48))
+plot(rast(mout_mx$Tz[,,134]), col = mypal)
 # Plot mean of monthly max and min
-mairt<-apply((mout_mn$Tz + mout_mx$Tz) / 2, c(1,2),mean)
+mairt<-apply((mout_mn$Tz + mout_mx$Tz) / 2, c(1,2), mean)
 plot(rast(mairt), col = mypal)
 ```
 ![](images/image1a.png)\
@@ -220,7 +220,7 @@ The inbuilt dataset `soilc` gives an example of the soil parameters needed to ru
 ```{r, fig.show='hold'}
 attributes(soilc)
 plot(rast(soilc$soiltype), main = "Soiltype") # Clay loam throughout
-plot(rast(soilc$groundr), col=gray(0:255/255), main = "Soil reflectqnce")
+plot(rast(soilc$groundr), col=gray(0:255/255), main = "Soil reflectance")
 ```
 
 * This is a list of the following:
@@ -398,7 +398,7 @@ plot(rast(mout$Tz[,,134]), col = mypal, main = "Air temperature")
 ```
 ![](images/image6.png)\
 
-In the example above air temperature in the hottest hour is plotted. Users are free to experiment with plotting other model outputs. The air temperature at 5 cm is significantly lower than the ground surface temperature, but much higher than ambient temperature on south-facing slopes, as one would expect
+In the example above air temperature in the hottest hour is plotted. Users are free to experiment with plotting other model outputs. The air temperature at 5 cm is somewhat lower than the ground surface temperature, but much higher than ambient temperature on south-facing slopes, as one would expect
 
 #### Above canopy
 The function `aboveground` automatically works out which pixels are below canopy, and which above, but the microclimate is modelled differs. To work out temperatures above canopy, the canopy (and soil surface) are treated as a single layer of homogeneous phytomass and the energy balance solved to derive the mean temperature of the canopy. The canopy is then assumed to exchange heat with the air above it such that close to the heat exchange surface of the canopy, air temperatures similar to canopy temperatures, but are increasingly close to air temperature at reference height (i.e. the at height of the input weather station data). The result is a logarithmic temperature-height (and humidity) profile as re-reproduced in the example below in which the model is run at multiple heights over a small area with spatially uniform, terrain, soil and vegetation properties.
@@ -459,7 +459,7 @@ micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
 # Create model input
 micro <- modelin(micropoint, vegp2, soilc2, dem)
 # Run model for multiple heights
-reqhgts<-c(0.01, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+reqhgts<- 10^(c(-10:10) / 10)
 temps <- 0
 for (i in 1:length(reqhgts)) {
   mout <- aboveground(micro, reqhgt = reqhgts[i])     

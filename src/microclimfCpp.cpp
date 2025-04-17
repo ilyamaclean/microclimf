@@ -2481,8 +2481,8 @@ abovemodel TVabovegroundv(double reqhgt, double zref, std::vector<double> tc, st
         // Set value limits
         rh[i] = (ez / satvapCpp(Tz[i])) * 100;
         if (rh[i] > 100) rh[i] = 100;
-        double tmx = std::max({ tleaf[i], tc[i], T0[i], Tcan });
-        double tmn = std::min({ tleaf[i], tc[i], T0[i], Tcan });
+        double tmx = std::max({ tleaf[i], tc[i], T0[i], Tcan }) + 2.0;
+        double tmn = std::min({ tleaf[i], tc[i], T0[i], Tcan }) - 2.0;
         if (Tz[i] > tmx) Tz[i] = tmx;
         if (Tz[i] < tmn) Tz[i] = tmn;
     }
