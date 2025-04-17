@@ -2618,8 +2618,8 @@ List abovegrid(double reqhgt, List micro)
         // Set value limits
         rh[i] = (ez / satvapCpp(Tz[i])) * 100;
         if (rh[i] > 100) rh[i] = 100;
-        double tmx = std::max({ tleaf[i], tc[i], T0[i], Tcan });
-        double tmn = std::min({ tleaf[i], tc[i], T0[i], Tcan });
+        double tmx = std::max({ tleaf[i], tc[i], T0[i], Tcan }) + 2.0;
+        double tmn = std::min({ tleaf[i], tc[i], T0[i], Tcan }) - 2.0;
         if (Tz[i] > tmx) Tz[i] = tmx;
         if (Tz[i] < tmn) Tz[i] = tmn;
     }
@@ -2649,7 +2649,7 @@ List abovegrid(double reqhgt, List micro)
     mout["Rlwup"] = Rcpp::wrap(lwup);
     return mout;
 }
-// microclimate model as grid above ground
+// microclimate model as point above ground
 NumericVector abovepoint(double reqhgt, double zref, double tc, double pk, double relhum, double u2, 
     double Rsw, double Rdif, double Rlw, double hgt, double pai, double paia, double lref, double ltra, 
     double clump, double leafd, double leafden, double albg, double albc, double snowtempg, double snowtempc, double zenr,
@@ -2716,8 +2716,8 @@ NumericVector abovepoint(double reqhgt, double zref, double tc, double pk, doubl
     // Set value limits
     double rh = (ez / satvapCpp(Tz)) * 100.0;
     if (rh > 100) rh = 100.0;
-    double tmx = std::max({ tleaf, tc, snowtempg, snowtempc });
-    double tmn = std::min({ tleaf, tc, snowtempg, snowtempc });
+    double tmx = std::max({ tleaf, tc, snowtempg, snowtempc }) + 2.0;
+    double tmn = std::min({ tleaf, tc, snowtempg, snowtempc }) - 2.0;
     if (Tz > tmx) Tz = tmx;
     if (Tz < tmn) Tz = tmn;
     // Create output
