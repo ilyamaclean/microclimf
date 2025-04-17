@@ -121,6 +121,10 @@ soiltempgrid <- function(micro) {
     .Call(`_microclimf_soiltempgrid`, micro)
 }
 
+rhcanopy <- function(uf, h, d, z) {
+    .Call(`_microclimf_rhcanopy`, uf, h, d, z)
+}
+
 abovegrid <- function(reqhgt, micro) {
     .Call(`_microclimf_abovegrid`, reqhgt, micro)
 }

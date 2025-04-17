@@ -2382,6 +2382,7 @@ std::vector<double> leaftemp(double Tcan, double T0, double tc, double mxtc, dou
     out[4] = lwup;
     return out;
 }
+// [[Rcpp::export]]
 double rhcanopy(double uf, double h, double d, double z)
 {
     double a2 = 0.4 * (1.0 - (d / h)) / std::pow(1.25, 2);
@@ -2396,30 +2397,27 @@ double rhcanopy(double uf, double h, double d, double z)
     if (rHa < 0.001) rHa = 0.001;
     return rHa;
 }
-double TVbelow(double zref, double z, double d, double h, double pai, double uf, double leafden, double Flux, double Fluxz, double SH, double SG)
+double TVbelow(double zref, double z, double d, double h, double pai, double uf,
+    double leafden, double Flux, double Fluxz, double SH, double SG)
 {
-    // Calculate far-field independent of ground
-    double a2 = 0.4 * (1.0 - d / h) / 1.5625;
-    double in = (11.0 / 16.0) * a2 * pow(10, 2) * uf;
-    double farm = (Flux / in) * h;
-    double farp = farm * (1 - z / h) + SH;
-    // Weight by ground temperature
-    double rHa = rhcanopy(uf, h, d, z);
-    double rh = rhcanopy(uf, h, d, h);
-    double wgt1 = (1 - rHa / rh);
-    if (wgt1 < 0) wgt1 = 0;
-    double wgt2 = std::fabs(farp - SG) / std::fabs(farm + SH - SG);
-    if (wgt2 > 1) wgt2 = 1;
-    double wgt = wgt1 * wgt2;
-    if (std::isnan(wgt)) wgt = 1;
-    double farg = wgt * SG + (1 - wgt) * farp;
-    // Calculate near-field
+    // Calculate thermal diffusivities
+    double Rc = rhcanopy(uf, h, d, h);
+    double Kc = h / Rc;
+    double Kg = 1.0 / rhcanopy(uf, h, d, z);
+    double Kh = 1.0 / (Rc - rhcanopy(uf, h, d, z));
+    Kg = Kg / z;
+    Kh = Kh / (h - z);
+    // Calculate canopy source concentration
+    double SC = SH + Flux / Kc;
+    // Calculate far-field source concentration
+    double farg = (Kg * SG + Kh * SH + Kc * SC) / (Kg + Kh + Kc);
     // Calculate leaf temperature and flux
     double SN = Fluxz * leafden;
+    // Calculate near-field
     double near = (3.047519 + 0.128642 * log(pai)) * SN;
     if (std::isnan(near)) near = 0;
-    double SC = near + farg;
-    return SC;
+    double SCFN = near + farg;
+    return SCFN;
 }
 // Calculate temperature or vapour pressure above ground (zen in radiations)
 abovemodel TVabovegroundv(double reqhgt, double zref, std::vector<double> tc, std::vector<double> pk, std::vector<double> ea,

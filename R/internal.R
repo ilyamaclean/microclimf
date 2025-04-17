@@ -828,6 +828,7 @@ flowacc<-function (dtm, basins = NA) {
   B[is.na(B)]<-median(B,na.rm=T)
   a<-flowaccCpp(.is(dtm))+1
   a<-a*res(dtm)[1]* res(dtm)[2]
+  a[a<1]<-1
   tpx<- a/tan(B)
   r<-.rast(tpx,dtm)
   r<-mask(r,dtm)

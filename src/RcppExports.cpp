@@ -425,6 +425,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rhcanopy
+double rhcanopy(double uf, double h, double d, double z);
+RcppExport SEXP _microclimf_rhcanopy(SEXP ufSEXP, SEXP hSEXP, SEXP dSEXP, SEXP zSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type uf(ufSEXP);
+    Rcpp::traits::input_parameter< double >::type h(hSEXP);
+    Rcpp::traits::input_parameter< double >::type d(dSEXP);
+    Rcpp::traits::input_parameter< double >::type z(zSEXP);
+    rcpp_result_gen = Rcpp::wrap(rhcanopy(uf, h, d, z));
+    return rcpp_result_gen;
+END_RCPP
+}
 // abovegrid
 List abovegrid(double reqhgt, List micro);
 RcppExport SEXP _microclimf_abovegrid(SEXP reqhgtSEXP, SEXP microSEXP) {
@@ -867,6 +881,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_windgrid", (DL_FUNC) &_microclimf_windgrid, 2},
     {"_microclimf_PenmanMonteith2Cpp", (DL_FUNC) &_microclimf_PenmanMonteith2Cpp, 11},
     {"_microclimf_soiltempgrid", (DL_FUNC) &_microclimf_soiltempgrid, 1},
+    {"_microclimf_rhcanopy", (DL_FUNC) &_microclimf_rhcanopy, 4},
     {"_microclimf_abovegrid", (DL_FUNC) &_microclimf_abovegrid, 2},
     {"_microclimf_belowgrid", (DL_FUNC) &_microclimf_belowgrid, 4},
     {"_microclimf_runmicro1Cpp", (DL_FUNC) &_microclimf_runmicro1Cpp, 15},
