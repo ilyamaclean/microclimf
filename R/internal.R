@@ -331,25 +331,38 @@
   }
   return(soilcl)
 }
+.resampler <- function(r2, r, func = "mean") {
+  af <- res(r)[1] / res(r2)[1]
+  if (func == "mean") {
+    r3 <- aggregate(r2, af, na.rm = TRUE)
+    r3 <- resample(r3, r, method = "bilinear")
+    if (all(is.na(values(r3)))) {
+      r3[] <- rep(global(r2, "mean", na.rm = TRUE)[, 1], each = ncell(r3))
+    }
+  } else {
+    r3 <- aggregate(r2, af, fun = "modal", na.rm = TRUE)
+    r3 <- resample(r3, r, method = "mode")
+    # Compute mode manually for each layer
+    for (i in 1:nlyr(r2)) {
+      mode_val <- suppressWarnings(.getmode(.is(r2[[i]])))
+      vals <- values(r3[[i]])
+      vals[is.na(vals)] <- mode_val
+      values(r3[[i]]) <- vals
+    }
+  }
+  return(r3)
+}
+# resamples vegetation
 .resamplev<-function(vegp,r) {
-  af<-res(r)[1]/res(vegp$pai)[1]
-  vegp$pai<-aggregate(vegp$pai,af,na.rm=TRUE)
-  vegp$hgt<-aggregate(vegp$hgt,af,na.rm=TRUE)
-  vegp$x<-aggregate(vegp$x,af,na.rm=TRUE)
-  vegp$gsmax<-aggregate(vegp$gsmax,af,na.rm=TRUE)
-  vegp$leafr<-aggregate(vegp$leafr,af,na.rm=TRUE)
-  vegp$clump<-aggregate(vegp$clump,af,na.rm=TRUE)
-  vegp$leafd<-aggregate(vegp$leafd,af,na.rm=TRUE)
-  vegp$leaft<-aggregate(vegp$leaft,af,na.rm=TRUE)
-  vegp$pai<-resample(vegp$pai,r)
-  vegp$hgt<-resample(vegp$hgt,r)
-  vegp$x<-resample(vegp$x,r)
-  vegp$gsmax<-resample(vegp$gsmax,r)
-  vegp$leafr<-resample(vegp$leafr,r)
-  vegp$clump<-resample(vegp$clump,r)
-  vegp$leafd<-resample(vegp$leafd,r)
-  vegp$leaft<-resample(vegp$leaft,r)
-  vegp
+  vegp$pai<-.resampler(vegp$pai, r)
+  vegp$hgt<-.resampler(vegp$hgt, r)
+  vegp$x<-.resampler(vegp$x, r)
+  vegp$gsmax<-.resampler(vegp$gsmax, r)
+  vegp$leafr<-.resampler(vegp$leafr, r)
+  vegp$clump<-.resampler(vegp$clump, r)
+  vegp$leafd<-.resampler(vegp$leafd, r)
+  vegp$leaft<-.resampler(vegp$leaft, r)
+  return(vegp)
 }
 #' Converts array of climate data to a dataframe for a given cell
 .todf<-function(climarray,i,j,tme,winddir) {

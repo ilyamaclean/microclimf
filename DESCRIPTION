@@ -23,6 +23,7 @@ LinkingTo: Rcpp
 Imports: abind,
   ncdf4,
   Rcpp,
+  sp,
   sf,
   stats,
   terra,

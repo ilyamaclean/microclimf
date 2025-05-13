@@ -203,7 +203,8 @@ runpointmodel<-function(weather, reqhgt = 0.05, dtm, vegp, soilc, runchecks = TR
 #' tme<-as.POSIXlt(climdata$obs_time,tz="UTC")
 #' # Takes ~15 seconds to run
 #' pointmodela <- runpointmodela(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc)
-runpointmodela<-function(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc, matemp = NA, zref = 2, windhgt = 2, soilm = NA, dTmx = 25, maxiter = 20, yearG = TRUE)  {
+runpointmodela<-function(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc, matemp = NA,
+                         zref = 2, windhgt = 2, soilm = NA, dTmx = 25, maxiter = 20, yearG = TRUE)  {
   # Unpack fine-res rasters
   up<-.unpack(dtm,vegp,soilc)
   dtm<-up$dtm
@@ -226,11 +227,7 @@ runpointmodela<-function(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc, matem
   pb <- utils::txtProgressBar(min = 0, max = dim(r)[1]*dim(r)[2], style = 3)
   # Resample vegetation and soil characteristics
   vegp<-.resamplev(vegp,r)
-  af<-res(r)[1]/res(soilc$soiltype)[1]
-  soilc$soiltype<-aggregate(soilc$soiltype,af,"modal",na.rm=T)
-  soilc$groundr<-aggregate(soilc$groundr,af,na.rm=T)
-  soilc$soiltype<-resample(soilc$soiltype,r,method="mode")
-  soilc$groundr<-resample(soilc$groundr,r)
+  soilc$soiltype<-.resampler(soilc$soiltype, r, "mode")
   ll<-.latslonsfromr(r)
   lats<-ll$lats
   lons<-ll$lons
@@ -247,6 +244,7 @@ runpointmodela<-function(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc, matem
         vegp_p<-.tovp(vegp,i,j)
         gp<-.togp(soilc,i,j)
         groundp_p<-gp$groundp_p
+
         pointo[[k]]<-runpointmodel(climdf,reqhgt,dtm,vegp,soilc,runchecks = FALSE,zref,windhgt,soilmo,matemp,dTmx,maxiter,yearG,
                                    lats[i,j],lons[i,j],vegp_p,groundp_p,soiltype,mxhgt)
       } else pointo[[k]]<-NA
