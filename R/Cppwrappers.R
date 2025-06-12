@@ -211,6 +211,7 @@ runpointmodela<-function(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc, matem
   vegp<-up$vegp
   soilc<-up$soilc
   climarrayr<-.unpackclim(climarrayr)
+  climarrayr<-.arrayonecellcheck(climarrayr, dtm)
   mxhgt<-max(.is(vegp$hgt),na.rm=T)
   # Sort out all the rasters
   # Calculate modal wind direction
@@ -244,7 +245,6 @@ runpointmodela<-function(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc, matem
         vegp_p<-.tovp(vegp,i,j)
         gp<-.togp(soilc,i,j)
         groundp_p<-gp$groundp_p
-
         pointo[[k]]<-runpointmodel(climdf,reqhgt,dtm,vegp,soilc,runchecks = FALSE,zref,windhgt,soilmo,matemp,dTmx,maxiter,yearG,
                                    lats[i,j],lons[i,j],vegp_p,groundp_p,soiltype,mxhgt)
       } else pointo[[k]]<-NA
@@ -709,7 +709,7 @@ runsnowmodel<-function(weather, micropoint, vegp, soilc, dtm, dtmc = NA, tme = N
                        zref = 2, windhgt = zref, stfact = 0.01) {
   if (class(micropoint) == "micropoint") { # data.frame weather input
     if (length(micropoint$subs) == length(micropoint$tmeorig)) { # no subset required
-      smod<-.snowmodel1(micropoint$weather,dtm,vegp,soilc,snowenv,snowinitd,snowinita,micropoint$zref,micropoint$zref,stfact)
+      smod<-.snowmodel1(micropointweather,dtm,vegp,soilc,snowenv,snowinitd,snowinita,micropoint$zref,micropoint$zref,stfact)
     } else { # subset of model required
       if (method == "fast") {
         smod<-.snowmodelq1(weather,dtm,vegp,soilc,micropoint$subs,snowenv,snowinitd,snowinita,zref,windhgt,stfact)
@@ -727,8 +727,8 @@ runsnowmodel<-function(weather, micropoint, vegp, soilc, dtm, dtmc = NA, tme = N
       }
     }
     if (length(subs) == length(tmeorig)) { # no subset required
-      smod<-.snowmodel2(micropoint$weather,tme,dtm,dtmc,vegp,soilc,altcorrect,snowenv,
-                        snowinitd,snowinita,micropoint$zref,micropoint$zref,stfact)
+      smod<-.snowmodel2(weather,tme,dtm,dtmc,vegp,soilc,altcorrect,snowenv,
+                        snowinitd,snowinita,micropoint[[1]]$zref,micropoint[[1]]$zref,stfact)
     } else { # subset of model required
       if (method == "fast") {
         smod<-.snowmodelq2(weather,tme,dtm,dtmc,vegp,soilc,subs,altcorrect,snowenv,

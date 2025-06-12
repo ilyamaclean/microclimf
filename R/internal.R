@@ -2760,6 +2760,7 @@ flowacc<-function (dtm, basins = NA) {
   dtm<-up$dtm
   vegp<-up$vegp
   soilc<-up$soilc
+  weather<-.unpackclim(weather)
   # ================= Sort out all the rasters ============================== #
   if (crs(weather$temp) != crs(dtm))  weather$temp<-project(weather$temp,crs(dtm))
   if (crs(weather$relhum) != crs(dtm))  weather$relhum<-project(weather$relhum,crs(dtm))
@@ -2778,6 +2779,14 @@ flowacc<-function (dtm, basins = NA) {
   pointms<-list()
   clims<-list()
   mxhgt<-max(.is(vegp$hgt),na.rm=T)
+  if (class(dtmc) == "logical") {
+    rte<-weather$temp[[1]]
+    af<-res(rte)[1]/res(dtm)[1]
+    dtmc<-aggregate(dtm,af/2,fun="mean",na.rm=TRUE)
+    dtmc<-extend(dtmc,rte)
+    dtmc[is.na(dtmc)]<-mean(as.vector(dtmc),na.rm=TRUE)
+    dtmc<-resample(dtmc,rte)
+  }
   if (class(dtmc) == "PackedSpatRaster") dtmc<-rast(dtm)
   ll<-.latslonsfromr(dtmc)
   k<-1
@@ -2947,6 +2956,7 @@ flowacc<-function (dtm, basins = NA) {
     wss<-sqrt(wuv[s]^2+wvv[s]^2)
     tpr<-10*mean(wss)^0.5
     af<-round(tpr/res(dtm)[1],0)
+    if (af < 2) af <- 2
     me<-min(dim(dtm)[1:2])
     tpi<-.tpicalc(af,me,dtms,tfact)
     # ground snow change
@@ -2973,7 +2983,9 @@ flowacc<-function (dtm, basins = NA) {
     utils::setTxtProgressBar(pb, day+n5days)
   }
   setTxtProgressBar(pb, n5days*2)
-  return(list(Tc=Tc,Tg=Tg,groundsnowdepth=snowdepg,totalSWE=swe,snowden=sden,umu=pointm$umu))
+  smod<-list(Tc=Tc,Tg=Tg,groundsnowdepth=snowdepg,totalSWE=swe,snowden=sden,umu=pointm$umu)
+  smod<-.cleansmod(smod, dtm)
+  return(smod)
 }
 #' quick snow model with array weather inputs
 .snowmodelq2<-function(weather,tme,dtm,dtmc,vegp,soilc,subs,altcorrect=0,snowenv="Taiga",
@@ -2984,6 +2996,7 @@ flowacc<-function (dtm, basins = NA) {
   dtm<-up$dtm
   vegp<-up$vegp
   soilc<-up$soilc
+  weather<-.unpackclim(weather)
   # ================= Sort out all the rasters ============================== #
   if (crs(weather$temp) != crs(dtm))  weather$temp<-project(weather$temp,crs(dtm))
   if (crs(weather$relhum) != crs(dtm))  weather$relhum<-project(weather$relhum,crs(dtm))
@@ -3003,6 +3016,14 @@ flowacc<-function (dtm, basins = NA) {
   pointms2<-list()
   clims<-list()
   mxhgt<-max(.is(vegp$hgt),na.rm=T)
+  if (class(dtmc) == "logical") {
+    rte<-weather$temp[[1]]
+    af<-res(rte)[1]/res(dtm)[1]
+    dtmc<-aggregate(dtm,af/2,fun="mean",na.rm=TRUE)
+    dtmc<-extend(dtmc,rte)
+    dtmc[is.na(dtmc)]<-mean(as.vector(dtmc),na.rm=TRUE)
+    dtmc<-resample(dtmc,rte)
+  }
   if (class(dtmc) == "PackedSpatRaster") dtmc<-rast(dtm)
   ll<-.latslonsfromr(dtmc)
   k<-1
@@ -3233,7 +3254,9 @@ flowacc<-function (dtm, basins = NA) {
   }
   # Recalculate as mm snow water equivelent
   swe<-sdepc*sden
-  return(list(Tc=Tc,Tg=Tg,groundsnowdepth=sdepg,totalSWE=swe,snowden=sden,umu=pointm$umu))
+  smod<-list(Tc=Tc,Tg=Tg,groundsnowdepth=sdepg,totalSWE=swe,snowden=sden,umu=pointm$umu)
+  smod<-.cleansmod(smod, dtm)
+  return(smod)
 }
 #' Runs microclimate model without snow
 .runmicronosnow <- function(micropoint, reqhgt, vegp, soilc, dtm, dtmc = NA, altcorrect = 0,
@@ -3516,6 +3539,7 @@ flowacc<-function (dtm, basins = NA) {
   pb <- utils::txtProgressBar(min = 0, max = 5, style = 3)
   if (class(dtm) == "PackedSpatRaster") dtm<-rast(dtm)
   # (1) Figure out snow and no snow days
+  smod$totalSWE[is.na(smod$totalSWE)]<-0
   minsnow<-applycpp3(smod$totalSWE,"min")
   maxsnow<-applycpp3(smod$totalSWE,"max")
   snowd<-snowdaysfun(maxsnow, minsnow)
@@ -3571,6 +3595,7 @@ flowacc<-function (dtm, basins = NA) {
   pb <- utils::txtProgressBar(min = 0, max = 6, style = 3)
   if (class(dtm) == "PackedSpatRaster") dtm<-rast(dtm)
   # (1) Figure out snow and no snow days
+  smod$totalSWE[is.na(smod$totalSWE)]<-0
   minsnow<-applycpp3(smod$totalSWE,"min")
   maxsnow<-applycpp3(smod$totalSWE,"max")
   snowd<-snowdaysfun(maxsnow, minsnow)
@@ -3681,5 +3706,26 @@ flowacc<-function (dtm, basins = NA) {
   for (i in 1:9) {
     if (class(climarrayr[[i]]) == "PackedSpatRaster") climarrayr[[i]] <- rast(climarrayr[[i]])
   }
+  return(climarrayr)
+}
+# clean snow model outputs
+.cleansmod <- function(smod, dtm) {
+  for (i in 1:6) {
+    xx<-.rast(smod[[i]],dtm)
+    smod[[i]]<-.is(mask(xx,dtm))
+  }
+  return(smod)
+}
+# check whether grid version of model should be used
+.arrayonecellcheck <- function(climarrayr, dtm) {
+  rte<-climarrayr$temp[[1]]
+  rte<-crop(rte,dtm)
+  dmcheck <-dim(rte)[1]*dim(rte)[2]
+  if (dmcheck == 1) stop("Only one grid cell of the climate data overlaps with dtm.
+                         Use data.frame version of model or resample climate data to
+                         higher resolution using function resampleclimdata\n")
+  if (dmcheck < 4) warning("Few grid cells of the climate data overlaps with dtm.
+                           Consider resampling climate data to
+                           higher resolution using function resampleclimdata\n")
   return(climarrayr)
 }

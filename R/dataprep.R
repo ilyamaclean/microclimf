@@ -1196,5 +1196,52 @@ mosaicblend <- function(rlist) {
   }
   return(rma)
 }
-
-
+#' @title Resamples an a list of SpatRaster climate variables to an appropriate resolution
+#' for microclimate modelling
+#' @description if the resolution of `climarrayr` is coarse and covers a wider extent than
+#' than the study area determined by `dtm`, the climate array version of the model way not
+#' work. This function allows climate data to be cropped and resampled to an appropriate
+#' resolution and extent for running the array version of the model
+#' @param climarrayr a list of climate variables as SpatRasters or PackedSpatRasters
+#' @param a SpatRaster or PackedSpatRaster of digital elevations used to delineate the study area
+#' @import terra
+#' @export
+resampleclimdata <- function(climarrayr, dtm) {
+  climarrayr <- .unpackclim(climarrayr)
+  if (class(dtm)[1] == "PackedSpatRaster") dtm<-rast(dtm)
+  rte <- climarrayr[[1]]
+  rte <- crop(rte, ext(dtm))
+  n <- min(dim(rte)[1:2])
+  if (n < 3) {
+    ## convert wind speed and direction to u & v wind vector
+    u <- -climarrayr[[7]]*sin(climarrayr[[8]] * pi/180)
+    v <- -climarrayr[[7]]*cos(climarrayr[[8]] * pi/180)
+    climarrayr[[7]] <- u
+    climarrayr[[8]] <- v
+    # reproject if needed
+    if (crs(rte) != crs(dtm)) {
+      for (i in 1:9)  climarrayr[[i]]<-project(climarrayr[[i]], crs(dtm))
+    }
+    # resample
+    r<-rast(ext(dtm))
+    res(r) <- res(dtm)
+    n2 <- min(dim(r)[1:2])
+    r<-aggregate(r, floor(n2/3))
+    r<-extend(r,ext(climarrayr[[i]]))
+    for (i in 1:9) {
+      climarrayr[[i]]  <- resample(climarrayr[[i]], r)
+      climarrayr[[i]] <- crop(climarrayr[[i]], dtm)
+    }
+    # convert back to wind speed and direction
+    ws <- sqrt(climarrayr[[7]]^2 + climarrayr[[8]]^2)
+    wd <- atan2(-u, -v) * 180 / pi
+    wd <- wd%% 360
+    climarrayr[[7]] <- ws
+    climarrayr[[8]] <- wd
+    # ensure no negative rainfall
+    xx <- climarrayr[[9]]
+    xx[xx < 0] <- 0
+    climarrayr[[9]] <- xx
+  }
+  return(climarrayr)
+}
