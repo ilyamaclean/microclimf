@@ -269,7 +269,7 @@ radmodel RadswabsCpp(double pai, double x, double lref, double ltra, double clum
                 if (trb > 0.999) trb = 0.999;
                 if (trb < 0.0) trb = 0.0;
                 double Rb = Rbeam * cosz;
-                double trg = trb + exp(-kd * pait); // tranmission to ground though gaps and leaves
+                double trg = trb + (1 - trb) * exp(-kd * pait); // tranmission to ground though gaps and leaves
                 double Rbc = (trg * si + (1 - trg) * cosz) * Rbeam;
                 // Calculate albedo and ground flux
                 double albb = trd * gref + (1.0 - trd) * (p5 / sig + p6 + p7);
@@ -1564,7 +1564,7 @@ radmodel2 twostreamvCpp(double reqhgt, double hgt, double pai, double paia, doub
                 double Rbeam = (Rsw[i] - Rdif[i]) / cos(zen[i]);
                 if (Rbeam > 1352.0) Rbeam = 1352.0;
                 double Rb = Rbeam * cos(zen[i]);
-                double trg = trb + exp(-kd * pait); // tranmission to ground though gaps and leaves
+                double trg = trb + (1 - trb) * exp(-kd * pait); // tranmission to ground though gaps and leaves
                 double Rbc = (trg * si[i] + (1 - trg) * cos(zen[i])) * Rbeam;
                 // Calculate ground absorbed radiation
                 double Rbdn_g = trbn + (1.0 - trbn) * exp(-kd * pait);
@@ -1811,7 +1811,7 @@ List twostreamgrid(double reqhgt, List micro)
                     if (Rdbup_z < 0.0) Rdbup_z = 0.0;
                     // Calculate incident flux
                     double Rb = dirr[i] * cos(zen[i]);
-                    double trg = trb + exp(-kd * pait); // tranmission to ground though gaps and leaves
+                    double trg = trb + (1 - trb) * exp(-kd * pait); // tranmission to ground though gaps and leaves
                     double Rbc = (trg * si[i] + (1 - trg) * cos(zen[i])) * dirr[i];
                     // Calculate ground absorbed radiation
                     double Rdirg = (trbn + (1.0 - trbn) * exp(-kd * pait)) * dirr[i] * si[i];
