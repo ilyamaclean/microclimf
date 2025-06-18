@@ -1543,7 +1543,7 @@ flowacc<-function (dtm, basins = NA) {
   n<-length(tmeorig)
   vegp<-.sortvegp(vegp,method="C",n,subs)
   # add additional terms to vegp
-  pai_a<-.expandpaia(pai_a,micropoint)
+  pai_a<-.expandpaia(pai_a,micropoint[[1]])
   fd<-.foliageden(reqhgt,vegp$hgt,vegp$pai,pai_a)
   vegp$paia<-fd$pai_a
   vegp$leafden<-fd$leafden
