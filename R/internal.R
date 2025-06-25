@@ -3719,7 +3719,7 @@ flowacc<-function (dtm, basins = NA) {
 # check whether grid version of model should be used
 .arrayonecellcheck <- function(climarrayr, dtm) {
   rte<-climarrayr$temp[[1]]
-  rte<-crop(rte,dtm)
+  rte<-crop(rte,dtm,snap="out")
   dmcheck <-dim(rte)[1]*dim(rte)[2]
   if (dmcheck == 1) stop("Only one grid cell of the climate data overlaps with dtm.
                          Use data.frame version of model or resample climate data to

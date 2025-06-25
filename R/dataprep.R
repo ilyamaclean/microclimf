@@ -1210,7 +1210,7 @@ resampleclimdata <- function(climarrayr, dtm) {
   climarrayr <- .unpackclim(climarrayr)
   if (class(dtm)[1] == "PackedSpatRaster") dtm<-rast(dtm)
   rte <- climarrayr[[1]]
-  rte <- crop(rte, ext(dtm))
+  rte <- crop(rte, ext(dtm), snap = "out")
   n <- min(dim(rte)[1:2])
   if (n < 3) {
     ## convert wind speed and direction to u & v wind vector
@@ -1227,10 +1227,10 @@ resampleclimdata <- function(climarrayr, dtm) {
     res(r) <- res(dtm)
     n2 <- min(dim(r)[1:2])
     r<-aggregate(r, floor(n2/3))
-    r<-extend(r,ext(climarrayr[[i]]))
+    r<-extend(r,ext(climarrayr[[1]]))
     for (i in 1:9) {
       climarrayr[[i]]  <- resample(climarrayr[[i]], r)
-      climarrayr[[i]] <- crop(climarrayr[[i]], dtm)
+      climarrayr[[i]] <- crop(climarrayr[[i]], dtm, snap = "out")
     }
     # convert back to wind speed and direction
     ws <- sqrt(climarrayr[[7]]^2 + climarrayr[[8]]^2)
