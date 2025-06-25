@@ -1227,7 +1227,7 @@ resampleclimdata <- function(climarrayr, dtm) {
     res(r) <- res(dtm)
     n2 <- min(dim(r)[1:2])
     r<-aggregate(r, floor(n2/3))
-    r<-extend(r,ext(climarrayr[[i]]))
+    r<-extend(r,ext(climarrayr[[1]]))
     for (i in 1:9) {
       climarrayr[[i]]  <- resample(climarrayr[[i]], r)
       climarrayr[[i]] <- crop(climarrayr[[i]], dtm, snap = "out")
