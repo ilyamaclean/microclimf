@@ -347,8 +347,10 @@ double zeroplanedisCpp(double h, double pai)
 double roughlengthCpp(double h, double pai, double d, double psi_h)
 {
     double Be = sqrt(0.003 + (0.2 * pai) / 2);
-    double zm = (h - d) * exp(-0.4 / Be) * exp(psi_h);
+    double zm = (h - d) * exp(-0.4 / Be) * exp(0.4 * psi_h);
     if (zm < 0.0005) zm = 0.0005;
+    // safety check to stop diabatic coefficient reversing profile
+    if (zm > (0.9 * (h - d))) zm = 0.9 * (h - d);
     return zm;
 }
 // **  Calculate integrated diabatic correction coefficient for momentum ** //
