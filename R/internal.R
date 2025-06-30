@@ -1487,7 +1487,7 @@ flowacc<-function (dtm, basins = NA) {
   climdata<-list()
   h<-length(tme)
   climdata$tc<-.cca(weather,"temp",h,dtmc,dtm)
-  pk<-.cca(weather,"pres",h,dtmc,dtm)
+  pk<-.cca(weather,"pres",h,r,r)
   relhum<-.cca(weather,"relhum",h,dtmc,dtm)
   climdata$es<-.satvap(climdata$tc)
   climdata$ea<-climdata$es*relhum/100
@@ -3540,6 +3540,11 @@ flowacc<-function (dtm, basins = NA) {
   if (class(dtm) == "PackedSpatRaster") dtm<-rast(dtm)
   # (1) Figure out snow and no snow days
   smod$totalSWE[is.na(smod$totalSWE)]<-0
+  # do NA fix
+  totalSWE<-.rast(smod$totalSWE,dtm)
+  totalSWE<-mask(totalSWE,dtm)
+  smod$totalSWE<-.is(totalSWE)
+  ##
   minsnow<-applycpp3(smod$totalSWE,"min")
   maxsnow<-applycpp3(smod$totalSWE,"max")
   snowd<-snowdaysfun(maxsnow, minsnow)
@@ -3551,41 +3556,58 @@ flowacc<-function (dtm, basins = NA) {
   micropointn<-subsetpointmodel(micropoint,days=nosnowdays)
   utils::setTxtProgressBar(pb,1)
   # (3) Run no snow microclimate model for no snow days
-  moutn<-.runmicronosnow(micropointn,reqhgt,vegp,soilc,dtm,dtmc,altcorrect,runchecks,
-                         pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
-  utils::setTxtProgressBar(pb,3)
-  # (4) Run snow microclimate model for snow days
-  tmeorig<-micropoint$tmeorig
-  subs<-micropoints$subs
-  snowin<-.prepsnowinputs1(reqhgt,dtm,vegp,soilc,micropoints,snowdays,nosnowdays,
-                           smod,moutn,tmeorig,subs,runchecks,slr,apr,hor,svf,wsa,pai_a)
-  ss<-rep((snowdays-1)*24,each=24)+rep(c(1:24),length(snowdays))
-  smods<-subsetsnowmodel(smod, ss)
-  mouts<-gridmicrosnow1(reqhgt,snowin$obstime,snowin$weather,smods,snowin$micro,snowin$vegp,snowin$other,out)
-  utils::setTxtProgressBar(pb,4)
-  # (5) Merge the two model outputs back together to produce one output
-  # (5a) - calculate days without any snow
-  tdays<-unique(c(snowdays,nosnowdays))
-  tdays<-tdays[order(tdays)]
-  nosnow <- setdiff(tdays, snowdays)
-  # (5b) get subset for no snow microclimate model to include only those days with no snow at all
-  s<-c(1:dim(moutn[[1]])[3])
-  s1<-s[rep(nosnowdays %in%  nosnow, each=24)]
-  # (5c) produce list of entries for each dataset
-  nosnowh<-rep((nosnow-1)*24,each=24)+rep(c(1:24),length(nosnow))
-  snowh<-rep((snowdays-1)*24,each=24)+rep(c(1:24),length(snowdays))
-  # (5c) merge the two datasets
-  mout<-list()
-  n<-length(nosnowh)+length(snowh)
-  for (i in 1:length(moutn))  {
-    # Create blank entry for storin g data
-    mout[[i]]<-array(NA,dim=c(dim(dtm)[1:2],n))
-    # perform subset of nosnow
-    xx<-moutn[[i]][,,s1]
-    mout[[i]][,,nosnowh]<-xx
-    mout[[i]][,,snowh]<-mouts[[i]]
+  if (length(nosnowdays) > 0) {
+    moutn<-.runmicronosnow(micropointn,reqhgt,vegp,soilc,dtm,dtmc,altcorrect,runchecks,
+                           pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
   }
-  names(mout)<-names(moutn)
+  utils::setTxtProgressBar(pb,3)
+  if (length(snowdays) > 0) {
+    # (4) Run snow microclimate model for snow days
+    tmeorig<-micropoint$tmeorig
+    subs<-micropoints$subs
+    snowin<-.prepsnowinputs1(reqhgt,dtm,vegp,soilc,micropoints,snowdays,nosnowdays,
+                           smod,moutn,tmeorig,subs,runchecks,slr,apr,hor,svf,wsa,pai_a)
+    ss<-rep((snowdays-1)*24,each=24)+rep(c(1:24),length(snowdays))
+    smods<-subsetsnowmodel(smod, ss)
+    if (reqhgt == 0) {
+      out <- rep(FALSE, 10)
+      out[c(1, 4,6,7,8,9,10)] <- TRUE
+    } else if (reqhgt < 0)  {
+      out <- rep(FALSE, 10)
+      out[c(1, 4)] <- TRUE
+    }
+    mouts<-gridmicrosnow1(reqhgt,snowin$obstime,snowin$weather,smods,snowin$micro,snowin$vegp,snowin$other,out)
+  }
+  utils::setTxtProgressBar(pb,4)
+  if (length(nosnowdays) == 0) {
+    mout<-mouts
+  } else if (length(snowdays) == 0) {
+    mout <- moutn
+  } else {
+    # (5) Merge the two model outputs back together to produce one output
+    # (5a) - calculate days without any snow
+    tdays<-unique(c(snowdays,nosnowdays))
+    tdays<-tdays[order(tdays)]
+    nosnow <- setdiff(tdays, snowdays)
+    # (5b) get subset for no snow microclimate model to include only those days with no snow at all
+    s<-c(1:dim(moutn[[1]])[3])
+    s1<-s[rep(nosnowdays %in%  nosnow, each=24)]
+    # (5c) produce list of entries for each dataset
+    nosnowh<-rep((nosnow-1)*24,each=24)+rep(c(1:24),length(nosnow))
+    snowh<-rep((snowdays-1)*24,each=24)+rep(c(1:24),length(snowdays))
+    # (5c) merge the two datasets
+    mout<-list()
+    n<-length(nosnowh)+length(snowh)
+    for (i in 1:length(moutn))  {
+      # Create blank entry for storin g data
+      mout[[i]]<-array(NA,dim=c(dim(dtm)[1:2],n))
+      # perform subset of nosnow
+      xx<-moutn[[i]][,,s1]
+      mout[[i]][,,nosnowh]<-xx
+      mout[[i]][,,snowh]<-mouts[[i]]
+    }
+    names(mout)<-names(moutn)
+  }
   utils::setTxtProgressBar(pb,5)
   return(mout)
 }
@@ -3596,6 +3618,11 @@ flowacc<-function (dtm, basins = NA) {
   if (class(dtm) == "PackedSpatRaster") dtm<-rast(dtm)
   # (1) Figure out snow and no snow days
   smod$totalSWE[is.na(smod$totalSWE)]<-0
+  # do NA fix
+  totalSWE<-.rast(smod$totalSWE,dtm)
+  totalSWE<-mask(totalSWE,dtm)
+  smod$totalSWE<-.is(totalSWE)
+  ##
   minsnow<-applycpp3(smod$totalSWE,"min")
   maxsnow<-applycpp3(smod$totalSWE,"max")
   snowd<-snowdaysfun(maxsnow, minsnow)
@@ -3607,40 +3634,57 @@ flowacc<-function (dtm, basins = NA) {
   micropointn<-subsetpointmodela(micropoint,days=nosnowdays)
   utils::setTxtProgressBar(pb,1)
   # (3) Run no snow microclimate model for no snow days
-  moutn<-.runmicronosnow(micropointn,reqhgt,vegp,soilc,dtm,dtmc,altcorrect,runchecks,
-                         pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
-  utils::setTxtProgressBar(pb,3)
-  # (4) Run snow microclimate model for snow days
-  snowin<-.prepsnowinputs2(reqhgt,dtm,dtmc,vegp,soilc,micropoints,altcorrect,runchecks,snowdays,
-                           nosnowdays,moutn,slr,apr,hor,svf,wsa,pai_a)
-  utils::setTxtProgressBar(pb,4)
-  ss<-rep((snowdays-1)*24,each=24)+rep(c(1:24),length(snowdays))
-  smods<-subsetsnowmodel(smod, ss)
-  mouts<-gridmicrosnow2(reqhgt,snowin$obstime,snowin$weather,smods,snowin$micro,snowin$vegp,snowin$other,out)
-  utils::setTxtProgressBar(pb,5)
-  # (5) Merge the two model outputs back together to produce one output
-  # (5a) - calculate days without any snow
-  tdays<-unique(c(snowdays,nosnowdays))
-  tdays<-tdays[order(tdays)]
-  nosnow <- setdiff(tdays, snowdays)
-  # (5b) get subset for no snow microclimate model to include only those days with no snow at all
-  s<-c(1:dim(moutn[[1]])[3])
-  s1<-s[rep(nosnowdays %in%  nosnow, each=24)]
-  # (5c) produce list of entries for each dataset
-  nosnowh<-rep((nosnow-1)*24,each=24)+rep(c(1:24),length(nosnow))
-  snowh<-rep((snowdays-1)*24,each=24)+rep(c(1:24),length(snowdays))
-  # (5c) merge the two datasets
-  mout<-list()
-  n<-length(nosnowh)+length(snowh)
-  for (i in 1:length(moutn))  {
-    # Create blank entry for storin g data
-    mout[[i]]<-array(NA,dim=c(dim(dtm)[1:2],n))
-    # perform subset of nosnow
-    xx<-moutn[[i]][,,s1]
-    mout[[i]][,,nosnowh]<-xx
-    mout[[i]][,,snowh]<-mouts[[i]]
+  if (length(nosnowdays) > 0) {
+    moutn<-.runmicronosnow(micropointn,reqhgt,vegp,soilc,dtm,dtmc,altcorrect,runchecks,
+                           pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
   }
-  names(mout)<-names(moutn)
+  utils::setTxtProgressBar(pb,3)
+  if (length(snowdays) > 0) {
+    # (4) Run snow microclimate model for snow days
+    snowin<-.prepsnowinputs2(reqhgt,dtm,dtmc,vegp,soilc,micropoints,altcorrect,runchecks,snowdays,
+                             nosnowdays,moutn,slr,apr,hor,svf,wsa,pai_a)
+    utils::setTxtProgressBar(pb,4)
+    ss<-rep((snowdays-1)*24,each=24)+rep(c(1:24),length(snowdays))
+    smods<-subsetsnowmodel(smod, ss)
+    if (reqhgt == 0) {
+      out <- rep(FALSE, 10)
+      out[c(1, 4,6,7,8,9,10)] <- TRUE
+    } else if (reqhgt < 0)  {
+      out <- rep(FALSE, 10)
+      out[c(1, 4)] <- TRUE
+    }
+    mouts<-gridmicrosnow2(reqhgt,snowin$obstime,snowin$weather,smods,snowin$micro,snowin$vegp,snowin$other,out)
+    utils::setTxtProgressBar(pb,5)
+  }
+  if (length(nosnowdays) == 0) {
+    mout<-mouts
+  } else if (length(snowdays) == 0) {
+    mout <- moutn
+  } else {
+    # (5) Merge the two model outputs back together to produce one output
+    # (5a) - calculate days without any snow
+    tdays<-unique(c(snowdays,nosnowdays))
+    tdays<-tdays[order(tdays)]
+    nosnow <- setdiff(tdays, snowdays)
+    # (5b) get subset for no snow microclimate model to include only those days with no snow at all
+    s<-c(1:dim(moutn[[1]])[3])
+    s1<-s[rep(nosnowdays %in%  nosnow, each=24)]
+    # (5c) produce list of entries for each dataset
+    nosnowh<-rep((nosnow-1)*24,each=24)+rep(c(1:24),length(nosnow))
+    snowh<-rep((snowdays-1)*24,each=24)+rep(c(1:24),length(snowdays))
+    # (5c) merge the two datasets
+    mout<-list()
+    n<-length(nosnowh)+length(snowh)
+    for (i in 1:length(moutn))  {
+      # Create blank entry for storin g data
+      mout[[i]]<-array(NA,dim=c(dim(dtm)[1:2],n))
+      # perform subset of nosnow
+      xx<-moutn[[i]][,,s1]
+      mout[[i]][,,nosnowh]<-xx
+      mout[[i]][,,snowh]<-mouts[[i]]
+    }
+    names(mout)<-names(moutn)
+  }
   utils::setTxtProgressBar(pb,6)
   return(mout)
 }

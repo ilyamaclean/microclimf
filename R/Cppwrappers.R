@@ -707,6 +707,8 @@ runbioclim <- function(climdata, reqhgt, vegp, soilc, dtm, dtmc = NA, tme = NA, 
 runsnowmodel<-function(weather, micropoint, vegp, soilc, dtm, dtmc = NA, tme = NA, altcorrect = 0,
                        snowenv="Taiga", method="fast", snowinitd = 0,  snowinita = 0,
                        zref = 2, windhgt = zref, stfact = 0.01) {
+  if (class(dtmc)[1] == "PackedSpatRaster") dtmc<-rast(dtmc)
+  dtmc[is.na(dtmc)] <- 0
   if (class(micropoint) == "micropoint") { # data.frame weather input
     if (length(micropoint$subs) == length(micropoint$tmeorig)) { # no subset required
       smod<-.snowmodel1(micropointweather,dtm,vegp,soilc,snowenv,snowinitd,snowinita,micropoint$zref,micropoint$zref,stfact)
