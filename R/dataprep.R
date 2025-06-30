@@ -909,7 +909,7 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme 
   uh<-unique(as.vector(m))
   uh<-uh[is.na(uh)==F]
   # pai test
-  pte<-base::mean(pai,na.rm=T)
+  pte<-base::mean(values(pai),na.rm=T)
   # Create blank array for pai
   if (is.na(pte)) {
     paii<-.paifromhabitat(1, lat, long, tme)
@@ -930,7 +930,7 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme 
     leafd[sel]<-vegi$leafd
     hgt[sel]<-vegi$hgt
   }
-  pai<-.rast(pai,habitats)
+  if (is.na(pte)) {pai<-.rast(pai,habitats)}
   leaft<-0.5*leafr
   clump<-pai*0
   if (clump0 == F) {
