@@ -711,7 +711,7 @@ runsnowmodel<-function(weather, micropoint, vegp, soilc, dtm, dtmc = NA, tme = N
   dtmc[is.na(dtmc)] <- 0
   if (class(micropoint) == "micropoint") { # data.frame weather input
     if (length(micropoint$subs) == length(micropoint$tmeorig)) { # no subset required
-      smod<-.snowmodel1(micropointweather,dtm,vegp,soilc,snowenv,snowinitd,snowinita,micropoint$zref,micropoint$zref,stfact)
+      smod<-.snowmodel1(weather,dtm,vegp,soilc,snowenv,snowinitd,snowinita,micropoint$zref,micropoint$zref,stfact)
     } else { # subset of model required
       if (method == "fast") {
         smod<-.snowmodelq1(weather,dtm,vegp,soilc,micropoint$subs,snowenv,snowinitd,snowinita,zref,windhgt,stfact)
