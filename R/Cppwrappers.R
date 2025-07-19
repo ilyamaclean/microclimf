@@ -213,6 +213,12 @@ runpointmodela<-function(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc, matem
   climarrayr<-.unpackclim(climarrayr)
   climarrayr<-.arrayonecellcheck(climarrayr, dtm)
   mxhgt<-max(.is(vegp$hgt),na.rm=T)
+  # check resolution of climarray not the same
+  dm1 <- dim(dtm)[1:2]
+  dm2 <- dim(climarrayr$temp)[1:2]
+  if (isTRUE(all.equal(dm1, dm2))) {
+    stop("microclimf is not designed for use cases where the climate data has the same resolution as the DTM.")
+  }
   # Sort out all the rasters
   # Calculate modal wind direction
   wdir<-apply(.is(climarrayr$winddir),3,.getmode)
