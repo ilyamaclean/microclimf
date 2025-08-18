@@ -930,9 +930,9 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme 
     leafd[sel]<-vegi$leafd
     hgt[sel]<-vegi$hgt
   }
+  clump<-pai*0
   pai<-.rast(pai,habitats)
   leaft<-0.5*leafr
-  clump<-pai*0
   if (clump0 == F) {
     for (i in 1:dim(pai)[3]) clump[,,i]<-clumpestimate(hgt, leafd, .is(pai)[,,i])
     clump <- .rast(clump,habitats)
@@ -967,14 +967,11 @@ clumpestimate <- function(hgt, leafd, pai, maxclump = 0.95) {
   sel<-which(.is(leafd)>.is(hgt))
   lmd<-.is(leafd)
   lmd[sel]<-.is(hgt)[sel]
-  n<-dim(pai)[3]
   clump<-.is(pai)*0
-  for (i in 1:n) {
-    clump[,,i]<-(1-.is(pai[[i]]))^(.is(hgt)/lmd)
-  }
+  clump<-(1-.is(pai))^(.is(hgt)/leafd)
   sel<-which(clump>maxclump)
   clump[sel]<-maxclump
-  clump<-.rast(clump,hgt)
+  clump
 }
 #' Derives leaf and ground reflectance from albedo
 #' @param pai a SpatRaster of plant area index values
