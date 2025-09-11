@@ -116,6 +116,25 @@
 # =========================================================================== #
 # ******************* Used by point model *********************************** #
 # =========================================================================== #
+# sorts out instances where pai > 0 and hgt is not and vis-versa (problematic for snow model)
+.cleanvegp <- function(vegp) {
+  ## check if packed
+  if (class(vegp$hgt)[1] == "PackedSpatRaster") packed = TRUE
+  for (i in 1:8) if (class(vegp[[i]])[1] == "PackedSpatRaster") vegp[[i]] <- rast(vegp[[i]])
+  n <- dim(vegp$pai)[3]
+  hm <- .is(vegp$hgt)
+  for (i in 1:n) {
+    pm <- .is(vegp$pai[[i]])
+    s <- which(pm == 0 & hm > 0)
+    hm[s] <- 0
+    s <- which(hm == 0 & pm > 0)
+    pm[s] <- 0
+    vegp$pai[[i]] <- .rast(pm, vegp$hgt)
+  }
+  vegp$hgt <- .rast(hm, vegp$hgt)
+  if (packed) for (i in 1:8) vegp[[i]] <- wrap(vegp[[i]])
+  return (vegp)
+}
 #' unpack model inputs
 .unpack<-function(dtm,vegp,soilc) {
   if (class(dtm)[1] == "PackedSpatRaster") dtm<-rast(dtm)
