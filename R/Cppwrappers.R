@@ -375,7 +375,7 @@ runmicro <- function(micropoint, reqhgt, vegp, soilc, dtm, dtmc = NA, altcorrect
                      snow = FALSE, snowmod = NA, runchecks = TRUE, pai_a = NA, tfact = 1.5,
                      out = rep(TRUE, 10), slr = NA, apr = NA, hor = NA, twi = NA,
                      wsa = NA, svf = NA, method = "Cpp") {
-  if (snow) {
+  if (snow) { # data frame input
     if (class(micropoint) == "micropoint") { # data.frame climate input
       mout<-.runmicrosnow1(micropoint,reqhgt,vegp,soilc,dtm,snowmod,runchecks,pai_a,
                            tfact,out,slr,apr,hor,twi,wsa,svf)

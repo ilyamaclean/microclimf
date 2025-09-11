@@ -3599,7 +3599,7 @@ flowacc<-function (dtm, basins = NA) {
     mout<-list()
     n<-length(nosnowh)+length(snowh)
     for (i in 1:length(moutn))  {
-      # Create blank entry for storin g data
+      # Create blank entry for storing data
       mout[[i]]<-array(NA,dim=c(dim(dtm)[1:2],n))
       # perform subset of nosnow
       xx<-moutn[[i]][,,s1]

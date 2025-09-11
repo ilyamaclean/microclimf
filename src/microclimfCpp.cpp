@@ -749,7 +749,7 @@ Rcpp::List BigLeafCpp(DataFrame obstime, DataFrame climdata, std::vector<double>
             double zm = roughlengthCpp(h, pai, d, psih[i]);
             uf[i] = (0.4 * wspeed[i]) / (log((zref - d) / zm) + psim[i]);
             if (uf[i] < 0.0002) uf[i] = 0.0002;
-            double gmin = gfreeCpp(leafd, abs(H[i])) * 2 * pai;
+            double gmin = gfreeCpp(leafd, std::abs(H[i])) * 2 * pai;
             double ph = phairCpp(tcc[i], pk[i]);
             double gHa = gturbCpp(uf[i], d, zm, zref, ph, psih[i], gmin);
             double gC = stomcondCpp(Rsw[i], gsmax * 3, q50 * 3);
@@ -771,8 +771,8 @@ Rcpp::List BigLeafCpp(DataFrame obstime, DataFrame climdata, std::vector<double>
             Tcn = tc[i] + dTc;
             Tgn = tc[i] + dTg;
             // Run tests for convergence
-            double tst2 = abs(Tcn - Tc[i]);
-            double tst3 = abs(Tgn - Tg[i]);
+            double tst2 = std::abs(Tcn - Tc[i]);
+            double tst3 = std::abs(Tgn - Tg[i]);
             if (tst2 > tst) tst = tst2;
             if (tst3 > tst) tst = tst3;
             // Reassign Tc and Tg using bwgt
@@ -2231,7 +2231,7 @@ soilmodel soiltemp_hrCpp(std::vector<double> tc, std::vector<double> ea, std::ve
     }
     return out;
 }
-// Calculate gorund surface temperature: grid
+// Calculate ground surface temperature: grid
 // [[Rcpp::export]]
 List soiltempgrid(List micro)
 {
@@ -5173,6 +5173,7 @@ double canopysnowintCpp(double hgt, double pai, double uf, double prec,
     if (cis > prec) cis = prec;
     return cis;
 }
+// Calculates absorbed radiation for snow
 std::vector<double> radoneB(std::vector<double> obstime, std::vector<double> clim, std::vector<double> vegp, std::vector<double> snow,
     std::vector<double> other)
 {
@@ -5276,7 +5277,7 @@ std::vector<double> radoneB(std::vector<double> obstime, std::vector<double> cli
     out[3] = tr;
     return out;
 }
-// One point, once cell, bigleaf.
+// One point in time, once cell, bigleaf.
 std::vector<double> snowoneB(std::vector<double> obstime, std::vector<double> clim, std::vector<double> vegp, std::vector<double> snow,
     std::vector<double> other, double umu = 1.0)
 {
@@ -5546,6 +5547,7 @@ List pointmodelsnow(DataFrame obstime, DataFrame climdata, std::vector<double> v
                 pai = vegp[0] * (vegp[1] - sdepg[i]) / vegp[1];
             }
             double hgt = vegp[1] - sdepg[i];
+            if (hgt < 0.0) hgt = 0.0;
             double zi = 0.0;
             if (sdepc[i] > 0.0) zi = ((sdepc[i] - sdepg[i]) * sdenc[i]) / (hgt * 1000);
             double ltra = vegp[2] * exp(-10.1 * zi);
@@ -5588,8 +5590,8 @@ List pointmodelsnow(DataFrame obstime, DataFrame climdata, std::vector<double> v
             // Combine the data
             Tc[i] = 0.5 * Tco[i] + 0.5 * Tc[i];
             Tg[i] = 0.5 * Tgo[i] + 0.5 * Tg[i];
-            double abs1 = abs(Tc[i] - Tco[i]);
-            double abs2 = abs(Tg[i] - Tgo[i]);
+            double abs1 = std::abs(Tc[i] - Tco[i]);
+            double abs2 = std::abs(Tg[i] - Tgo[i]);
             if (mxdif < abs1) mxdif = abs1;
             if (mxdif < abs2) mxdif = abs2;
             // Recalculate H
@@ -5601,6 +5603,7 @@ List pointmodelsnow(DataFrame obstime, DataFrame climdata, std::vector<double> v
             // Recalculate diabatic coefficients
             double d = zeroplanedisCpp(hgt, pai);
             double zm = roughlengthCpp(hgt, pai, d, psih[i]);
+            if (zm < 0.001) zm = 0.001;
             double Tk = tc[i] + 273.15;
             double LL = (ph * cp * pow(uf, 3) * Tk) / (-0.4 * 9.81 * H[i]);
             psim[i] = dpsimCpp(zm / LL) - dpsimCpp((zref - d) / LL);
@@ -5757,7 +5760,7 @@ List gridmodelsnow1(DataFrame obstime, DataFrame climdata, DataFrame pointm, Lis
     std::vector<double> Gmxd(ndays,0.0);
     for (int d = 0; d < ndays; ++d) {
         for (int h = 0; h < 24; ++h) {
-            if (abs(Rnet[idx]) > Gmxd[d]) Gmxd[d] = abs(Rnet[idx]);
+            if (std::abs(Rnet[idx]) > Gmxd[d]) Gmxd[d] = std::abs(Rnet[idx]);
             ++idx;
         }
     }
@@ -6022,7 +6025,10 @@ NumericMatrix meanDsnow(NumericVector snowden)
                 meanD(i, j) = sumD / tsteps;
             }
             else {
-                meanD(i, j) = NA_REAL;
+                for (int k = 0; k < tsteps; ++k) {
+                    meanD(i, j) = NA_REAL;
+                    ++index;
+                }
             }
         }
     }
@@ -6064,7 +6070,8 @@ NumericMatrix canintfrac(NumericMatrix hgt, NumericMatrix pai, double uf,
     }
     return frac;
 }
-// Calculate melt mu
+// Calculate melt mu - this function derives a temperature melt factor based on sky view 
+// for all temperatures that exceed zero
 // [[Rcpp::export]]
 NumericMatrix meltmu(NumericMatrix mu, NumericVector stemp, NumericVector tc)
 {
@@ -6509,7 +6516,7 @@ List gridmodelsnow2(DataFrame obstime, List climdata, List pointm, List vegp,
                 std::vector<double> Gmxd(ndays, 0.0);
                 for (int d = 0; d < ndays; ++d) {
                     for (int h = 0; h < 24; ++h) {
-                        if (abs(Rnet[idx]) > Gmxd[d]) Gmxd[d] = abs(Rnet[idx]);
+                        if (std::abs(Rnet[idx]) > Gmxd[d]) Gmxd[d] = std::abs(Rnet[idx]);
                         ++idx;
                     }
                 }
