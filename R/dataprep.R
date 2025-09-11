@@ -393,6 +393,8 @@ checkinputs <- function(weather, vegp, soilc, dtm, windhgt = 2) {
   xx<-xx[is.na(xx)==F]
   if (min(xx)<0) stop("Minimum vegp$pai must be greater than or equal to zero")
   if (max(xx)>15) warning(paste0("Maximum vegp$pai of ",max(xx)," seems high"))
+  # clean vegetation layers
+  vegp <- .cleanvegp(vegp)
   return(list(weather=weather,precip=precip,vegp=vegp,soilc=soilc))
 }
 .PAIforayear <- function(habitat, lat, long, yr) {
