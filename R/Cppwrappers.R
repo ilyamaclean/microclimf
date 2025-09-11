@@ -713,6 +713,7 @@ runbioclim <- function(climdata, reqhgt, vegp, soilc, dtm, dtmc = NA, tme = NA, 
 runsnowmodel<-function(weather, micropoint, vegp, soilc, dtm, dtmc = NA, tme = NA, altcorrect = 0,
                        snowenv="Taiga", method="fast", snowinitd = 0,  snowinita = 0,
                        zref = 2, windhgt = zref, stfact = 0.01) {
+  vegp <- .cleanvegp(vegp) # cleans vegetation parameters to stop snow model returning NAs
   if (class(dtmc)[1] == "PackedSpatRaster") dtmc<-rast(dtmc)
   dtmc[is.na(dtmc)] <- 0
   if (class(micropoint) == "micropoint") { # data.frame weather input
