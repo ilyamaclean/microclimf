@@ -117,6 +117,7 @@
 # ******************* Used by point model *********************************** #
 # =========================================================================== #
 # sorts out instances where pai > 0 and hgt is not and vis-versa (problematic for snow model)
+#' clean veg
 .cleanvegp <- function(vegp) {
   ## check if packed
   packed <- FALSE
