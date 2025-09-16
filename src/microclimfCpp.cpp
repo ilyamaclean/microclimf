@@ -6311,6 +6311,7 @@ List gridmicrosnow1(double reqhgt, DataFrame obstime, DataFrame climdata, List s
                                 Rsw[k], Rdif[k], Rlw[k], hgts, pais, paias, salb[k], ltras,
                                 clump(i, j), leafd(i, j), leafden(i, j), salb[k], salb[k], snowtempg[idx],
                                 snowtempc[idx], zenr, shadowmask, si, skyview(i, j), ws, umu[k], mxtc);
+                            if (NumericVector::is_na(apv[0])) apv[0] = snowtempg[idx];
                             if (out[0]) Tz[idx] = apv[0];
                             if (out[1]) tleaf[idx] = apv[1];
                             if (out[2]) relhum[idx] = apv[2];
