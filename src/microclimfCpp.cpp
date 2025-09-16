@@ -2359,13 +2359,19 @@ std::vector<double> TVabove(double reqhgt, double zref, double h, double pai, do
     double d = zeroplanedisCpp(h, pai);
     double zm = roughlengthCpp(h, pai, d, 0);
     double zh = 0.2 * zm;
-    double lnr = log((reqhgt - d) / zh) / log((zref - d) / zh);
-    std::vector<double> out(2);
-    // Temperature
-    out[0] = tc + (T0 - tc) * (1 - lnr);
     double estl = satvapCpp(T0);
-    out[1] = ea + (estl - ea) * surfwet * (1 - lnr);
-    //out[1] = lnr;
+    std::vector<double> out(2);
+    if (reqhgt > (d + zh)) {
+        double lnr = log((reqhgt - d) / zh) / log((zref - d) / zh);
+        // Temperature
+        out[0] = tc + (T0 - tc) * (1 - lnr);
+        // Vapour pressure
+        out[1] = ea + (estl - ea) * surfwet * (1 - lnr);
+    }
+    else {
+        out[0] = T0;
+        out[1] = ea + (estl - ea) * surfwet;
+    }
     return out;
 }
 std::vector<double> leaftemp(double Tcan, double T0, double tc, double mxtc, double pk, double ea, double es, double uz, double tdew,
@@ -2665,7 +2671,7 @@ List abovegrid(double reqhgt, List micro)
     mout["Rlwup"] = Rcpp::wrap(lwup);
     return mout;
 }
-// microclimate model as point above ground
+// microclimate model as point above ground with snow model
 NumericVector abovepoint(double reqhgt, double zref, double tc, double pk, double relhum, double u2, 
     double Rsw, double Rdif, double Rlw, double hgt, double pai, double paia, double lref, double ltra, 
     double clump, double leafd, double leafden, double albg, double albc, double snowtempg, double snowtempc, double zenr,
@@ -5315,7 +5321,7 @@ std::vector<double> snowoneB(std::vector<double> obstime, std::vector<double> cl
         d = zeroplanedisCpp(hgt, pai);
         zm = roughlengthCpp(hgt, pai, d, psih);
     }
-    if (zm < 0.005) zm = 0.005;
+    if (zm < 0.0009) zm = 0.0009;
     double uf = (0.4 * u2) / (log((zref - d) / zm) + psim);
     uf = uf * umu;
     double ph = phairCpp(tc, pk);
@@ -6311,7 +6317,6 @@ List gridmicrosnow1(double reqhgt, DataFrame obstime, DataFrame climdata, List s
                                 Rsw[k], Rdif[k], Rlw[k], hgts, pais, paias, salb[k], ltras,
                                 clump(i, j), leafd(i, j), leafden(i, j), salb[k], salb[k], snowtempg[idx],
                                 snowtempc[idx], zenr, shadowmask, si, skyview(i, j), ws, umu[k], mxtc);
-                            if (NumericVector::is_na(apv[0])) apv[0] = snowtempg[idx];
                             if (out[0]) Tz[idx] = apv[0];
                             if (out[1]) tleaf[idx] = apv[1];
                             if (out[2]) relhum[idx] = apv[2];
