@@ -6302,7 +6302,7 @@ List gridmicrosnow1(double reqhgt, DataFrame obstime, DataFrame climdata, List s
                             double ws = wsa[windex[k] * rows * cols + j * rows + i];
                             // Adjust veg parameters for presence of snow
                             double hgts = hgt(i, j) - sdepg[idx];
-                            if (hgts < 0.0) hgts = 0.0;
+                            //if (hgts < 0.0) hgts = 0.0;
                             double pais = 0.0;
                             double paias = 0.0;
                             if (hgts > 0.0) {
@@ -6311,7 +6311,10 @@ List gridmicrosnow1(double reqhgt, DataFrame obstime, DataFrame climdata, List s
                             }
                             double zi = 0.0;
                             double sdepc = swe[idx] / sden[idx];
-                            if (swe[idx] > 0.0) zi = ((sdepc - sdepg[idx]) * sden[idx]) / (hgts * 1000);
+                            double mu = (sdepc - sdepg[idx]) * sden[idx];
+                            if (swe[idx] > 0.0 && hgts > 0.0 && mu > 0.0) {
+                                zi = mu / (hgts * 1000);
+                            }
                             double ltras = ltra(i, j) * exp(-10.1 * zi);
                             // run microclimate model
                             NumericVector apv = abovepoint(reqhgts, zref, tc[k], pk[k], rh[k], u2[k],
