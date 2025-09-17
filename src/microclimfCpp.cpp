@@ -2676,7 +2676,7 @@ NumericVector abovepoint(double reqhgt, double zref, double tc, double pk, doubl
     double Rsw, double Rdif, double Rlw, double hgt, double pai, double paia, double lref, double ltra, 
     double clump, double leafd, double leafden, double albg, double albc, double snowtempg, double snowtempc, double zenr,
     double shadowmask, double si, double svfa, double ws, double umu, double mxtc)
-{
+{ 
     // Calculate base variables
     double es = satvapCpp(tc);
     double ea = es * relhum / 100.0;
@@ -6302,6 +6302,7 @@ List gridmicrosnow1(double reqhgt, DataFrame obstime, DataFrame climdata, List s
                             double ws = wsa[windex[k] * rows * cols + j * rows + i];
                             // Adjust veg parameters for presence of snow
                             double hgts = hgt(i, j) - sdepg[idx];
+                            if (hgts < 0.0) hgts = 0.0;
                             double pais = 0.0;
                             double paias = 0.0;
                             if (hgts > 0.0) {
