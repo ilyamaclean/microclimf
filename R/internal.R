@@ -264,6 +264,10 @@
     # identify which layer is associated with which time sequence
     s<-round(seq(0.50001,dmx+0.5,length.out=n),0)
     s<-s[subs]
+    # ensure layers not split across days
+    sdd <- matrix(s,ncol=24,byrow=TRUE)
+    sdd <- apply(sdd, 1, .getmode)
+    s <- rep(sdd, each = 24)
     vegp$lsubs<-s
   }
   return(vegp)
@@ -3578,7 +3582,7 @@ flowacc<-function (dtm, basins = NA) {
   utils::setTxtProgressBar(pb,1)
   # (3) Run no snow microclimate model for no snow days
   if (length(nosnowdays) > 0) {
-    moutn<-.runmicronosnow(micropointn,reqhgt,vegp,soilc,dtm,dtmc,altcorrect,runchecks,
+    moutn<-.runmicronosnow(micropointn,reqhgt,vegp,soilc,dtm,dtmc=NA,altcorrect=0,runchecks,
                            pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
   }
   utils::setTxtProgressBar(pb,3)
