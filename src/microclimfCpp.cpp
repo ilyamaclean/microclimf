@@ -1989,6 +1989,7 @@ windmodel windvCpp(double reqhgt, double zref, std::vector<double> u2, std::vect
     // Calculate roughness length and zero-plane displacement
     double d = zeroplanedisCpp(h, pai);
     double zm = roughlengthCpp(h, pai, d, 0);
+    if (zm < 1e-6) zm = 1e-6;
     // Create variables
     std::vector<double> uf(u2.size());
     std::vector<double> uz(u2.size());
