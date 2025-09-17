@@ -2088,6 +2088,7 @@ NumericVector windpoint(double reqhgt, double u2, double h, double pai, double w
     // Calculate point model variables
     double d = zeroplanedisCpp(h, pai);
     double zm = roughlengthCpp(h, pai, d, 0);
+    if (zm < 1e-5) zm = 1e-5;
     double ufs = (0.4 * u2) / log((zref - d) / zm);
     // Calculate wind friction velocity
     double uf = ufs * umu * ws;
@@ -2096,7 +2097,7 @@ NumericVector windpoint(double reqhgt, double u2, double h, double pai, double w
     if (reqhgt >= h) {
         uz = (uf / 0.4) * log((reqhgt - d) / zm);
     }
-    // Calculate wind speed at height z below canopy
+        // Calculate wind speed at height z below canopy
     else {
         // Calculate wind speed at height z below canopy
         double uh = (uf / 0.4) * log((h - d) / zm);
@@ -2109,6 +2110,7 @@ NumericVector windpoint(double reqhgt, double u2, double h, double pai, double w
         uz = uh * exp(Be * (reqhgt - h) / Lm);
     }
     if (uz > u2) uz = u2;
+    if (reqhgt <= 0.0) uz = 0.0;
     double gHa = gturbCpp(uf, d, zm, zref, 43, 0, 0.0001);
     NumericVector out(3);
     out[0] = uz;
@@ -6302,7 +6304,7 @@ List gridmicrosnow1(double reqhgt, DataFrame obstime, DataFrame climdata, List s
                             double ws = wsa[windex[k] * rows * cols + j * rows + i];
                             // Adjust veg parameters for presence of snow
                             double hgts = hgt(i, j) - sdepg[idx];
-                            //if (hgts < 0.0) hgts = 0.0;
+                            if (hgts < 0.0) hgts = 0.0;
                             double pais = 0.0;
                             double paias = 0.0;
                             if (hgts > 0.0) {
@@ -6316,6 +6318,8 @@ List gridmicrosnow1(double reqhgt, DataFrame obstime, DataFrame climdata, List s
                                 zi = mu / (hgts * 1000);
                             }
                             double ltras = ltra(i, j) * exp(-10.1 * zi);
+                            double sm = ltras + salb[k];
+                            if (sm > 0.999) ltras = 0.999 - salb[k];
                             // run microclimate model
                             NumericVector apv = abovepoint(reqhgts, zref, tc[k], pk[k], rh[k], u2[k],
                                 Rsw[k], Rdif[k], Rlw[k], hgts, pais, paias, salb[k], ltras,
