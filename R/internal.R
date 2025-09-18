@@ -3041,7 +3041,7 @@ flowacc<-function (dtm, basins = NA) {
   pointms2<-list()
   clims<-list()
   mxhgt<-max(.is(vegp$hgt),na.rm=T)
-  if (class(dtmc) == "logical") {
+  if (class(dtmc) == "logical" && dtmc == 0) {
     rte<-weather$temp[[1]]
     af<-res(rte)[1]/res(dtm)[1]
     dtmc<-aggregate(dtm,af/2,fun="mean",na.rm=TRUE)
@@ -3049,7 +3049,7 @@ flowacc<-function (dtm, basins = NA) {
     dtmc[is.na(dtmc)]<-mean(as.vector(dtmc),na.rm=TRUE)
     dtmc<-resample(dtmc,rte)
   }
-  if (class(dtmc) == "PackedSpatRaster") dtmc<-rast(dtm)
+  if (class(dtmc) == "PackedSpatRaster") dtmc<-rast(dtmc)
   ll<-.latslonsfromr(dtmc)
   k<-1
   vegpp<-.sortvegp(vegp,method="P")
