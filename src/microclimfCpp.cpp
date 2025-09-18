@@ -6575,13 +6575,19 @@ List gridmodelsnow2(DataFrame obstime, List climdata, List pointm, List vegp,
                             sdp[3] * snowageg / 24)) + sdp[1]) * 1000;
                         // Adjust veg parameters for presence of snow
                         double paip = pai(i, j);
-                        if (hgt(i, j) > sdepga) {
+                        if (hgt(i, j) != 0.0 && hgt(i, j) > sdepga) {
                             paip = paip * (hgt(i, j) - sdepga) / hgt(i, j);
                         }
                         double hgtp = hgt(i, j) - sdepga;
+                        if (hgtp < 0.0) hgtp = 0.0;
                         double zi = 0.0;
-                        if (sdepca > 0.0) zi = ((sdepca - sdepga) * sdenc) / (hgtp * 1000);
+                        double mu = (sdepca - sdepga) * sdenc;
+                        if (sdepca > 0.0 && hgtp > 0.0 && mu > 0.0) {
+                            zi = mu / (hgtp * 1000);
+                        }
                         double ltrap = ltra(i, j) * exp(-10.1 * zi);
+                        double sm = ltrap + salb[k];
+                        if (sm > 0.999) ltrap = 0.999 - salb[k];
                         // Calculate Ground heat flux
                         double dtR = Rmx[k] - Rmn[k];
                         double trS = skyview(i, j) * exp(-paip);
@@ -6839,6 +6845,7 @@ List gridmicrosnow2(double reqhgt, DataFrame obstime, List climdata, List snowm,
                             double ws = wsa[windex[k] * rows * cols + j * rows + i];
                             // Adjust veg parameters for presence of snow
                             double hgts = hgt(i, j) - sdepg[idx];
+                            if (hgts < 0.0) hgts = 0.0;
                             double pais = 0.0;
                             double paias = 0.0;
                             if (hgts > 0.0) {
@@ -6847,8 +6854,13 @@ List gridmicrosnow2(double reqhgt, DataFrame obstime, List climdata, List snowm,
                             }
                             double sdepc = swe[idx] / sden[idx];
                             double zi = 0.0;
-                            if (swe[idx] > 0.0) zi = ((sdepc - sdepg[idx]) * sden[idx]) / (hgts * 1000);
+                            double mu = (sdepc - sdepg[idx]) * sden[idx];
+                            if (swe[idx] > 0.0 && hgts > 0.0 && mu > 0.0) {
+                                zi = mu / (hgts * 1000);
+                            }
                             double ltras = ltra(i, j) * exp(-10.1 * zi);
+                            double sm = ltras + salb[idx];
+                            if (sm > 0.999) ltras = 0.999 - salb[idx];
                             // run microclimate model
                             NumericVector apv = abovepoint(reqhgts, zref, tc[idx], pk[idx], rh[idx], u2[idx],
                                 Rsw[idx], Rdif[idx], Rlw[idx], hgts, pais, paias, salb[idx], ltras,

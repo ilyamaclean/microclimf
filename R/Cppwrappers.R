@@ -380,6 +380,7 @@ runmicro <- function(micropoint, reqhgt, vegp, soilc, dtm, dtmc = NA, altcorrect
       mout<-.runmicrosnow1(micropoint,reqhgt,vegp,soilc,dtm,snowmod,runchecks,pai_a,
                            tfact,out,slr,apr,hor,twi,wsa,svf)
     } else {  # array climate input
+      if (class(dtmc) == "logical") stop("Require dtmc. Please provide\n")
       mout<-.runmicrosnow2(micropoint,reqhgt,vegp,soilc,dtm,dtmc,snowmod,altcorrect,
                            runchecks,pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
     }
