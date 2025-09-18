@@ -3041,7 +3041,7 @@ flowacc<-function (dtm, basins = NA) {
   pointms2<-list()
   clims<-list()
   mxhgt<-max(.is(vegp$hgt),na.rm=T)
-  if (class(dtmc) == "logical" && dtmc == 0) {
+  if (class(dtmc) == "logical" || dtmc == 0) {
     rte<-weather$temp[[1]]
     af<-res(rte)[1]/res(dtm)[1]
     dtmc<-aggregate(dtm,af/2,fun="mean",na.rm=TRUE)
