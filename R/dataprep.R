@@ -818,7 +818,7 @@ checkinputs <- function(weather, vegp, soilc, dtm, windhgt = 2) {
   }
   return(pai[-1])
 }
-#' Generate vegpetation paramaters form habitat type
+#' Generate vegetation parameters form habitat type
 #'
 #' The function `vegpfromhab` generates an object of class vegparams from
 #' a SpatRaster object of habitat types

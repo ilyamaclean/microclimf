@@ -209,3 +209,11 @@ leafrcpp <- function(om, pai, gref, albin, x, ltrr) {
     .Call(`_microclimf_leafrcpp`, om, pai, gref, albin, x, ltrr)
 }
 
+microclimatemodel_wrapper <- function(obstime, climdata, vegp, groundp, reqhgt, zref, lat, lon) {
+    .Call(`_microclimf_microclimatemodel_wrapper`, obstime, climdata, vegp, groundp, reqhgt, zref, lat, lon)
+}
+
+snowoneBtest <- function(obstime, clim, vegp, albedo, initdepth, lat, lon, zref) {
+    .Call(`_microclimf_snowoneBtest`, obstime, clim, vegp, albedo, initdepth, lat, lon, zref)
+}
+

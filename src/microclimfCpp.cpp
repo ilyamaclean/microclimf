@@ -348,9 +348,9 @@ double roughlengthCpp(double h, double pai, double d, double psi_h)
 {
     double Be = sqrt(0.003 + (0.2 * pai) / 2);
     double zm = (h - d) * exp(-0.4 / Be) * exp(0.4 * psi_h);
-    if (zm < 0.0005) zm = 0.0005;
     // safety check to stop diabatic coefficient reversing profile
     if (zm > (0.9 * (h - d))) zm = 0.9 * (h - d);
+    if (zm < 0.0005) zm = 0.0005; // sets a minimum
     return zm;
 }
 // **  Calculate integrated diabatic correction coefficient for momentum ** //
@@ -1552,13 +1552,12 @@ radmodel2 twostreamvCpp(double reqhgt, double hgt, double pai, double paia, doub
                 if (Rdbdn_g > amx) Rdbdn_g = amx;
                 if (Rdbdn_g < 0.0) Rdbdn_g = 0.0;
                 // ** normalised contribution of direct to upward diffuse flux at z
-                double Rdbup_z = (1.0 - trdu) * ((p5 / sig) * exp(-kd * pait) +
-                    p6 * exp(-h * paiaa) + p7 * exp(h * paiaa))
-                    + trdu * gref;
+                double Rdbup_z = (1.0 - trdu * trbn) * ((p5 / sig) * exp(-kd * paiaa) +
+                    p6 * exp(-h * paiaa) + p7 * exp(h * paiaa)) + trdu * trbn * gref;
                 if (Rdbup_z > amx) Rdbup_z = amx;
                 if (Rdbup_z < 0.0) Rdbup_z = 0.0;
                 // ** normalised contribution of direct to downward diffuse flux at z
-                double Rdbdn_z = (1.0 - trdu) * ((p8 / -sig) * exp(-kd * paiaa) +
+                double Rdbdn_z = (1.0 - trb) * ((p8 / -sig) * exp(-kd * paiaa) +
                     p9 * exp(-h * paiaa) + p10 * exp(h * paiaa));
                 if (Rdbdn_z > amx) Rdbdn_z = amx;
                 if (Rdbdn_z < 0.0) Rdbdn_z = 0.0;
@@ -1574,7 +1573,7 @@ radmodel2 twostreamvCpp(double reqhgt, double hgt, double pai, double paia, doub
                 if (Rbdn_g < 0.0) Rbdn_g = 0.0;
                 radGsw[i] = (1.0 - gref) * (Rddn_g * Rdif[i] * svfa + Rdbdn_g * Rb +
                     Rbdn_g * Rbeam * si[i]);
-                double maxg = radGsw[i] = (1 - gref) * (Rdif[i] * svfa + Rbeam * si[i]);
+                double maxg = (1 - gref) * (Rdif[i] * svfa + Rbeam * si[i]);
                 if (radGsw[i] > maxg) radGsw[i] = maxg;
                 // Calculate canopy absorbed radiation
                 radCsw[i] = (1.0 - albd) * Rdif[i] * svfa + (1.0 - albb) * Rbc;
@@ -1595,7 +1594,7 @@ radmodel2 twostreamvCpp(double reqhgt, double hgt, double pai, double paia, doub
             }
             // Calculate longwave radiation
             lwout[i] = 0.97 * 5.67 * pow(10, -8) * pow(tc[i] + 273.15, 4); // Longwave emitted
-            radGlw[i] = 0.97 * (trd * svfa * lwdown[i] + (1 - trd) * (1 - svfa) * lwout[i]);
+            radGlw[i] = 0.97 * (trdn * svfa * lwdown[i] + (1 - trdn) * lwout[i]);
             radClw[i] = 0.97 * svfa * lwdown[i];
         } // end for i
     } // end pai > 0
@@ -1721,9 +1720,7 @@ List twostreamgrid(double reqhgt, List micro)
             double pait = pai[i] / (1 - clump[i]);
             double rad = dirr[i] + difr[i];
             if (rad > 0.0) {
-                double chck = lref[i];
-                if (pai[i] < chck) chck = pai[i];
-                if (chck > 0.0) { 
+                if (pai[i] > 0.0) {
                     // ** Calculate base parameters
                     double om = lref[i] + ltra[i];
                     double a = 1 - om;
@@ -1765,16 +1762,25 @@ List twostreamgrid(double reqhgt, List micro)
                     double trbn = pow(clump[i], Kc);
                     if (trbn > 0.999) trbn = 0.999;
                     if (trbn < 0.0) trbn = 0.0;
-                    double gi = pow(clump[i], paia[i] / pai[i]);
-                    double giu = pow(clump[i], (pai[i] - paia[i]) / pai[i]);
-                    if (gi > 0.99) gi = 0.99;
-                    if (giu > 0.99) giu = 0.99;
+                    double gi, giu;
+                    if (clump[i] <= 0.0) {
+                        gi = 0.0;
+                        giu = 0.0;
+                    }
+                    else {
+                        gi = std::pow(clump[i], paia[i] / pai[i]);
+                        giu = std::pow(clump[i], (pai[i] - paia[i]) / pai[i]);
+                    }
+                    gi = std::min(gi, 0.99);
+                    giu = std::min(giu, 0.99);
                     double trd = gi * gi; // diffuse transmission downard
                     double trb = pow(gi, Kc); // direct tranmission downward
                     if (trb > 0.999) trb = 0.999;
                     if (trb < 0.0) trb = 0.0;
                     double trdu = giu * giu; // diffuse transmission upward
-                    double paiaa = paia[i] / (1.0 - gi); // paia adjusted for gap fraction
+                    double denom = 1.0 - gi;
+                    if (denom < 1e-6) denom = 1e-6;   // or whatever tolerance fits your physics
+                    double paiaa = paia[i] / denom; // paia adjusted for gap fraction
                     // white- and black-sky albedo
                     double amx = gref[i];
                     if (amx < lref[i]) amx = lref[i];
@@ -1789,28 +1795,28 @@ List twostreamgrid(double reqhgt, List micro)
                     if (Rddn_g > 1.0) Rddn_g = 1.0;
                     if (Rddn_g < 0.0) Rddn_g = 0.0;
                     // Normalised upward diffuse only at z
-                    double Rddn_z = (1.0 - trdu) * (p1 * exp(-h * paiaa) + p2 * exp(h * paiaa)) + trdu * gref[i];
-                    if (Rddn_z > 1.0) Rddn_z = 1.0;
-                    if (Rddn_z < 0.0) Rddn_z = 0.0;
-                    // Normalised donward diffuse only at z
-                    double Rdup_z = (1.0 - trd) * (p3 * exp(-h * paiaa) + p4 * exp(h * paiaa)) + trd;
+                    double Rdup_z = (1.0 - trdu) * (p1 * exp(-h * paiaa) + p2 * exp(h * paiaa)) + trdu * gref[i];
                     if (Rdup_z > 1.0) Rdup_z = 1.0;
                     if (Rdup_z < 0.0) Rdup_z = 0.0;
+                    // Normalised downward diffuse only at z
+                    double Rddn_z = (1.0 - trd) * (p3 * exp(-h * paiaa) + p4 * exp(h * paiaa)) + trd;
+                    if (Rddn_z > 1.0) Rddn_z = 1.0;
+                    if (Rddn_z < 0.0) Rddn_z = 0.0;
                     // Normalised contribution of direct to downward diffuse at ground
                     double Rdbdn_g = (1.0 - trbn) * ((p8 / -sig) * exp(-kd * pait) +
                         p9 * exp(-h * pait) + p10 * exp(h * pait));
                     if (Rdbdn_g > amx) Rdbdn_g = amx;
                     if (Rdbdn_g < 0.0) Rdbdn_g = 0.0;
                     // Normalised contribution of direct to upward diffuse at z
-                    double Rdbdn_z = (1.0 - trdu) * ((p5 / sig) * exp(-kd * paiaa) +
-                        p6 * exp(-h * paiaa) + p7 * exp(h * paiaa)) + trdu * gref[i];
-                    if (Rdbdn_z > amx) Rdbdn_z = amx;
-                    if (Rdbdn_z < 0.0) Rdbdn_z = 0.0;
-                    // Normalised contribution of direct to downward diffuse at z
-                    double Rdbup_z = (1.0 - trd) * ((p8 / -sig) * exp(-kd * paiaa) + 
-                        p9 * exp(-h * paiaa) + p10 * exp(h * paiaa)) + trd;
+                    double Rdbup_z = (1.0 - trdu * trbn) * ((p5 / sig) * exp(-kd * paiaa) +
+                        p6 * exp(-h * paiaa) + p7 * exp(h * paiaa)) + trdu * trbn * gref[i];
                     if (Rdbup_z > amx) Rdbup_z = amx;
                     if (Rdbup_z < 0.0) Rdbup_z = 0.0;
+                    // Normalised contribution of direct to downward diffuse at z
+                    double Rdbdn_z = (1.0 - trb) * ((p8 / -sig) * exp(-kd * paiaa) + 
+                        p9 * exp(-h * paiaa) + p10 * exp(h * paiaa));
+                    if (Rdbdn_z > amx) Rdbdn_z = amx;
+                    if (Rdbdn_z < 0.0) Rdbdn_z = 0.0;
                     // Calculate incident flux
                     double Rb = dirr[i] * cos(zen[i]);
                     double trg = trb + (1 - trb) * exp(-kd * pait); // tranmission to ground though gaps and leaves
@@ -1819,13 +1825,12 @@ List twostreamgrid(double reqhgt, List micro)
                     double Rdirg = (trbn + (1.0 - trbn) * exp(-kd * pait)) * dirr[i] * si[i];
                     radGsw[i] = (Rdirg + Rddn_g * difr[i] * svfa[i] +
                         Rdbdn_g * Rb) * (1.0 - gref[i]);
-                    double maxg = radGsw[i] = (1 - gref[i]) * (difr[i] * svfa[i] + dirr[i] * si[i]); 
+                    double maxg = (1 - gref[i]) * (difr[i] * svfa[i] + dirr[i] * si[i]); 
                     if (radGsw[i] > maxg) radGsw[i] = maxg;
                     // Calculate canopy and ground absorbed radiation
                     radCsw[i] = (1.0 - albd) * difr[i] * svfa[i] +
                         (1.0 - albb) * Rbc;
-                    // Calculate fluxes
-                    Rbdown[i] = ((1 - trb) * exp(-kd * paiaa) + trb) * dirr[i];
+                    Rbdown[i] = (trb + (1.0 - trb) * exp(-kd * paiaa)) * dirr[i];
                     Rddown[i] = Rddn_z * difr[i] * svfa[i] + Rdbdn_z * Rb;
                     Rdup[i] = Rdup_z * difr[i] * svfa[i] + Rdbup_z * Rb;
                     // Calculate leaf absorbed
@@ -1834,7 +1839,7 @@ List twostreamgrid(double reqhgt, List micro)
                 else {
                     radGsw[i] = (1 - gref[i]) * (difr[i] * svfa[i] + dirr[i] * si[i]); // Ground absorbed
                     radCsw[i] = radGsw[i];
-                    Rbdown[i] = dirr[i] * cos(zen[i]);
+                    Rbdown[i] = dirr[i];
                     Rddown[i] = difr[i] * svfa[i];
                     Rdup[i] = gref[i] * (difr[i] * svfa[i] + dirr[i] * cos(zen[i]));
                 }
@@ -1842,8 +1847,8 @@ List twostreamgrid(double reqhgt, List micro)
             // Calculate longwave radiation
             double trd = (1 - pow(clump[i], 2)) * exp(-pait) + pow(clump[i], 2);
             lwout[i] = 0.97 * 5.67 * pow(10, -8) * pow(tc[i] + 273.15, 4); // Longwave emitted
-            radGlw[i] = 0.97 * (trd * svfa[i] * lwdown[i] + (1 - trd) * (1 - svfa[i]) * lwout[i]);
-            radClw[i] = svfa[i] * lwdown[i];
+            radGlw[i] = 0.97 * (trd * svfa[i] * lwdown[i] + (1 - trd) * lwout[i]);
+            radClw[i] = 0.97 * svfa[i] * lwdown[i];
         } // end NA check
         else {
             radGsw[i] = NA_REAL;
@@ -1943,23 +1948,24 @@ NumericVector twostreampoint(double reqhgt, double hgt, double pai, double paia,
             if (trb > 0.999) trb = 0.999;
             if (trb < 0.0) trb = 0.0;
             // Normalised upward diffuse only at z
-            double Rddn_z = (1.0 - trdu) * (p1 * exp(-h * paiaa) + p2 * exp(h * paiaa)) + trdu * albg;
-            if (Rddn_z > 1.0) Rddn_z = 1.0;
-            if (Rddn_z < 0.0) Rddn_z = 0.0;
-            // Normalised downward diffuse only at z
-            double Rdup_z = (1.0 - trd) * (p3 * exp(-h * paiaa) + p4 * exp(h * paiaa)) + trd;
+            double Rdup_z = (1.0 - trdu) * (p1 * exp(-h * paiaa) + p2 * exp(h * paiaa)) + trdu * albg;
             if (Rdup_z > 1.0) Rdup_z = 1.0;
             if (Rdup_z < 0.0) Rdup_z = 0.0;
+            // Normalised downward diffuse only at z
+            double Rddn_z = (1.0 - trd) * (p3 * exp(-h * paiaa) + p4 * exp(h * paiaa)) + trd;
+            if (Rddn_z > 1.0) Rddn_z = 1.0;
+            if (Rddn_z < 0.0) Rddn_z = 0.0;
             // Normalised contribution of direct to upward diffuse at z
-            double Rdbdn_z = (1.0 - trdu) * ((p5 / sig) * exp(-kd * paiaa) +
-                p6 * exp(-h * paiaa) + p7 * exp(h * paiaa)) + trdu * albg;
-            if (Rdbdn_z > 1.0) Rdbdn_z = 1.0;
-            if (Rdbdn_z < 0.0) Rdbdn_z = 0.0;
-            // Normalised contribution of direct to downward diffuse at z
-            double Rdbup_z = (1.0 - trd) * ((p8 / -sig) * exp(-kd * paiaa) +
-                p9 * exp(-h * paiaa) + p10 * exp(h * paiaa)) + trd;
+            double trbn = pow(clump, Kc);
+            double Rdbup_z = (1.0 - trdu * trbn) * ((p5 / sig) * exp(-kd * paiaa) +
+                p6 * exp(-h * paiaa) + p7 * exp(h * paiaa)) + trdu * trbn * albg;
             if (Rdbup_z > 1.0) Rdbup_z = 1.0;
             if (Rdbup_z < 0.0) Rdbup_z = 0.0;
+            // Normalised contribution of direct to downward diffuse at z
+            double Rdbdn_z = (1.0 - trb) * ((p8 / -sig) * exp(-kd * paiaa) +
+                p9 * exp(-h * paiaa) + p10 * exp(h * paiaa));
+            if (Rdbdn_z > 1.0) Rdbdn_z = 1.0;
+            if (Rdbdn_z < 0.0) Rdbdn_z = 0.0;
             // Calculate incident flux
             double Rbeam = (Rsw - Rdif) / cos(zenr);
             double Rb = Rsw - Rdif;
@@ -6962,5 +6968,188 @@ double leafrcpp(double om, double pai, double gref, double albin, double x, doub
     //  albedo
     double albw = p1 + p2;
     double out = albw - albin;
+    return out;
+}
+// Test wrappers: microclimate model
+// [[Rcpp::export]]
+DataFrame microclimatemodel_wrapper(DataFrame obstime, DataFrame climdata,
+    std::vector<double> vegp, std::vector<double> groundp,
+    double reqhgt, double zref, double lat, double lon)
+{
+    // Access items of obstime
+    std::vector<int> year = obstime["year"];
+    std::vector<int> month = obstime["month"];
+    std::vector<int> day = obstime["day"];
+    std::vector<double> hour = obstime["hour"];
+    // Access columns of climdata
+    std::vector<double> tc = climdata["temp"];
+    std::vector<double> rh = climdata["relhum"];
+    std::vector<double> pk = climdata["pres"];
+    std::vector<double> Rsw = climdata["swdown"];
+    std::vector<double> Rdif = climdata["difrad"];
+    std::vector<double> Rlw = climdata["lwdown"];
+    std::vector<double> wspeed = climdata["windspeed"];
+    std::vector<double> wdir = climdata["winddir"];
+    std::vector<double> prec = climdata["precip"];
+    // Access items of vegp
+    double h = vegp[0];
+    double pai = vegp[1];
+    double vegx = vegp[2];
+    double clump = vegp[3];
+    double lref = vegp[4];
+    double ltra = vegp[5];
+    double leafd = vegp[6];
+    double gsmax = vegp[7];
+    // Access items of groundp
+    double gref = groundp[0];
+    double slope = groundp[1];
+    double aspect = groundp[2];
+    double rho = groundp[3];
+    double Vm = groundp[4];
+    double Vq = groundp[5];
+    double Mc = groundp[6];
+    double Smin = groundp[7];
+    double Smax = groundp[8];
+    // Compute additional climate variables and solar zenith and si
+    int n = static_cast<int>(tc.size());
+    std::vector<double> ea(n);
+    std::vector<double> es(n);
+    std::vector<double> tdew(n);
+    std::vector<double> zen(n);
+    std::vector<double> zenr(n);
+    std::vector<double> azi(n);
+    std::vector<double> si(n);
+    std::vector<double> gHa(n);
+    std::vector<double> umu(n);
+    std::vector<double> ws(n);
+    std::vector<double> soilm(n);
+    for (int i = 0; i < n; ++i) {
+        es[i] = satvapCpp(tc[i]);
+        ea[i] = es[i] * (rh[i] / 100.0);
+        tdew[i] = dewpointCpp(tc[i], ea[i]);
+        std::vector<double> sp = solpositionCpp(lat, lon, year[i], month[i], day[i], hour[i]);
+        zen[i] = sp[0];
+        zenr[i] = zen[i] * M_PI / 180.0;
+        azi[i] = sp[1];
+        si[i] = solarindexCpp(slope, aspect, zen[i], azi[i]);
+        soilm[i] = 0.3;
+        umu[i] = 1.0;
+        ws[i] = 1.0;
+    }
+    // Run Bigleaf model
+    DataFrame BLout = BigLeafCpp(obstime, climdata, vegp, groundp, soilm,
+        lat, lon, 25.0, zref, 100, 0.5, 0.5, 0.1, false);
+    std::vector<double> varT0 = BLout["Tc"];
+    std::vector<double> varTg = BLout["Tg"];
+    std::vector<double> uf = BLout["uf"];
+    std::vector<double> G = BLout["G"];
+    std::vector<double> psi_h = BLout["psih"];
+    if (reqhgt >= 0) {
+        // Compute radiation variables
+        double paia = 0;
+        if (reqhgt < h) paia = (1.0 - reqhgt / h) * pai;
+        radmodel2 radvars = twostreamvCpp(reqhgt, h, pai, paia, vegx, lref, ltra,
+            clump, gref, 1.0, si, zenr, Rsw, Rdif, tc, Rlw);
+        if (reqhgt == 0) {
+            DataFrame df = DataFrame::create(
+                _["Tz"] = varTg,
+                _["soilm"] = soilm,
+                _["Rdirdown"] = radvars.Rbdown,
+                _["Rdifdown"] = radvars.Rddown,
+                _["Rlwdown"] = radvars.radGlw,
+                _["Rswup"] = radvars.Rdup,
+                _["Rlwup"] = radvars.lwout
+            );
+            return df;
+        } // end ground level
+        else {
+            // Compute additional variables
+            double mxtc = -99.9;
+            for (int i = 0; i < n; ++i) if (tc[i] > mxtc) mxtc = tc[i];
+            double leafden = pai / h;
+            // Calculate wind speed
+            windmodel wm = windvCpp(reqhgt, zref, wspeed, umu, h, pai, ws);
+            std::vector<double> uz = wm.uz;
+            std::vector<double> gHa = wm.gHa;
+            // Calculate temperature or vapour pressure above ground (zen in radiations)
+            abovemodel out = TVabovegroundv(reqhgt, zref, tc, pk, ea, es, tdew,
+                Rsw, Rlw, varT0, uz, uf, gHa, zenr, radvars.radCsw, radvars.radClw,
+                radvars.radLsw, radvars.Rddown, radvars.Rbdown,
+                soilm, G, h, pai, paia, leafd, leafden, Smin, Smax, gsmax, mxtc);
+            // Return outputs
+            DataFrame df = DataFrame::create(
+                _["Tz"] = out.Tz,
+                _["tleaf"] = out.tleaf,
+                _["rh"] = out.rh,
+                _["uz"] = uz,
+                _["Rdirdown"] = radvars.Rbdown,
+                _["Rdifdown"] = radvars.Rddown,
+                _["Rswup"] = radvars.Rdup,
+                _["Rlwdown"] = out.lwdn,
+                _["Rlwup"] = out.lwup
+            );
+            return df;
+        } // above ground
+    } // end not below ground
+    else {
+        // Compute meanD
+        double mu1 = 2400 * rho / 2.64;
+        double mu2 = 1.06 * rho;
+        double frs = Vm + Vq;
+        double c1 = (0.57 + 1.73 * Vq + 0.93 * Vm) / (1 - 0.74 * Vq - 0.49 * Vm) - 2.8 * frs * (1 - frs);
+        double c3 = 1 + 2.6 * pow(Mc, -0.5);
+        double c4 = 0.03 + 0.7 * frs * frs;
+        double sumD = 0.0;
+        for (int i = 0; i < n; ++i) {
+            double cs = mu1 + 4180 * soilm[i];
+            double ph = (rho * (1 - soilm[i]) + soilm[i]) * 1000;
+            double c2 = mu2 * soilm[i];
+            double k = c1 + c2 * soilm[i] - (c1 - c4) * exp(-pow(c3 * soilm[i], 4));
+            double ka = k / (cs * ph);
+            double omdy = (2 * M_PI) / (24 * 3600);
+            double DD = sqrt(2 * ka / omdy);
+            sumD += DD;
+        }
+        double meanD = sumD / static_cast<double>(n);
+        // Compute temperature below ground
+        double nb = -118.35 * reqhgt / meanD;
+        int nn = static_cast<int>(std::round(nb));
+        std::vector<double> Tz = manCpp(varTg, nn);
+        DataFrame df = DataFrame::create(
+            _["Tz"] = Tz,
+            _["soilm"] = soilm
+        );
+        return df;
+    } // end below ground
+}
+// Test wrappers: snow model
+// [[Rcpp::export]]
+std::vector<double> snowoneBtest(std::vector<double> obstime,
+    std::vector<double> clim,
+    std::vector<double> vegp,
+    double albedo, double initdepth,
+    double lat, double lon, double zref)
+{
+    // Current variables
+    // ** obstime: year, month, day, hour
+    // ** clim: tc, rh, pk, swdown, difrad, lwdown, winddir, prec
+    // ** vegp: pai, hgt, ltra, clump
+    // ** snow: alb, sdenc, sdepc, sdepg
+    // ** other: slope, aspect, lat, lon, psim, psih, G, zref
+    // Do clim data conversions current is
+    double ea = satvapCpp(clim[0]) * clim[1] / 100.0;
+    clim[1] = ea;
+    clim[8] = clim[1];
+    // Create snow variables
+    double sden = (0.3401 * (1 - exp(-1e-5 * initdepth)) + 0.2578) * 1000;
+    std::vector<double> snow = { albedo,  sden, sden, 0.5 * initdepth , 0.5 * initdepth };
+    std::vector<double> other = { 0.0, 180.0, lat, lon, 0.0, 0.0, 0.0, zref };
+    std::vector<double> out = snowoneB(obstime, clim, vegp, snow, other, 1.0);
+    // out: canopy + ground (0-3) 
+    //  temperature (deg C), sublimation (m SWE), temperature melt (m SWE), rain melt (m SWE)
+    // out: ground only (4-7) 
+    // temperature (deg C), sublimation (m SWE), temperature melt (m SWE), rain melt (m SWE)
+    // other (8-14):
+    // cis, uf, RswabsG, RlwabsG; transmission, gHa, Tcp
     return out;
 }

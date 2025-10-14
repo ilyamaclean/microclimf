@@ -2,7 +2,7 @@
 % Please edit documentation in R/dataprep.R
 \name{vegpfromhab}
 \alias{vegpfromhab}
-\title{Generate vegpetation paramaters form habitat type}
+\title{Generate vegetation parameters form habitat type}
 \usage{
 vegpfromhab(
   habitats,

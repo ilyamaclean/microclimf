@@ -80,7 +80,7 @@ runpointmodel<-function(weather, reqhgt = 0.05, dtm, vegp, soilc, runchecks = TR
   tme<-as.POSIXlt(weather$obs_time,tz="UTC")
   obstime<-data.frame(year=tme$year+1900,month=tme$mon+1,day=tme$mday,hour=tme$hour+tme$min/60+tme$sec/3600)
   weather$obs_time<-NULL
-  # Create point model-type vegetation properites input
+  # Create point model-type vegetation properties input
   up<-.unpack(dtm,vegp,soilc)
   dtm<-up$dtm
   vegp<-up$vegp
@@ -317,7 +317,7 @@ runpointmodela<-function(climarrayr, tme, reqhgt = 0.05, dtm, vegp, soilc, matem
 #'   \item{Tz}{Soil surface temperatures (deg C)}
 #'   \item{soilm}{Volumtric water fraction in 10 cm of soil (m^3/m^3)}
 #'   \item{Rdirdown}{Flux density of downward direct radiation at `reqhgt` (W/m^2 - on the horizontal}
-#'   \item{Rdirdown}{Flux density of downward diffuse radiation at `reqhgt` (W/m^2)}
+#'   \item{Rdifdown}{Flux density of downward diffuse radiation at `reqhgt` (W/m^2)}
 #'   \item{Rlwdown}{Flux density of downward longwave radiation at `reqhgt` (W/m^2)}
 #'   \item{Rswup}{Flux density of upward shorwtave radiation at `reqhgt` (W/m^2), assumed diffuse}
 #'   \item{Rlwup}{Flux density of downward longwave radiation at `reqhgt` (W/m^2)}

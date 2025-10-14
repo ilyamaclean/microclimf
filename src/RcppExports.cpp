@@ -849,6 +849,42 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// microclimatemodel_wrapper
+DataFrame microclimatemodel_wrapper(DataFrame obstime, DataFrame climdata, std::vector<double> vegp, std::vector<double> groundp, double reqhgt, double zref, double lat, double lon);
+RcppExport SEXP _microclimf_microclimatemodel_wrapper(SEXP obstimeSEXP, SEXP climdataSEXP, SEXP vegpSEXP, SEXP groundpSEXP, SEXP reqhgtSEXP, SEXP zrefSEXP, SEXP latSEXP, SEXP lonSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< DataFrame >::type obstime(obstimeSEXP);
+    Rcpp::traits::input_parameter< DataFrame >::type climdata(climdataSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type vegp(vegpSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type groundp(groundpSEXP);
+    Rcpp::traits::input_parameter< double >::type reqhgt(reqhgtSEXP);
+    Rcpp::traits::input_parameter< double >::type zref(zrefSEXP);
+    Rcpp::traits::input_parameter< double >::type lat(latSEXP);
+    Rcpp::traits::input_parameter< double >::type lon(lonSEXP);
+    rcpp_result_gen = Rcpp::wrap(microclimatemodel_wrapper(obstime, climdata, vegp, groundp, reqhgt, zref, lat, lon));
+    return rcpp_result_gen;
+END_RCPP
+}
+// snowoneBtest
+std::vector<double> snowoneBtest(std::vector<double> obstime, std::vector<double> clim, std::vector<double> vegp, double albedo, double initdepth, double lat, double lon, double zref);
+RcppExport SEXP _microclimf_snowoneBtest(SEXP obstimeSEXP, SEXP climSEXP, SEXP vegpSEXP, SEXP albedoSEXP, SEXP initdepthSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP zrefSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<double> >::type obstime(obstimeSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type clim(climSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type vegp(vegpSEXP);
+    Rcpp::traits::input_parameter< double >::type albedo(albedoSEXP);
+    Rcpp::traits::input_parameter< double >::type initdepth(initdepthSEXP);
+    Rcpp::traits::input_parameter< double >::type lat(latSEXP);
+    Rcpp::traits::input_parameter< double >::type lon(lonSEXP);
+    Rcpp::traits::input_parameter< double >::type zref(zrefSEXP);
+    rcpp_result_gen = Rcpp::wrap(snowoneBtest(obstime, clim, vegp, albedo, initdepth, lat, lon, zref));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_solpositionCpp", (DL_FUNC) &_microclimf_solpositionCpp, 6},
@@ -903,6 +939,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_gridmodelsnow2", (DL_FUNC) &_microclimf_gridmodelsnow2, 6},
     {"_microclimf_gridmicrosnow2", (DL_FUNC) &_microclimf_gridmicrosnow2, 8},
     {"_microclimf_leafrcpp", (DL_FUNC) &_microclimf_leafrcpp, 6},
+    {"_microclimf_microclimatemodel_wrapper", (DL_FUNC) &_microclimf_microclimatemodel_wrapper, 8},
+    {"_microclimf_snowoneBtest", (DL_FUNC) &_microclimf_snowoneBtest, 8},
     {NULL, NULL, 0}
 };
 

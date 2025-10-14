@@ -103,7 +103,7 @@ If `reqhgt == 0`:
   \item{Tz}{Soil surface temperatures (deg C)}
   \item{soilm}{Volumtric water fraction in 10 cm of soil (m^3/m^3)}
   \item{Rdirdown}{Flux density of downward direct radiation at `reqhgt` (W/m^2 - on the horizontal}
-  \item{Rdirdown}{Flux density of downward diffuse radiation at `reqhgt` (W/m^2)}
+  \item{Rdifdown}{Flux density of downward diffuse radiation at `reqhgt` (W/m^2)}
   \item{Rlwdown}{Flux density of downward longwave radiation at `reqhgt` (W/m^2)}
   \item{Rswup}{Flux density of upward shorwtave radiation at `reqhgt` (W/m^2), assumed diffuse}
   \item{Rlwup}{Flux density of downward longwave radiation at `reqhgt` (W/m^2)}
