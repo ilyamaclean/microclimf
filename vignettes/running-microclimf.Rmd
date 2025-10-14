@@ -665,7 +665,7 @@ are required. To ensure a sensible snow budget the point model is used to calcul
 
 ```{r eval=FALSE}
 # Run and subset micropoint model using inbuilt datasets
-climdata$temp <- climdata$temp - 8 # Make it colder so there is snow
+climdata$temp <- climdata$temp - 8 # Make it colder so that there is snow
 micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc) 
 micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmin")
 # Run the snow model using the quick method
