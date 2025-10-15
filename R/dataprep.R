@@ -1233,7 +1233,7 @@ resampleclimdata <- function(climarrayr, dtm) {
     }
     # convert back to wind speed and direction
     ws <- sqrt(climarrayr[[7]]^2 + climarrayr[[8]]^2)
-    wd <- atan2(-u, -v) * 180 / pi
+    wd <- atan2(-climarrayr[[7]], -climarrayr[[8]]) * 180 / pi
     wd <- wd%% 360
     climarrayr[[7]] <- ws
     climarrayr[[8]] <- wd
