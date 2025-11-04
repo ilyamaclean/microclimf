@@ -6801,6 +6801,8 @@ List gridmicrosnow2(double reqhgt, DataFrame obstime, List climdata, List snowm,
     NumericVector Rlwdown;
     NumericVector Rswup;
     NumericVector Rlwup;
+    // aperm Tzd
+    Tzd = aperm3D2(Tzd, rows, cols, tsteps);
     if (out[0]) Tz = aperm3D2(micro["Tz"], rows, cols, tsteps);
     if (out[1]) tleaf = aperm3D2(micro["tleaf"], rows, cols, tsteps);
     if (out[2]) relhum = aperm3D2(micro["relhum"], rows, cols, tsteps);

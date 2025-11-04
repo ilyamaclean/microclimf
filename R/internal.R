@@ -2960,7 +2960,7 @@ flowacc<-function (dtm, basins = NA) {
     msl<-tan(apply(atan(other$hor),c(1,2),mean))
     other$skyview<-0.5*cos(2*msl)+0.5
     ss<-1
-    if (res(dtm)[1]<=100) ss<-10
+    if (res(dtm)[1]<=100 && min(dms) >= 10) ss<-10
     other$wsa<-.windsheltera(dtms,zref,ss)
     # calaculate s
     st<-(day-1)*(5*24)+1

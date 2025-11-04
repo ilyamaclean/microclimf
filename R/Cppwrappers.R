@@ -76,6 +76,8 @@ runpointmodel<-function(weather, reqhgt = 0.05, dtm, vegp, soilc, runchecks = TR
   if (zref != windhgt) {
     weather$windspeed<-weather$windspeed*log(67.8*zref-5.42)/log(67.8*windhgt-5.42)
   }
+  # set yearG to false if weather does not contain data for a year
+  if (length(weather$temp) < 8760) yearG = FALSE
   # Create date data.frame of obstime
   tme<-as.POSIXlt(weather$obs_time,tz="UTC")
   obstime<-data.frame(year=tme$year+1900,month=tme$mon+1,day=tme$mday,hour=tme$hour+tme$min/60+tme$sec/3600)
