@@ -937,12 +937,12 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme 
   leaft<-0.5*leafr
   if (clump0 == F) {
     for (i in 1:dim(pai)[3]) clump[,,i]<-clumpestimate(hgt, leafd, .is(pai)[,,i])
-    clump <- .rast(clump,habitats)
   }
   # Convert to rasters
   if (class(hgts)=="logical") {
     hgt<-.rast(hgt,habitats)
   } else hgt<-hgts
+  clump <- .rast(clump,habitats)
   x<-.rast(x,habitats)
   gsmax<-.rast(gsmax,habitats)
   leafr<-.rast(leafr,habitats)
