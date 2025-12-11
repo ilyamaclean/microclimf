@@ -390,6 +390,7 @@ runmicro <- function(micropoint, reqhgt, vegp, soilc, dtm, dtmc = NA, altcorrect
     mout<-.runmicronosnow(micropoint,reqhgt,vegp,soilc,dtm,dtmc,altcorrect,runchecks,
                     pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
   }
+  mout$tme<-as.POSIXct(micropoint[[1]]$tmeorig)
   return(mout)
 }
 #' runmicro on big areas
