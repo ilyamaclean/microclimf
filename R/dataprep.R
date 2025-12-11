@@ -1053,7 +1053,6 @@ leafrfromalb<-function(pai, x, alb, ltrr = 0.5) {
 #' @export
 writetonc <- function(mout, fileout, dtm, reqhgt) {
   atonc<-function(a,rd) {
-    a<-apply(a,c(2,3),rev)
     a<-aperm(a,c(2,1,3))
     a <- round(a*rd,0)
     a <-array(as.integer(a),dim=dim(a))
