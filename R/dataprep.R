@@ -1084,6 +1084,9 @@ writetonc <- function(mout, fileout, dtm, reqhgt) {
     }
   }
   # Variable names
+  # Create CRS variable
+  crs_var <- ncvar_def("crs", "", list(), prec="integer")
+
   if (reqhgt > 0) {
     tname<-paste0("Air temperature at height ",reqhgt," m")
     lname<-paste0("Leaf temperature at height ",reqhgt," m")
@@ -1108,9 +1111,10 @@ writetonc <- function(mout, fileout, dtm, reqhgt) {
                       missval=-9999,compression=9,prec="integer")
     radulw<-ncvar_def(name="Rlwup",longname="Upward longwave radiation",units="W/m^2",dim=list(east,north,times),
                       missval=-9999,compression=9,prec="integer")
+    
     # Create nc file
     nc.name<-fileout
-    ncnew<-nc_create(filename=nc.name,list(airtemp,leaftemp,relhum,windspeed,raddir,raddif,radlw,radusw,radulw))
+    ncnew<-nc_create(filename=nc.name,list(airtemp,leaftemp,relhum,windspeed,raddir,raddif,radlw,radusw,radulw, crs_var))
     # Put variables in
     ncvar_put(ncnew,airtemp,vals=atonc(mout$Tz,100))
     ncvar_put(ncnew,leaftemp,vals=atonc(mout$tleaf,100))
@@ -1143,7 +1147,7 @@ writetonc <- function(mout, fileout, dtm, reqhgt) {
                       missval=-9999,compression=9,prec="integer")
     # Create nc file
     nc.name<-fileout
-    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist,raddir,raddif,radlw,radusw,radulw))
+    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist,raddir,raddif,radlw,radusw,radulw, crs_var))
     # Put variables in
     ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))
     ncvar_put(ncnew,soilmoist,vals=atonc(mout$soilm,100))
@@ -1163,7 +1167,7 @@ writetonc <- function(mout, fileout, dtm, reqhgt) {
     soilmoist<-ncvar_def(name="soilm",longname="Soil surface moisture",units="Percentage volume",dim=list(east,north,times),
                          missval=-9999,compression=9,prec="integer")
     nc.name<-fileout
-    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist))
+    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist, crs_var))
     # Put variables in
     ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))
     ncvar_put(ncnew,soilmoist,vals=atonc(mout$soilm,100))
