@@ -911,7 +911,7 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme 
   uh<-unique(as.vector(m))
   uh<-uh[is.na(uh)==F]
   # pai test
-  pte<-base::mean(pai,na.rm=T)
+  base::mean(terra::values(pai_local), na.rm = T)
   # Create blank array for pai
   if (is.na(pte)) {
     paii<-.paifromhabitat(1, lat, long, tme)
