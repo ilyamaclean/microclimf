@@ -1170,7 +1170,7 @@ writetonc <- function(mout, fileout, dtm, reqhgt, vars = NULL) {
     nc_close(ncnew)
   }
   if (reqhgt == 0) {
-    if(is.null(vars) vars = c("Tz","soilm","Rdirdown","Rdifdown","Rlwdown","Rswup","Rlwup")
+    if(is.null(vars)) vars = c("Tz","soilm","Rdirdown","Rdifdown","Rlwdown","Rswup","Rlwup")
     nclist<-list()
     if("Tz" %in% vars) {
       soiltemp<-ncvar_def(name="Tz",longname="Soil surface temperature",units="deg C x 100",dim=list(east,north,times),
