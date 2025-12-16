@@ -1066,7 +1066,23 @@ writetonc <- function(mout, fileout, dtm, reqhgt) {
   north<-ncdim_def(name="north",units="metres",vals=nth,longname="Northings")
   # Create time variable
   tme<-as.POSIXct(mout$tme)
-  times<-ncdim_def(name="Time",units="Decimal hours since 1970-01-01 00:00",vals=as.numeric(tme)/3600)
+  times<-ncdim_def(name="time",units="hours since 1970-01-01 00:00",vals=as.numeric(tme)/3600)
+    # Add CRS function
+  add_crs_info <- function(ncnew, var_names) {
+    # Add CRS variable and attributes
+    ncvar_put(ncnew, "crs", 1)
+    ncatt_put(ncnew, "crs", "crs_wkt", as.character(crs(dtm)))
+    ncatt_put(ncnew, "crs", "grid_mapping_name", "longitude_latitude")
+    
+    # Add time attributes
+    ncatt_put(ncnew, "time", "standard_name", "time")
+    ncatt_put(ncnew, "time", "calendar", "gregorian")
+    
+    # Add grid_mapping attribute to each variable
+    for(var_name in var_names) {
+      ncatt_put(ncnew, var_name, "grid_mapping", "crs")
+    }
+  }
   # Variable names
   if (reqhgt > 0) {
     tname<-paste0("Air temperature at height ",reqhgt," m")
@@ -1105,7 +1121,8 @@ writetonc <- function(mout, fileout, dtm, reqhgt) {
     ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))
     ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))
     ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))
-    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    # Add CRS information
+    add_crs_info(ncnew, c("Tz","tleaf","relhum","windspeed","Rdirdown","Rdifdown","Rlwdown","Rswup","Rlwup"))
     nc_close(ncnew)
   }
   if (reqhgt == 0) {
@@ -1135,7 +1152,8 @@ writetonc <- function(mout, fileout, dtm, reqhgt) {
     ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))
     ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))
     ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))
-    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    # Add CRS information
+    add_crs_info(ncnew, c("Tz","tleaf","relhum","windspeed","Rdirdown","Rdifdown","Rlwdown","Rswup","Rlwup"))
     nc_close(ncnew)
   }
   if (reqhgt < 0) {
@@ -1149,7 +1167,8 @@ writetonc <- function(mout, fileout, dtm, reqhgt) {
     # Put variables in
     ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))
     ncvar_put(ncnew,soilmoist,vals=atonc(mout$soilm,100))
-    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    # Add CRS information
+    add_crs_info(ncnew, c("Tz","tleaf","relhum","windspeed","Rdirdown","Rdifdown","Rlwdown","Rswup","Rlwup"))
     nc_close(ncnew)
   }
 }
