@@ -910,10 +910,8 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme 
   m<-.is(habitats)
   uh<-unique(as.vector(m))
   uh<-uh[is.na(uh)==F]
-  # pai test
-  pte<-base::mean(pai,na.rm=T)
   # Create blank array for pai
-  if (is.na(pte)) {
+  if (class(pai)[1] == "logical") {
     paii<-.paifromhabitat(1, lat, long, tme)
     pai<-array(NA,dim=c(dim(m),length(paii)))
   }
@@ -921,7 +919,7 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme 
   x<-m; gsmax<-m; leafr<-m; leafd<-m; hgt<-m
   for (i in uh) {
     sel<-which(m==i)
-    if (is.na(pte)) {
+    if (class(pai)[1] == "logical") {
       paii<-.paifromhabitat(i, lat, long, tme)
       pai<-.poparray(pai,sel,paii)
     }
@@ -937,8 +935,8 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme 
   leaft<-0.5*leafr
   if (clump0 == F) {
     for (i in 1:dim(pai)[3]) clump[,,i]<-clumpestimate(hgt, leafd, .is(pai)[,,i])
-    clump <- .rast(clump,habitats)
   }
+  clump <- .rast(clump,habitats)
   # Convert to rasters
   if (class(hgts)=="logical") {
     hgt<-.rast(hgt,habitats)
