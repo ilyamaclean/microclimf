@@ -4,7 +4,7 @@
 \alias{writetonc}
 \title{Writes model output as ncdf4 file}
 \usage{
-writetonc(mout, fileout, dtm, reqhgt)
+writetonc(mout, fileout, dtm, reqhgt, vars = NULL)
 }
 \arguments{
 \item{mout}{an object of class microut as returned by runmicro_hr or runmicro_dy with expand = TRUE}
@@ -14,6 +14,9 @@ writetonc(mout, fileout, dtm, reqhgt)
 \item{dtm}{a SpatRast covering the extent of the model outputs}
 
 \item{reqhgt}{at at which model was run (m)}
+
+\item{vars}{character vector of variables to save (names as specified in output of runmicro).
+if vars = NULL, all default outputs are saved}
 }
 \description{
 The function `writetonc` writes hourly model outputs as an ncdf4 file to a specified file

@@ -706,6 +706,98 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// leafrcpp
+double leafrcpp(double lref, double pai, double gref, double x, double albin, double ltrr);
+RcppExport SEXP _microclimf_leafrcpp(SEXP lrefSEXP, SEXP paiSEXP, SEXP grefSEXP, SEXP xSEXP, SEXP albinSEXP, SEXP ltrrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type lref(lrefSEXP);
+    Rcpp::traits::input_parameter< double >::type pai(paiSEXP);
+    Rcpp::traits::input_parameter< double >::type gref(grefSEXP);
+    Rcpp::traits::input_parameter< double >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type albin(albinSEXP);
+    Rcpp::traits::input_parameter< double >::type ltrr(ltrrSEXP);
+    rcpp_result_gen = Rcpp::wrap(leafrcpp(lref, pai, gref, x, albin, ltrr));
+    return rcpp_result_gen;
+END_RCPP
+}
+// solve_lref
+double solve_lref(double pai, double gref, double x, double albin, double ltrr, double tol, int max_iter);
+RcppExport SEXP _microclimf_solve_lref(SEXP paiSEXP, SEXP grefSEXP, SEXP xSEXP, SEXP albinSEXP, SEXP ltrrSEXP, SEXP tolSEXP, SEXP max_iterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type pai(paiSEXP);
+    Rcpp::traits::input_parameter< double >::type gref(grefSEXP);
+    Rcpp::traits::input_parameter< double >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type albin(albinSEXP);
+    Rcpp::traits::input_parameter< double >::type ltrr(ltrrSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
+    rcpp_result_gen = Rcpp::wrap(solve_lref(pai, gref, x, albin, ltrr, tol, max_iter));
+    return rcpp_result_gen;
+END_RCPP
+}
+// solve_gref
+double solve_gref(double lref, double pai, double x, double albin, double ltrr, double tol, int max_iter);
+RcppExport SEXP _microclimf_solve_gref(SEXP lrefSEXP, SEXP paiSEXP, SEXP xSEXP, SEXP albinSEXP, SEXP ltrrSEXP, SEXP tolSEXP, SEXP max_iterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type lref(lrefSEXP);
+    Rcpp::traits::input_parameter< double >::type pai(paiSEXP);
+    Rcpp::traits::input_parameter< double >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type albin(albinSEXP);
+    Rcpp::traits::input_parameter< double >::type ltrr(ltrrSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
+    rcpp_result_gen = Rcpp::wrap(solve_gref(lref, pai, x, albin, ltrr, tol, max_iter));
+    return rcpp_result_gen;
+END_RCPP
+}
+// find_lref
+NumericMatrix find_lref(NumericMatrix pai, NumericMatrix gref, NumericMatrix x, NumericMatrix albin, double ltrr);
+RcppExport SEXP _microclimf_find_lref(SEXP paiSEXP, SEXP grefSEXP, SEXP xSEXP, SEXP albinSEXP, SEXP ltrrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type pai(paiSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type gref(grefSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type albin(albinSEXP);
+    Rcpp::traits::input_parameter< double >::type ltrr(ltrrSEXP);
+    rcpp_result_gen = Rcpp::wrap(find_lref(pai, gref, x, albin, ltrr));
+    return rcpp_result_gen;
+END_RCPP
+}
+// find_gref
+NumericMatrix find_gref(NumericMatrix lref, NumericMatrix pai, NumericMatrix x, NumericMatrix albin, double ltrr);
+RcppExport SEXP _microclimf_find_gref(SEXP lrefSEXP, SEXP paiSEXP, SEXP xSEXP, SEXP albinSEXP, SEXP ltrrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type lref(lrefSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type pai(paiSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type albin(albinSEXP);
+    Rcpp::traits::input_parameter< double >::type ltrr(ltrrSEXP);
+    rcpp_result_gen = Rcpp::wrap(find_gref(lref, pai, x, albin, ltrr));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fill_naCpp
+NumericMatrix fill_naCpp(NumericMatrix m, NumericMatrix mask);
+RcppExport SEXP _microclimf_fill_naCpp(SEXP mSEXP, SEXP maskSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type m(mSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mask(maskSEXP);
+    rcpp_result_gen = Rcpp::wrap(fill_naCpp(m, mask));
+    return rcpp_result_gen;
+END_RCPP
+}
 // microclimatemodel_wrapper
 DataFrame microclimatemodel_wrapper(DataFrame obstime, DataFrame climdata, List BLout, std::vector<double> vegp, std::vector<double> groundp, double reqhgt, double zref, double lat, double lon);
 RcppExport SEXP _microclimf_microclimatemodel_wrapper(SEXP obstimeSEXP, SEXP climdataSEXP, SEXP BLoutSEXP, SEXP vegpSEXP, SEXP groundpSEXP, SEXP reqhgtSEXP, SEXP zrefSEXP, SEXP latSEXP, SEXP lonSEXP) {
@@ -768,6 +860,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_meltmu2", (DL_FUNC) &_microclimf_meltmu2, 3},
     {"_microclimf_snowdaysfun", (DL_FUNC) &_microclimf_snowdaysfun, 2},
     {"_microclimf_applycpp3", (DL_FUNC) &_microclimf_applycpp3, 2},
+    {"_microclimf_leafrcpp", (DL_FUNC) &_microclimf_leafrcpp, 6},
+    {"_microclimf_solve_lref", (DL_FUNC) &_microclimf_solve_lref, 7},
+    {"_microclimf_solve_gref", (DL_FUNC) &_microclimf_solve_gref, 7},
+    {"_microclimf_find_lref", (DL_FUNC) &_microclimf_find_lref, 5},
+    {"_microclimf_find_gref", (DL_FUNC) &_microclimf_find_gref, 5},
+    {"_microclimf_fill_naCpp", (DL_FUNC) &_microclimf_fill_naCpp, 2},
     {"_microclimf_microclimatemodel_wrapper", (DL_FUNC) &_microclimf_microclimatemodel_wrapper, 9},
     {NULL, NULL, 0}
 };

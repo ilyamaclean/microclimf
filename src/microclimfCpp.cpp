@@ -9,6 +9,7 @@
 #include <tuple>
 #include <cfloat> 
 #include <numeric>
+#include <queue>
 using namespace Rcpp;
 constexpr double pi = 3.14159265358979323846;
 constexpr double torad = 3.14159265358979323846 / 180.0;
@@ -5554,8 +5555,198 @@ NumericVector applycpp3(NumericVector a, std::string fun_name) {
     }
     return result;
 }
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
+// ************************************** Functions used to calculate leaf and ground reflectance ************************* //
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
+// Function used to calculate leaf or ground reflectance solve
+// [[Rcpp::export]]
+double leafrcpp(double lref, double pai, double gref, double x, double albin, double ltrr)
+{
+    // Base parameters
+    double ltra = ltrr * lref;
+    double om = lref + ltra;
+    double a = 1 - om;
+    double del = lref - ltra;
+    double J = 1.0 / 3.0;
+    if (x != 1.0) {
+        double mla = 9.65 * std::pow((3 + x), -1.65);
+        if (mla > pi / 2) mla = pi / 2.0;
+        J = std::cos(mla) * std::cos(mla);
+    }
+    double gma = 0.5 * (om + J * del);
+    double h = std::sqrt(a * a + 2 * a * gma);
+    // Calculate base parameters: diffuse
+    double S1 = std::exp(-h * pai);
+    double u1 = a + gma * (1 - 1 / gref);
+    double D1 = (a + gma + h) * (u1 - h) * 1 / S1 - (a + gma - h)
+        * (u1 + h) * S1;
+    // Calculate parameters: diffuse
+    double p1 = (gma / (D1 * S1)) * (u1 - h);
+    double p2 = (-gma * S1 / D1) * (u1 + h);
+    double albd = p1 + p2;
+    // Output
+    double out = albd - albin;
+    return out;
+}
+// Root-finding function using the bisection method: leafr
+// [[Rcpp::export]]
+double solve_lref(double pai, double gref, double x, double albin, double ltrr, double tol = 1e-6, int max_iter = 100) {
+    double lower = 0.0001;
+    double upper = 0.6665;
+    // check whether between lower and mid or mid and upper
+    double mid = 0.0;
+    for (int iter = 0; iter < max_iter; iter++) {
+        mid = (lower + upper) / 2.0;
+        double f_lower = leafrcpp(lower, pai, gref, x, albin, ltrr);
+        double f_mid = leafrcpp(mid, pai, gref, x, albin, ltrr);
+        if (std::abs(f_mid) < tol) {
+            return mid; // Root found
+        }
+        if (f_lower * f_mid < 0) {
+            upper = mid; // Root lies in the lower half
+        }
+        else {
+            lower = mid; // Root lies in the upper half
+        }
+    }
+    return mid; // Should never reach here
+}
+// Root-finding function using the bisection method: gref
+// [[Rcpp::export]]
+double solve_gref(double lref, double pai, double x, double albin, double ltrr, double tol = 1e-6, int max_iter = 100) {
+    double lower = 0.0001;
+    double upper = 0.9999;
+    // check whether between lower and mid or mid and upper
+    double mid = 0.0;
+    for (int iter = 0; iter < max_iter; iter++) {
+        mid = (lower + upper) / 2.0;
+        double f_lower = leafrcpp(lref, pai, lower, x, albin, ltrr);
+        double f_mid = leafrcpp(lref, pai, mid, x, albin, ltrr);
+        if (std::abs(f_mid) < tol) {
+            return mid; // Root found
+        }
+        if (f_lower * f_mid < 0) {
+            upper = mid; // Root lies in the lower half
+        }
+        else {
+            lower = mid; // Root lies in the upper half
+        }
+    }
+    mid = NA_REAL;
+    return mid; // Should never reach here
+}
+// [[Rcpp::export]]
+NumericMatrix find_lref(NumericMatrix pai, NumericMatrix gref,
+    NumericMatrix x, NumericMatrix albin, double ltrr)
+{
+    // Get dimensions
+    int rows = pai.nrow();
+    int cols = pai.ncol();
+    NumericMatrix lref(rows, cols);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            double val = pai(i, j);
+            if (NumericMatrix::is_na(gref(i, j))) val = NA_REAL;
+            if (NumericMatrix::is_na(x(i, j))) val = NA_REAL;
+            if (NumericMatrix::is_na(albin(i, j))) val = NA_REAL;
+            if (!NumericMatrix::is_na(val)) {
+                lref(i, j) = solve_lref(val, gref(i, j), x(i, j),
+                    albin(i, j), ltrr);
+            }
+            else {
+                lref(i, j) = NA_REAL;
+            }
+        }
+    }
+    return lref;
+}
+// [[Rcpp::export]]
+NumericMatrix find_gref(NumericMatrix lref, NumericMatrix pai,
+    NumericMatrix x, NumericMatrix albin, double ltrr)
+{
+    // Get dimensions
+    int rows = pai.nrow();
+    int cols = pai.ncol();
+    NumericMatrix gref(rows, cols);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            double val = pai(i, j);
+            if (NumericMatrix::is_na(lref(i, j))) val = NA_REAL;
+            if (NumericMatrix::is_na(x(i, j))) val = NA_REAL;
+            if (NumericMatrix::is_na(albin(i, j))) val = NA_REAL;
+            if (!NumericMatrix::is_na(val)) {
+                gref(i, j) = solve_gref(lref(i, j), val, x(i, j), albin(i, j), ltrr);
+            }
+            else {
+                gref(i, j) = NA_REAL;
+            }
+        }
+    }
+    return gref;
+}
+// Fill NAs in raster using nearest-neighbour method
+// [[Rcpp::export]]
+NumericMatrix fill_naCpp(NumericMatrix m, NumericMatrix mask) 
+{
+    // Get dimensions
+    int nrow = m.nrow();
+    int ncol = m.ncol();
+    // Check dimesions
+    if (mask.nrow() != nrow || mask.ncol() != ncol) {
+        stop("Dimensions of landMask must match the first two dimensions of temp.");
+    }
+    int n = nrow * ncol;
+    std::vector<int> dist(n, -1);
+    std::vector<int> src(n, -1);
+    std::queue<int> q;
+    for (int j = 0; j < ncol; ++j) {
+        for (int i = 0; i < nrow; ++i) {
+            int idx = i + nrow * j;
+            double mk = mask(i, j);
+            if (NumericMatrix::is_na(mk)) continue;
+            double v = m(i, j);
+            if (!NumericMatrix::is_na(v)) {
+                dist[idx] = 0;
+                src[idx] = idx;
+                q.push(idx);
+            }
+        }
+    }
+    int dr[4] = { -1,1,0,0 };
+    int dc[4] = { 0,0,-1,1 };
+    while (!q.empty()) {
+        int cur = q.front(); q.pop();
+        int r = cur % nrow;
+        int c = cur / nrow;
+        for (int k = 0; k < 4; ++k) {
+            int rr = r + dr[k], cc = c + dc[k];
+            if (rr < 0 || rr >= nrow || cc < 0 || cc >= ncol) continue;
+            if (NumericMatrix::is_na(mask(rr, cc))) continue;
+            int nb = rr + nrow * cc;
+            if (dist[nb] == -1) {
+                dist[nb] = dist[cur] + 1;
+                src[nb] = src[cur];
+                q.push(nb);
+            }
+        }
+    }
+    for (int j = 0; j < ncol; ++j) {
+        for (int i = 0; i < nrow; ++i) {
+            if (NumericMatrix::is_na(mask(i, j))) continue;
+            if (!NumericMatrix::is_na(m(i, j))) continue;
+            int idx = i + nrow * j;
+            int s = src[idx];
+            if (s == -1) continue;
+            int si = s % nrow;
+            int sj = s / nrow;
+            m(i, j) = m(si, sj);
+        }
+    }
+    return m;
+}
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
 // ************************************** Functions used by Testthat ******************************************************** //
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
 // Test wrappers: microclimate model
 // [[Rcpp::export]]
 DataFrame microclimatemodel_wrapper(DataFrame obstime, DataFrame climdata, List BLout,

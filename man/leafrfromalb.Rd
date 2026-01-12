@@ -4,7 +4,7 @@
 \alias{leafrfromalb}
 \title{Derives leaf and ground reflectance from albedo}
 \usage{
-leafrfromalb(pai, x, alb, ltrr = 0.5)
+leafrfromalb(pai, x, alb, ltrr = 0.5, plotprogress = TRUE)
 }
 \arguments{
 \item{pai}{a SpatRaster of plant area index values}
@@ -14,6 +14,9 @@ leafrfromalb(pai, x, alb, ltrr = 0.5)
 \item{alb}{a SpatRaster of white-sky albedo}
 
 \item{ltrr}{an optional numeric value giving an approximate estimate of the ratio of leaf transmittance to leaf reflectance (e.g. value of 1 makes leaf transmittance equal to reflectance). See details}
+
+\item{plotprogress}{optional logical indicating whether to plot results from each iteration as
+model converges}
 }
 \value{
 a list of the following
@@ -35,6 +38,6 @@ pai <- rast(vegp$pai)[[9]] # Plant Area Index in Sep (month in which albedo imag
 x <- rast(vegp$x)
 alb <- rast(albedo)
 lgr <- leafrfromalb(pai, x, alb)
-plot(lgr$leafr)
-plot(lgr$gref)
+plot(rast(lgr$leafr))
+plot(rast(lgr$gref))
 }

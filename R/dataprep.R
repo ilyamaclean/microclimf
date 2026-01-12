@@ -157,8 +157,6 @@ subsetsnowmodel <- function(snowmod, subs) {
   } else snowmods$umu<-snowmod$umu[subs]
   return(snowmods)
 }
-
-
 #' Check format and values in model inputs
 #'
 #' The function `checkinputs` checks all the inputs into the model and returns errors
@@ -978,6 +976,8 @@ clumpestimate <- function(hgt, leafd, pai, maxclump = 0.95) {
 #' @param x a SpatRaster of the ratio of vertical to horizontal projections of leaf foliage
 #' @param alb a SpatRaster of white-sky albedo
 #' @param ltrr an optional numeric value giving an approximate estimate of the ratio of leaf transmittance to leaf reflectance (e.g. value of 1 makes leaf transmittance equal to reflectance). See details
+#' @param plotprogress optional logical indicating whether to plot results from each iteration as
+#' model converges
 #' @return a list of the following
 #' \describe{
 #'   \item{leafr}{Leaf reflectance (range 0 - 1)}
@@ -995,49 +995,58 @@ clumpestimate <- function(hgt, leafd, pai, maxclump = 0.95) {
 #' x <- rast(vegp$x)
 #' alb <- rast(albedo)
 #' lgr <- leafrfromalb(pai, x, alb)
-#' plot(lgr$leafr)
-#' plot(lgr$gref)
-leafrfromalb<-function(pai, x, alb, ltrr = 0.5) {
-  .Solveforlref <- function(pai,albin,x=1,gref=0.15,ltrr=0.5) {
-    uniroot(leafrcpp, c(0.0001,0.9999),pai,gref,albin,x,ltrr,f.lower=-1,f.upper=1)$root
-  }
-  .Solveforlref2<-function(pai,albin,x,gref,ltrr) {
-    out<-tryCatch(.Solveforlref(pai,albin,x,gref,ltrr),error=function(cond) -999)
-  }
-  cat("Computing ground reflectance \n")
-  # calculate ground reflectance
-  canc<-1-exp(-.is(pai))
-  gref<-(.is(alb)-canc*0.6)/(1-canc)
-  s<-which(canc>0.25)
-  gref[s]<-NA
-  gref<-.fillr(.rast(gref,pai),pai)
-  gref[gref<0.01]<-0.01
-  gref<-mask(gref,pai)
-  # Convert to matricesz
-  lai<-.is(pai)
-  gref<-.is(gref)
-  x<-.is(x)
-  albi<-.is(alb)
-  lref<-array(NA,dim=dim(lai))
-  cat("Computing leaf reflectance \n")
-  # Calculate leaf reflectance
-  nn<-dim(gref)[1]
-  pb <- txtProgressBar(min = 0, max = nn, style = 3)
-  for (i in 1:dim(gref)[1]) {
-    for (j in 1:dim(gref)[2]) {
-      if (lai[i,j]>0 & is.na(lai[i,j]) == FALSE) {
-        lref[i,j]<-.Solveforlref2(lai[i,j],albi[i,j],x[i,j],gref[i,j],ltrr)
-      }
+#' plot(rast(lgr$leafr))
+#' plot(rast(lgr$gref))
+leafrfromalb <- function(pai, x, alb, ltrr = 0.5, plotprogress = TRUE) {
+  # Check that pai is not a multi-layer raster
+  if (dim(pai)[3] > 1) stop("pai must be a single layer raster")
+  # Check whether geometries match
+  all_same <- compareGeom(pai, alb, x)
+  if (all_same == FALSE) stop("Geometries of inputs must match")
+  # Test whether to go for finding ground reflectance or leaf reflectance first
+  tst <- exp(-mean(as.vector(pai), na.rm = T))
+  lref <- (x * 0 + 0.5) * (1 - 0.5) + 0.5 * alb
+  gref <- x * 0 + 0.15
+  # set tolerence and backweight etc
+  tol = 0.001
+  maxiter = 50
+  mxdif <- tol * 10
+  # Convert datasets to matrices
+  paim <- as.matrix(pai, wide = TRUE)
+  xm <- as.matrix(x, wide = TRUE)
+  albm <- as.matrix(alb, wide = TRUE)
+  # first iteration
+  itr <- 1
+  while (mxdif > tol) {
+    if (tst < 0.5) {
+      lref2 <- find_lref(paim, as.matrix(gref, wide = TRUE), xm, albm, ltrr)
+      lref2 <- fill_naCpp(lref2, xm)
+      gref2 <- find_gref(lref2, paim, xm, albm, ltrr)
+      gref2 <- fill_naCpp(gref2, xm)
+    } else {
+      gref2 <- find_gref(as.matrix(lref, wide = TRUE), paim, xm, albm, ltrr)
+      gref2 <- fill_naCpp(gref2, xm)
+      lref2 <- find_lref(paim, gref2, xm, albm, ltrr)
+      lref2 <- fill_naCpp(lref2, xm)
     }
-    setTxtProgressBar(pb, i)
+    gref <- 0.5 * gref + 0.5 * .rast(gref2, x)
+    lref <- 0.5 * lref + 0.5 * .rast(lref2, x)
+    mxdif1 <- mean(abs(as.vector(gref) - as.vector(gref2)), na.rm = TRUE)
+    mxdif2 <- mean(abs(as.vector(lref) - as.vector(lref2)), na.rm = TRUE)
+    mxdif <- max(mxdif1, mxdif2)
+    if (plotprogress == 0) {
+      tp1 <- paste0("Ground difference from previous: ", round(mxdif1, 4))
+      tp2 <- paste0("Leaf difference from previous: ", round(mxdif2, 4))
+      par(mfrow = c(1, 2))
+      plot(gref, main = tp1, cex.main = 1)
+      plot(lref, main = tp2, cex.main = 1)
+    }
+    itr <- itr+1
+    if (itr > maxiter) mxdif <- 0
   }
-  lref<-.rast(lref,alb)
-  me<-mean(as.vector(leafr),na.rm=TRUE)
-  lref[is.na(lref)]<-me
-  mx<-0.95/(1+ltrr)
-  lref[lref>mx]<-mx
-  lref<-mask(lref,pai)
-  return(list(leafr=lref,leaft=ltrr*lref,gref=.rast(gref,pai)))
+  itr <- itr+1
+  if (itr > maxiter) mxdif <- 0
+  return(list(leafr = wrap(lref), leaft = wrap(ltrr * lref), gref= wrap(gref)))
 }
 #' Writes model output as ncdf4 file
 #'
@@ -1073,11 +1082,11 @@ writetonc <- function(mout, fileout, dtm, reqhgt, vars = NULL) {
     ncvar_put(ncnew, "crs", 1)
     ncatt_put(ncnew, "crs", "crs_wkt", as.character(crs(dtm)))
     ncatt_put(ncnew, "crs", "grid_mapping_name", "longitude_latitude")
-    
+
     # Add time attributes
     ncatt_put(ncnew, "time", "standard_name", "time")
     ncatt_put(ncnew, "time", "calendar", "gregorian")
-    
+
     # Add grid_mapping attribute to each variable
     for(var_name in var_names) {
       ncatt_put(ncnew, var_name, "grid_mapping", "crs")
@@ -1148,7 +1157,7 @@ writetonc <- function(mout, fileout, dtm, reqhgt, vars = NULL) {
       nclist[[(length(nclist)+1)]]<-radulw
     }
     nclist[[(length(nclist)+1)]]<-crs_var
-   
+
     # Create nc file
     nc.name<-fileout
     ncnew<-nc_create(filename=nc.name,nclist)
@@ -1206,7 +1215,7 @@ writetonc <- function(mout, fileout, dtm, reqhgt, vars = NULL) {
       nclist[[(length(nclist)+1)]]<-radulw
     }
     nclist[[(length(nclist)+1)]]<-crs_var
-    
+
     # Create nc file
     nc.name<-fileout
     ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist,raddir,raddif,radlw,radusw,radulw, crs_var))
@@ -1237,7 +1246,7 @@ writetonc <- function(mout, fileout, dtm, reqhgt, vars = NULL) {
       nclist[[(length(nclist)+1)]]<-soilmoist
     }
     nclist[[(length(nclist)+1)]]<-crs_var
-    
+
     nc.name<-fileout
     ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist, crs_var))
     # Put variables in

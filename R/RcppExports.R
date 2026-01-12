@@ -165,6 +165,30 @@ applycpp3 <- function(a, fun_name) {
     .Call(`_microclimf_applycpp3`, a, fun_name)
 }
 
+leafrcpp <- function(lref, pai, gref, x, albin, ltrr) {
+    .Call(`_microclimf_leafrcpp`, lref, pai, gref, x, albin, ltrr)
+}
+
+solve_lref <- function(pai, gref, x, albin, ltrr, tol = 1e-6, max_iter = 100L) {
+    .Call(`_microclimf_solve_lref`, pai, gref, x, albin, ltrr, tol, max_iter)
+}
+
+solve_gref <- function(lref, pai, x, albin, ltrr, tol = 1e-6, max_iter = 100L) {
+    .Call(`_microclimf_solve_gref`, lref, pai, x, albin, ltrr, tol, max_iter)
+}
+
+find_lref <- function(pai, gref, x, albin, ltrr) {
+    .Call(`_microclimf_find_lref`, pai, gref, x, albin, ltrr)
+}
+
+find_gref <- function(lref, pai, x, albin, ltrr) {
+    .Call(`_microclimf_find_gref`, lref, pai, x, albin, ltrr)
+}
+
+fill_naCpp <- function(m, mask) {
+    .Call(`_microclimf_fill_naCpp`, m, mask)
+}
+
 microclimatemodel_wrapper <- function(obstime, climdata, BLout, vegp, groundp, reqhgt, zref, lat, lon) {
     .Call(`_microclimf_microclimatemodel_wrapper`, obstime, climdata, BLout, vegp, groundp, reqhgt, zref, lat, lon)
 }
