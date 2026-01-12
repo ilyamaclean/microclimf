@@ -1047,11 +1047,12 @@ leafrfromalb<-function(pai, x, alb, ltrr = 0.5) {
 #' @param fileout output filename
 #' @param dtm a SpatRast covering the extent of the model outputs
 #' @param reqhgt at at which model was run (m)
+#' @param vars character vector of variables to save (names as specified in output of runmicro).
+#' if vars = NULL, all default outputs are saved
 #' @import ncdf4 terra
 #' @export
-writetonc <- function(mout, fileout, dtm, reqhgt) {
+writetonc <- function(mout, fileout, dtm, reqhgt, vars = NULL) {
   atonc<-function(a,rd) {
-    a<-apply(a,c(2,3),rev)
     a<-aperm(a,c(2,1,3))
     a <- round(a*rd,0)
     a <-array(as.integer(a),dim=dim(a))
@@ -1065,90 +1066,186 @@ writetonc <- function(mout, fileout, dtm, reqhgt) {
   north<-ncdim_def(name="north",units="metres",vals=nth,longname="Northings")
   # Create time variable
   tme<-as.POSIXct(mout$tme)
-  times<-ncdim_def(name="Time",units="Decimal hours since 1970-01-01 00:00",vals=as.numeric(tme)/3600)
+  times<-ncdim_def(name="time",units="hours since 1970-01-01 00:00",vals=as.numeric(tme)/3600)
+    # Add CRS function
+  add_crs_info <- function(ncnew, var_names) {
+    # Add CRS variable and attributes
+    ncvar_put(ncnew, "crs", 1)
+    ncatt_put(ncnew, "crs", "crs_wkt", as.character(crs(dtm)))
+    ncatt_put(ncnew, "crs", "grid_mapping_name", "longitude_latitude")
+    
+    # Add time attributes
+    ncatt_put(ncnew, "time", "standard_name", "time")
+    ncatt_put(ncnew, "time", "calendar", "gregorian")
+    
+    # Add grid_mapping attribute to each variable
+    for(var_name in var_names) {
+      ncatt_put(ncnew, var_name, "grid_mapping", "crs")
+    }
+  }
   # Variable names
+  # Create CRS variable
+  crs_var <- ncvar_def("crs", "", list(), prec="integer")
+
   if (reqhgt > 0) {
     tname<-paste0("Air temperature at height ",reqhgt," m")
     lname<-paste0("Leaf temperature at height ",reqhgt," m")
     rname<-paste0("Relative humidity at height ",reqhgt," m")
     wname<-paste0("Wind speed at height ",reqhgt," m")
+
     # Define variables
-    airtemp<-ncvar_def(name="Tz",longname=tname,units="deg C x 100",dim=list(east,north,times),
+    nclist = list()
+    # default saved variables
+    if(is.null(vars)) vars = c("Tz","tleaf","relhum","windspeed","Rdirdown","Rdifdown","Rlwdown","Rswup","Rlwup")
+        if("Tz" %in% vars) {
+      airtemp<-ncvar_def(name="Tz",longname=tname,units="deg C x 100",dim=list(east,north,times),
                        missval=-9999,compression=9,prec="integer")
-    leaftemp<-ncvar_def(name="tleaf",longname=lname,units="deg C x 100",dim=list(east,north,times),
-                        missval=-9999,compression=9,prec="integer")
-    relhum<-ncvar_def(name="relhum",longname=rname,units="Percentage",dim=list(east,north,times),
-                      missval=-9999,compression=9,prec="integer")
-    windspeed<-ncvar_def(name="windspeed",longname=wname,units="m/s x 100",dim=list(east,north,times),
-                         missval=-9999,compression=9,prec="integer")
-    raddir<-ncvar_def(name="Rdirdown",longname="Downward direct shortwave radiation",units="W/m^2",dim=list(east,north,times),
-                      missval=-9999,compression=9,prec="integer")
-    raddif<-ncvar_def(name="Rdifdown",longname="Downward diffuse shortwave radiation",units="W/m^2",dim=list(east,north,times),
-                      missval=-9999,compression=9,prec="integer")
-    radlw<-ncvar_def(name="Rlwdown",longname="Downward longwave radiation",units="W/m^2",dim=list(east,north,times),
-                     missval=-9999,compression=9,prec="integer")
-    radusw<-ncvar_def(name="Rswup",longname="Upward shortwave radiation",units="W/m^2",dim=list(east,north,times),
-                      missval=-9999,compression=9,prec="integer")
-    radulw<-ncvar_def(name="Rlwup",longname="Upward longwave radiation",units="W/m^2",dim=list(east,north,times),
-                      missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-airtemp
+    }
+    if("tleaf" %in% vars) {
+      leaftemp<-ncvar_def(name="tleaf",longname=lname,units="deg C x 100",dim=list(east,north,times),
+                                               missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-leaftemp
+    }
+    if("relhum" %in% vars) {
+      relhum<-ncvar_def(name="relhum",longname=rname,units="Percentage",dim=list(east,north,times),
+                                              missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-relhum
+    }
+    if("soilm" %in% vars) {
+      soilmoist<-ncvar_def(name="soilm",longname="Soil surface moisture",units="Volume percentage soil moisture in top 10 cm of soil",
+                                                dim=list(east,north,times), missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-soilmoist
+    }
+    if("windspeed" %in% vars) {
+      windspeed<-ncvar_def(name="windspeed",longname=wname,units="m/s x 100",dim=list(east,north,times),
+                                                    missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-windspeed
+    }
+    if("Rdirdown" %in% vars) {
+      raddir<-ncvar_def(name="Rdirdown",longname="Downward direct shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                                                missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-raddir
+    }
+    if("Rdifdown" %in% vars) {
+      raddif<-ncvar_def(name="Rdifdown",longname="Downward diffuse shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                                                missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-raddif
+    }
+    if("Rlwdown" %in% vars) {
+      radlw<-ncvar_def(name="Rlwdown",longname="Downward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                                              missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-radlw
+    }
+    if("Rswup" %in% vars) {
+      radusw<-ncvar_def(name="Rswup",longname="Upward shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                                                 missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-radusw
+    }
+    if("Rlwup" %in% vars) {
+      radulw<-ncvar_def(name="Rlwup",longname="Upward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                                             missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-radulw
+    }
+    nclist[[(length(nclist)+1)]]<-crs_var
+   
     # Create nc file
     nc.name<-fileout
-    ncnew<-nc_create(filename=nc.name,list(airtemp,leaftemp,relhum,windspeed,raddir,raddif,radlw,radusw,radulw))
+    ncnew<-nc_create(filename=nc.name,nclist)
     # Put variables in
-    ncvar_put(ncnew,airtemp,vals=atonc(mout$Tz,100))
-    ncvar_put(ncnew,leaftemp,vals=atonc(mout$tleaf,100))
-    ncvar_put(ncnew,relhum,vals=atonc(mout$relhum,1))
-    ncvar_put(ncnew,windspeed,vals=atonc(mout$windspeed,100))
-    ncvar_put(ncnew,raddir,vals=atonc(mout$Rdirdown,1))
-    ncvar_put(ncnew,raddif,vals=atonc(mout$Rdifdown,1))
-    ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))
-    ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))
-    ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))
-    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    if("Tz" %in% vars) {ncvar_put(ncnew,airtemp,vals=atonc(mout$Tz,100))}
+    if("tleaf" %in% vars) {ncvar_put(ncnew,leaftemp,vals=atonc(mout$tleaf,100))}
+    if("relhum" %in% vars) {ncvar_put(ncnew,relhum,vals=atonc(mout$relhum,1))}
+    if("soilm" %in% vars) {ncvar_put(nccew, soilmoist, vals=atonc(mout$soilm,100))}
+    if("windspeed" %in% vars) {ncvar_put(ncnew,windspeed,vals=atonc(mout$windspeed,100))}
+    if("raddir" %in% vars) {ncvar_put(ncnew,raddir,vals=atonc(mout$Rdirdown,1))}
+    if("raddif" %in% vars) {ncvar_put(ncnew,raddif,vals=atonc(mout$Rdifdown,1))}
+    if("radlw" %in% vars) {ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))}
+    if("radusw" %in% vars) {ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))}
+    if("radulw" %in% vars) {ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))}
+    # Add CRS information
+    add_crs_info(ncnew, vars)
     nc_close(ncnew)
   }
   if (reqhgt == 0) {
-    soiltemp<-ncvar_def(name="Tz",longname="Soil surface temperature",units="deg C x 100",dim=list(east,north,times),
+    if(is.null(vars)) vars = c("Tz","soilm","Rdirdown","Rdifdown","Rlwdown","Rswup","Rlwup")
+    nclist<-list()
+    if("Tz" %in% vars) {
+      soiltemp<-ncvar_def(name="Tz",longname="Soil surface temperature",units="deg C x 100",dim=list(east,north,times),
                         missval=-9999,compression=9,prec="integer")
-    soilmoist<-ncvar_def(name="soilm",longname="Soil surface moisture",units="Volume percentage soil moisture in top 10 cm of soil",
-                         dim=list(east,north,times),
-                         missval=-9999,compression=9,prec="integer")
-    raddir<-ncvar_def(name="Rdirdown",longname="Downward direct shortwave radiation",units="W/m^2",dim=list(east,north,times),
-                      missval=-9999,compression=9,prec="integer")
-    raddif<-ncvar_def(name="Rdifdown",longname="Downward diffuse shortwave radiation",units="W/m^2",dim=list(east,north,times),
-                      missval=-9999,compression=9,prec="integer")
-    radlw<-ncvar_def(name="Rlwdown",longname="Downward longwave radiation",units="W/m^2",dim=list(east,north,times),
-                     missval=-9999,compression=9,prec="integer")
-    radusw<-ncvar_def(name="Rswup",longname="Upward shortwave radiation",units="W/m^2",dim=list(east,north,times),
-                      missval=-9999,compression=9,prec="integer")
-    radulw<-ncvar_def(name="Rlwup",longname="Upward longwave radiation",units="W/m^2",dim=list(east,north,times),
-                      missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-soiltemp
+    }
+    if("soilm" %in% vars) {
+      soilmoist<-ncvar_def(name="soilm",longname="Soil surface moisture",units="Volume percentage soil moisture in top 10 cm of soil",
+                         dim=list(east,north,times), missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-soilmoist
+    }
+    if("Rdirdown" %in% vars) {
+      raddir<-ncvar_def(name="Rdirdown",longname="Downward direct shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                                                missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-raddir
+    }
+    if("Rdifdown" %in% vars) {
+      raddif<-ncvar_def(name="Rdifdown",longname="Downward diffuse shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                                                missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-raddif
+    }
+    if("Rlwdown" %in% vars) {
+      radlw<-ncvar_def(name="Rlwdown",longname="Downward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                                              missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-radlw
+    }
+    if("Rswup" %in% vars) {
+      radusw<-ncvar_def(name="Rswup",longname="Upward shortwave radiation",units="W/m^2",dim=list(east,north,times),
+                                                 missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-radusw
+    }
+    if("Rlwup" %in% vars) {
+      radulw<-ncvar_def(name="Rlwup",longname="Upward longwave radiation",units="W/m^2",dim=list(east,north,times),
+                                             missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-radulw
+    }
+    nclist[[(length(nclist)+1)]]<-crs_var
+    
     # Create nc file
     nc.name<-fileout
-    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist,raddir,raddif,radlw,radusw,radulw))
+    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist,raddir,raddif,radlw,radusw,radulw, crs_var))
     # Put variables in
-    ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))
-    ncvar_put(ncnew,soilmoist,vals=atonc(mout$soilm,100))
-    ncvar_put(ncnew,raddir,vals=atonc(mout$Rdirdown,1))
-    ncvar_put(ncnew,raddif,vals=atonc(mout$Rdifdown,1))
-    ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))
-    ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))
-    ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))
-    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    if("Tz" %in% vars) {ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))}
+    if("soilm" %in% vars) {ncvar_put(nccew, soilmoist, vals=atonc(mout$soilm,100))}
+    if("raddir" %in% vars) {ncvar_put(ncnew,raddir,vals=atonc(mout$Rdirdown,1))}
+    if("raddif" %in% vars) {ncvar_put(ncnew,raddif,vals=atonc(mout$Rdifdown,1))}
+    if("radlw" %in% vars) {ncvar_put(ncnew,radlw,vals=atonc(mout$Rlwdown,1))}
+    if("radusw" %in% vars) {ncvar_put(ncnew,radusw,vals=atonc(mout$Rswup,1))}
+    if("radulw" %in% vars) {ncvar_put(ncnew,radulw,vals=atonc(mout$Rlwup,1))}
+    # Add CRS information
+    add_crs_info(ncnew, vars)
     nc_close(ncnew)
   }
   if (reqhgt < 0) {
-    tname<-paste0("Soil temperature at depth ",abs(reqhgt)," m")
-    soiltemp<-ncvar_def(name="Tz",longname=tname,units="deg C x 100",dim=list(east,north,times),
+    if(is.null(vars)) vars = c("Tz", "soilm")
+    nclist<-list()
+    if("Tz" %in% vars) {
+      tname<-paste0("Soil temperature at depth ",abs(reqhgt)," m")
+      soiltemp<-ncvar_def(name="Tz",longname=tname,units="deg C x 100",dim=list(east,north,times),
                         missval=-9999,compression=9,prec="integer")
-    soilmoist<-ncvar_def(name="soilm",longname="Soil surface moisture",units="Percentage volume",dim=list(east,north,times),
+      nclist[[(length(nclist)+1)]]<-soiltemp
+    }
+    if("soilm" %in% vars) {
+      soilmoist<-ncvar_def(name="soilm",longname="Soil surface moisture",units="Percentage volume",dim=list(east,north,times),
                          missval=-9999,compression=9,prec="integer")
+      nclist[[(length(nclist)+1)]]<-soilmoist
+    }
+    nclist[[(length(nclist)+1)]]<-crs_var
+    
     nc.name<-fileout
-    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist))
+    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist, crs_var))
     # Put variables in
-    ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))
-    ncvar_put(ncnew,soilmoist,vals=atonc(mout$soilm,100))
-    ncatt_put(ncnew,0,"Coordinate reference system",as.character(crs(dtm)))
+    if("Tz" %in% vars) {ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))}
+    if("soilm" %in% vars) {ncvar_put(nccew, soilmoist, vals=atonc(mout$soilm,100))}
+
+    # Add CRS information
+    add_crs_info(ncnew, vars)
     nc_close(ncnew)
   }
 }
