@@ -2227,7 +2227,7 @@ flowacc<-function (dtm, basins = NA) {
   # ==================== extract data from micropointa ======================= #
   dfo<-list()
   Tbz<-list()
-  mat<-rep(NA,lengthmicropointa())
+  mat<-rep(NA,length(micropointa))
   ii<-0
   for (i in 1:length(micropointa)) {
     onepoint<-micropointa[[i]]
@@ -2577,7 +2577,7 @@ flowacc<-function (dtm, basins = NA) {
     other$skyview<-0.5*cos(2*msl)+0.5
     ss<-1
     if (res(dtm)[1]<=100) ss<-10
-    other$wsa<-.windsheltera(dtms,zref,ss)
+    other$wsa<-suppressWarnings(.windsheltera(dtms,zref,ss))
     # calculate s
     st<-(day-1)*(5*24)+1
     ed<-st+(5*24)-1
@@ -2659,8 +2659,6 @@ flowacc<-function (dtm, basins = NA) {
   vegpp<-c(vegpp[2],vegpp[1],vegpp[6],vegpp[4])
   tme<-as.POSIXlt(weather$obs_time,tz="UTC")
   obstime<-data.frame(year=tme$year+1900,month=tme$mon+1,day=tme$mday,hour=tme$hour)
-  up<-.unpack
-  if (class(dtm) == "PackedSpatRaster") dtm<-rast(dtm)
   sdep<-.is(dtm)*0+snowinitd
   sage<-.is(dtm)*0+snowinita
   ll<-.latlongfromraster(dtm)
@@ -2704,7 +2702,7 @@ flowacc<-function (dtm, basins = NA) {
   other$skyview<-0.5*cos(2*msl)+0.5
   ss<-1
   if (res(dtm)[1]<=100) ss<-10
-  other$wsa<-.windsheltera(dtm,zref,ss)
+  other$wsa<-suppressWarnings(.windsheltera(dtm,zref,ss))
   weather$obs_time<-NULL
   # ========== Create arrays for storing data ============================== #
   n<-dim(weather)[1]
@@ -2961,7 +2959,7 @@ flowacc<-function (dtm, basins = NA) {
     other$skyview<-0.5*cos(2*msl)+0.5
     ss<-1
     if (res(dtm)[1]<=100 && min(dms) >= 10) ss<-10
-    other$wsa<-.windsheltera(dtms,zref,ss)
+    other$wsa<-suppressWarnings(.windsheltera(dtms,zref,ss))
     # calaculate s
     st<-(day-1)*(5*24)+1
     ed<-st+(5*24)-1
@@ -3203,7 +3201,7 @@ flowacc<-function (dtm, basins = NA) {
   other$skyview<-0.5*cos(2*msl)+0.5
   ss<-1
   if (res(dtm)[1]<=100) ss<-10
-  other$wsa<-.windsheltera(dtm,zref,ss)
+  other$wsa<-suppressWarnings(.windsheltera(dtm,zref,ss))
   # ========== Create arrays for storing data ============================== #
   n<-length(subs)
   Tc<-array(NA,dim=c(dim(dtm)[1:2],n))
@@ -3343,6 +3341,22 @@ flowacc<-function (dtm, basins = NA) {
     }  # end if time variant
   } # end if R/C++
   return(mout)
+}
+# Create a blank template (used when no no snow days - dataframe)
+.createblanktemplate1<-function(micropoint,reqhgt,vegp,soilc,dtm,out) {
+  micropointn<-subsetpointmodel(micropoint,days=1)
+  moutn<-.runmicronosnow(micropointn,reqhgt,vegp,soilc,dtm,NA,0,FALSE,
+                         NA,1.5,out,NA,NA,NA,NA,NA,NA)
+  for (i in 1:length(moutn)) moutn[[i]] <- moutn[[i]] * NA
+  moutn
+}
+# Create a blank template (used when no no snow days - array)
+.createblanktemplate2<-function(micropoint,reqhgt,vegp,soilc,dtm,dtmc,out) {
+  micropointn<-subsetpointmodela(micropoint,days=1)
+  moutn<-.runmicronosnow(micropointn,reqhgt,vegp,soilc,dtm,dtmc,0,FALSE,
+                         NA,1.5,out,NA,NA,NA,NA,NA,NA)
+  for (i in 1:length(moutn)) moutn[[i]] <- moutn[[i]] * NA
+  moutn
 }
 #' prepare inputs for snow microclimate model (data.frame climate)
 .prepsnowinputs1<-function(reqhgt,dtm,vegp,soilc,micropoints,snowdays,nosnowdays,smod,moutn,tmeorig,subs,runchecks,slr=NA,apr=NA,hor=NA,svf=NA,wsa=NA,paia) {
@@ -3584,6 +3598,8 @@ flowacc<-function (dtm, basins = NA) {
   if (length(nosnowdays) > 0) {
     moutn<-.runmicronosnow(micropointn,reqhgt,vegp,soilc,dtm,dtmc=NA,altcorrect=0,runchecks,
                            pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
+  } else {
+    moutn<-.createblanktemplate1(micropoint,reqhgt,vegp,soilc,dtm,out)
   }
   utils::setTxtProgressBar(pb,3)
   if (length(snowdays) > 0) {
@@ -3601,7 +3617,7 @@ flowacc<-function (dtm, basins = NA) {
       out <- rep(FALSE, 10)
       out[c(1, 4)] <- TRUE
     }
-    mouts<-gridmicrosnow1(reqhgt,snowin$obstime,snowin$weather,smods,snowin$micro,snowin$vegp,snowin$other,out)
+    mouts<-gridmicrosnow1(reqhgt,snowin$obstime,snowin$weather,smods,snowin$micro,snowin$vegp,snowin$other,micropoint$matemp,out)
   }
   utils::setTxtProgressBar(pb,4)
   if (length(nosnowdays) == 0) {
@@ -3658,10 +3674,19 @@ flowacc<-function (dtm, basins = NA) {
   micropoints<-subsetpointmodela(micropoint,days=snowdays)
   micropointn<-subsetpointmodela(micropoint,days=nosnowdays)
   utils::setTxtProgressBar(pb,1)
+  # Calculate mean annual temp
+  mat<-rep(NA,length(micropoint))
+  for (i in 1:length(micropoint)) {
+    onepoint<-micropoint[[i]]
+    if (class(onepoint) != "logical") mat[i]<-onepoint$matemp
+  }
+  matemp<-mean(mat,na.rm=TRUE)
   # (3) Run no snow microclimate model for no snow days
   if (length(nosnowdays) > 0) {
     moutn<-.runmicronosnow(micropointn,reqhgt,vegp,soilc,dtm,dtmc,altcorrect,runchecks,
                            pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
+  } else {
+    moutn<-.createblanktemplate2(micropoint,reqhgt,vegp,soilc,dtm,dtmc,out)
   }
   utils::setTxtProgressBar(pb,3)
   if (length(snowdays) > 0) {
@@ -3678,7 +3703,7 @@ flowacc<-function (dtm, basins = NA) {
       out <- rep(FALSE, 10)
       out[c(1, 4)] <- TRUE
     }
-    mouts<-gridmicrosnow2(reqhgt,snowin$obstime,snowin$weather,smods,snowin$micro,snowin$vegp,snowin$other,out)
+    mouts<-gridmicrosnow2(reqhgt,snowin$obstime,snowin$weather,smods,snowin$micro,snowin$vegp,snowin$other,matemp,out)
     utils::setTxtProgressBar(pb,5)
   }
   if (length(nosnowdays) == 0) {

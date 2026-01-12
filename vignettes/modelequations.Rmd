@@ -395,6 +395,7 @@ $$R_{abs}^{b\downarrow}=(1-\alpha_b)\tilde{R}_0^b$$
 where
 
 $$\tilde{R}_0^{b\downarrow}=\left(\tau_n^b+\exp(-K_g\tilde{P}_{AI})s_c+\left(1-\tau_n^b-\exp(-K_g\tilde{P}_{AI})\right)\cos Z\right)R_0^{b\downarrow}$$
+
 ### Longwave and emitted radiation
 Leaves and other elements of the canopy typically have very low
 reflectance to longwave radiation so there is limited scattering of
@@ -580,14 +581,34 @@ where $\small T_C$ is measured in degrees. When $\small T_c$ measured in degrees
 $$e_c= 0.61078\exp\left(\frac{21.875T_c}{t_c+265.5}\right)$$
 In `microclimf`, $\small θ_C$ is set to 1.0 immediately following rain and 0.8 at other times. In application of this formula in the Penman-Monteith equation, air temperatures are capped to not drop below dewpoint. The resistance to vapour exchange is given by $\small r_v=r_{Ha}+r_c$ where $\small r_c$ is bulk surface stomatal resistance.
 
-To a reasonable approximation (Raupach 1994; Kelliher *et al* 1995), $\small r_c$  is the inverse parallel sum of the stomatal resistances of individual leaves and the soil combined, the former, which under ample root water supply, non-extreme temperatures and low humidity deficit, varies only in response to variation in photosynthetically active radiation. Self-shading by leaves largely compensates for the presence of additional foliage contributing to the parallel sum under densely foliated canopies and under sparse canopies, evaporation from soil surface largely compensates for lack of evapotranspiration from foliage. Thus, following (Kelliher *et al* 1995), a simple relationship between bulk surface stomatal conductance and photosynthetically active radiation (PAR) can be derived as
+The stomatal resistance of individual leaves is modelled using a simplified formulation derived from the Cowan & Farquhar (1977) photosynthesis framework, following Ellers et al. (2020). Rather than implementing the full 26-parameter model and solving it iteratively, the essential behaviour of the model is distilled into a small number of explicit functions. These capture the reduction in stomatal conductance under soil moisture limitation and its dependence on photosynthetically active radiation, while retaining the response characteristics of the full model. Thus
 
-$$\frac{\tilde{\rho}}{r_c}=3g_{mx}\frac{Q_a}{Q_a+3Q_{50}}$$
-where $\small Q_a=4.6R_{sw}^\downarrow$ is an estimate of PAR absorption in $\small \mu mol·m^{-2}·s^{-1}$, $\small R_{sw}^\downarrow$ is downward shortwave radiation ($\small W·m^{-2}$), $\small Q_{50}=100$ is the value of Q, when stomatal conductance is at 50 percent of its maximum and $\small g_{mx}$ is a user provided maximum stomatal conductance, provided as molar conductance ($\small mol·m^{-2}·s$) to ensure conformance with Körner (1995) who gives values for major vegetation types of the globe. The `vegpfromhab` function built into the package derives these for user-specified vegetation types. The formulation $\small r_c=\tilde{\rho}/g_c$ converts between stomatal resistance ($\small s·m^{-1}$) and stomatal conductance.
+$$\frac{\tilde\rho}{r_s}=\min\left(g_{PAR},g_{\psi_w}\right)$$
+where $\small g_{PAR}$ is the stomatal response to absorbed photosynthetically active radiation given by
 
-To derive stomatal resistance for individual canopy elements ($\small r_L$), the formulation is
+$$ g_{PAR}=g_{mx}\times2^{-\left(R_{mx}^{PAR}-R_{abs}^{PAR}/0.2R_{mx}^{PAR}\right)}$$
 
-$$\frac{\tilde{\rho}}{r_L}=g_{mx}\frac{Q_a}{Q_a+Q_{50}}$$
+where $\small R_{abs}^{PAR}$ is the flux density of absorbed PAR constrained such that $\small R_{abs}^{PAR}\le R_{mx}^{PAR}$ and $\small R_{mx}^{PAR}$ is the threshold value of $\small R_{abs}^{PAR}$ above which $g_{PAR}$ no longer increases. The term $\small g_{\psi_w}$ characterizes the drought response and is given by
+
+$$g_{\psi_w}=g_{mx}\left(1-\frac{\exp\left(-\kappa\psi_w\right)-1}{\exp\left(-\kappa\psi_0\right)-1}\right)$$
+where $\small \psi_w$ is water potential constrained such that $\psi_w\ge\psi_0$ where $\psi_0$ is the threshold value of $\psi_w$ at which $\small g_{\psi_w}$ becomes zero. Water potential is derived from the volumetric soil water fraction $\small \theta$ as
+
+$$\psi_w=0.01\psi_e\left(\frac{\theta}{\theta_{mx}}\right)^{-b}$$
+where $\small \theta_{mx}$ is the volumetric water fraction at saturation, $\small \psi_e$ air entry potential and $\small b$ a shape parameter both derived form soil type following Campbell (1986). Here
+$\small g_{mx}$ is a user provided maximum stomatal conductance, provided as molar conductance ($\small mol·m^{-2}·s$) to ensure conformance with Körner (1995) who gives values for major vegetation types of the globe. The `vegpfromhab` function built into the package derives these for user-specified vegetation types. The coefficients $\small \kappa$, $\small \psi_0$ and $\small R_{mx}^{PAR}$ are specific to vegetation type and inferred from vegetation height and the leaf angle inclination parameter $\small x$. 
+
+To a reasonable approximation (Raupach 1994; Kelliher *et al* 1995), $\small r_c$  is the inverse parallel sum of the stomatal resistances of individual leaves such that
+
+$$\frac{\tilde\rho}{r_c}=\frac{\tilde\rho}{g_{sun}L_{sun}+g_{shade}L_{shade}}$$
+where $\small g_{sun}$ the stomatal conductance of $\small g_{shade}$ of shaded leaves and $\small L_{sun}$ and $\small L_{shade}$ the total one-sided leaf area of sunlit and shaded leaves respectively. $g_{shade}$ is the stomatal response with $\small R_{abs}^{PAR}$ set to an average shade value for the canopy given by
+
+$$ R_{abs}^{shade}=\left(1-\omega_{PAR}\right)R^d_0\frac{1-\exp(-P_{AI})}{P_{AI}}$$
+and
+
+$$R_{abs}^{sun}=R^b_0k\cos Z\left(1-\omega_{PAR}\right)+R^{shade}_{abs}$$
+where $\small \omega_{PAR}$ is approximated by $\small 0.5\left(\alpha_L+\tau_L\right)$ (0.5 times leaf reflectance + transmittance). The sunlit and shaded leaf areas are given by
+
+$$L_{sun}=P_{AI}-L_{shade}=\frac{1-\exp(-kP_{AI})}{k}$$
 For the soil, there is no stomatal resistance, and conductance for vapour is given by $\small r_v-r_Ha$. The effective relative humidity of the soil is approximated by $\small \theta_G=(S_M-S_{mn})/(S_{mx}-S_{mn})$ where $\small S_M$ is the volumetric soil moisture fraction, $\small S_{mx}$ the saturated water fraction and $\small S_{mn}$ the residual soil moisture fraction. The later to are provided as user inputs, though an inbuilt dataset allows one to estimate them from soil type.
 
 The linearisation of the latent heat term to solve for temperature in the Penman-Monteith equation assumes that
@@ -994,7 +1015,11 @@ Campbell GS (1990) Derivation of an angle density function for canopies with ell
 
 Campbell GS, Norman JM (2012) *An introduction to environmental biophysics*. 2nd edition. Springer, New York. 
 
+Cowan IR, Farquhar GD (1977) Stomatal function in relation to leaf metabolism and environment. *Symposia of the Society for Experimental Biology* 31: 471–505.
+
 de Vries DA (1963) *Thermal properties of soils*. pp 210-235 in Physics of plant environment (eds de Vries DA, van Wijk WR). North-Holland Publishing Company, Amsterdam.
+
+Ellers CB, Rowland L, Mencuccini M, Rosas T, Williams K, Harper A, Medlyn BE, Wagner Y, Klein T, Teodoro GS, Oliveira RS, Matos IS, Rosado BHP, Fuchs K, Wohlfahrt G, Montagnan L, Meir P, Sitch S, Cox PM (2020) Stomatal optimization based on xylem hydraulics (SOX)improves land surface model simulation of vegetation responses to climate. *New Phytologist* 226: 1622–37.
 
 Foken T (2006) 50 years of the Monin–Obukhov similarity theory. *Boundary-Layer Meteorology* 119: 431-47.
 

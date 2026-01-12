@@ -10,56 +10,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// solpositionCpp
-std::vector<double> solpositionCpp(double lat, double lon, int year, int month, int day, double lt);
-RcppExport SEXP _microclimf_solpositionCpp(SEXP latSEXP, SEXP lonSEXP, SEXP yearSEXP, SEXP monthSEXP, SEXP daySEXP, SEXP ltSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type lat(latSEXP);
-    Rcpp::traits::input_parameter< double >::type lon(lonSEXP);
-    Rcpp::traits::input_parameter< int >::type year(yearSEXP);
-    Rcpp::traits::input_parameter< int >::type month(monthSEXP);
-    Rcpp::traits::input_parameter< int >::type day(daySEXP);
-    Rcpp::traits::input_parameter< double >::type lt(ltSEXP);
-    rcpp_result_gen = Rcpp::wrap(solpositionCpp(lat, lon, year, month, day, lt));
-    return rcpp_result_gen;
-END_RCPP
-}
-// solarindexCpp
-double solarindexCpp(double slope, double aspect, double zen, double azi, bool shadowmask);
-RcppExport SEXP _microclimf_solarindexCpp(SEXP slopeSEXP, SEXP aspectSEXP, SEXP zenSEXP, SEXP aziSEXP, SEXP shadowmaskSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
-    Rcpp::traits::input_parameter< double >::type aspect(aspectSEXP);
-    Rcpp::traits::input_parameter< double >::type zen(zenSEXP);
-    Rcpp::traits::input_parameter< double >::type azi(aziSEXP);
-    Rcpp::traits::input_parameter< bool >::type shadowmask(shadowmaskSEXP);
-    rcpp_result_gen = Rcpp::wrap(solarindexCpp(slope, aspect, zen, azi, shadowmask));
-    return rcpp_result_gen;
-END_RCPP
-}
-// clearskyradCpp
-std::vector<double> clearskyradCpp(std::vector<int> year, std::vector<int> month, std::vector<int> day, std::vector<double> lt, double lat, double lon, std::vector<double> tc, std::vector<double> rh, std::vector<double> pk);
-RcppExport SEXP _microclimf_clearskyradCpp(SEXP yearSEXP, SEXP monthSEXP, SEXP daySEXP, SEXP ltSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP tcSEXP, SEXP rhSEXP, SEXP pkSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::vector<int> >::type year(yearSEXP);
-    Rcpp::traits::input_parameter< std::vector<int> >::type month(monthSEXP);
-    Rcpp::traits::input_parameter< std::vector<int> >::type day(daySEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type lt(ltSEXP);
-    Rcpp::traits::input_parameter< double >::type lat(latSEXP);
-    Rcpp::traits::input_parameter< double >::type lon(lonSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type tc(tcSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type rh(rhSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type pk(pkSEXP);
-    rcpp_result_gen = Rcpp::wrap(clearskyradCpp(year, month, day, lt, lat, lon, tc, rh, pk));
-    return rcpp_result_gen;
-END_RCPP
-}
 // zeroplanedisCpp
 double zeroplanedisCpp(double h, double pai);
 RcppExport SEXP _microclimf_zeroplanedisCpp(SEXP hSEXP, SEXP paiSEXP) {
@@ -86,39 +36,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// dpsimCpp
-double dpsimCpp(double ze);
-RcppExport SEXP _microclimf_dpsimCpp(SEXP zeSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type ze(zeSEXP);
-    rcpp_result_gen = Rcpp::wrap(dpsimCpp(ze));
-    return rcpp_result_gen;
-END_RCPP
-}
-// dpsihCpp
-double dpsihCpp(double ze);
-RcppExport SEXP _microclimf_dpsihCpp(SEXP zeSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type ze(zeSEXP);
-    rcpp_result_gen = Rcpp::wrap(dpsihCpp(ze));
-    return rcpp_result_gen;
-END_RCPP
-}
-// dphihCpp
-double dphihCpp(double ze);
-RcppExport SEXP _microclimf_dphihCpp(SEXP zeSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type ze(zeSEXP);
-    rcpp_result_gen = Rcpp::wrap(dphihCpp(ze));
-    return rcpp_result_gen;
-END_RCPP
-}
 // satvapCpp
 double satvapCpp(double tc);
 RcppExport SEXP _microclimf_satvapCpp(SEXP tcSEXP) {
@@ -131,49 +48,38 @@ BEGIN_RCPP
 END_RCPP
 }
 // dewpointCpp
-double dewpointCpp(double tc, double ea);
-RcppExport SEXP _microclimf_dewpointCpp(SEXP tcSEXP, SEXP eaSEXP) {
+double dewpointCpp(double ea);
+RcppExport SEXP _microclimf_dewpointCpp(SEXP eaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type tc(tcSEXP);
     Rcpp::traits::input_parameter< double >::type ea(eaSEXP);
-    rcpp_result_gen = Rcpp::wrap(dewpointCpp(tc, ea));
+    rcpp_result_gen = Rcpp::wrap(dewpointCpp(ea));
     return rcpp_result_gen;
 END_RCPP
 }
 // hourtodayCpp
-std::vector<double> hourtodayCpp(std::vector<double> hourly, std::string stat);
-RcppExport SEXP _microclimf_hourtodayCpp(SEXP hourlySEXP, SEXP statSEXP) {
+std::vector<double> hourtodayCpp(std::vector<double> hourly, std::string stat, bool rephour);
+RcppExport SEXP _microclimf_hourtodayCpp(SEXP hourlySEXP, SEXP statSEXP, SEXP rephourSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<double> >::type hourly(hourlySEXP);
     Rcpp::traits::input_parameter< std::string >::type stat(statSEXP);
-    rcpp_result_gen = Rcpp::wrap(hourtodayCpp(hourly, stat));
+    Rcpp::traits::input_parameter< bool >::type rephour(rephourSEXP);
+    rcpp_result_gen = Rcpp::wrap(hourtodayCpp(hourly, stat, rephour));
     return rcpp_result_gen;
 END_RCPP
 }
-// maCpp
-std::vector<double> maCpp(std::vector<double> x, int n);
-RcppExport SEXP _microclimf_maCpp(SEXP xSEXP, SEXP nSEXP) {
+// manCpp
+std::vector<double> manCpp(std::vector<double> x, int n);
+RcppExport SEXP _microclimf_manCpp(SEXP xSEXP, SEXP nSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<double> >::type x(xSEXP);
     Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    rcpp_result_gen = Rcpp::wrap(maCpp(x, n));
-    return rcpp_result_gen;
-END_RCPP
-}
-// mayCpp
-std::vector<double> mayCpp(std::vector<double> x);
-RcppExport SEXP _microclimf_mayCpp(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::vector<double> >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(mayCpp(x));
+    rcpp_result_gen = Rcpp::wrap(manCpp(x, n));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -236,111 +142,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// pointmprocess
-DataFrame pointmprocess(DataFrame pointvars, double zref, double h, double pai, double rho, double Vm, double Vq, double Mc);
-RcppExport SEXP _microclimf_pointmprocess(SEXP pointvarsSEXP, SEXP zrefSEXP, SEXP hSEXP, SEXP paiSEXP, SEXP rhoSEXP, SEXP VmSEXP, SEXP VqSEXP, SEXP McSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type pointvars(pointvarsSEXP);
-    Rcpp::traits::input_parameter< double >::type zref(zrefSEXP);
-    Rcpp::traits::input_parameter< double >::type h(hSEXP);
-    Rcpp::traits::input_parameter< double >::type pai(paiSEXP);
-    Rcpp::traits::input_parameter< double >::type rho(rhoSEXP);
-    Rcpp::traits::input_parameter< double >::type Vm(VmSEXP);
-    Rcpp::traits::input_parameter< double >::type Vq(VqSEXP);
-    Rcpp::traits::input_parameter< double >::type Mc(McSEXP);
-    rcpp_result_gen = Rcpp::wrap(pointmprocess(pointvars, zref, h, pai, rho, Vm, Vq, Mc));
-    return rcpp_result_gen;
-END_RCPP
-}
-// aperm3D2
-NumericVector aperm3D2(NumericVector Tz, int rows, int cols, int tsteps);
-RcppExport SEXP _microclimf_aperm3D2(SEXP TzSEXP, SEXP rowsSEXP, SEXP colsSEXP, SEXP tstepsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type Tz(TzSEXP);
-    Rcpp::traits::input_parameter< int >::type rows(rowsSEXP);
-    Rcpp::traits::input_parameter< int >::type cols(colsSEXP);
-    Rcpp::traits::input_parameter< int >::type tsteps(tstepsSEXP);
-    rcpp_result_gen = Rcpp::wrap(aperm3D2(Tz, rows, cols, tsteps));
-    return rcpp_result_gen;
-END_RCPP
-}
-// slice_2d
-NumericVector slice_2d(const NumericVector& a, int k, IntegerVector dim);
-RcppExport SEXP _microclimf_slice_2d(SEXP aSEXP, SEXP kSEXP, SEXP dimSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const NumericVector& >::type a(aSEXP);
-    Rcpp::traits::input_parameter< int >::type k(kSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type dim(dimSEXP);
-    rcpp_result_gen = Rcpp::wrap(slice_2d(a, k, dim));
-    return rcpp_result_gen;
-END_RCPP
-}
-// applycpp3
-NumericVector applycpp3(NumericVector a, std::string fun_name);
-RcppExport SEXP _microclimf_applycpp3(SEXP aSEXP, SEXP fun_nameSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
-    Rcpp::traits::input_parameter< std::string >::type fun_name(fun_nameSEXP);
-    rcpp_result_gen = Rcpp::wrap(applycpp3(a, fun_name));
-    return rcpp_result_gen;
-END_RCPP
-}
-// manCpp
-std::vector<double> manCpp(std::vector<double> x, int n);
-RcppExport SEXP _microclimf_manCpp(SEXP xSEXP, SEXP nSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::vector<double> >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    rcpp_result_gen = Rcpp::wrap(manCpp(x, n));
-    return rcpp_result_gen;
-END_RCPP
-}
-// flowdirCpp
-IntegerMatrix flowdirCpp(NumericMatrix md);
-RcppExport SEXP _microclimf_flowdirCpp(SEXP mdSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type md(mdSEXP);
-    rcpp_result_gen = Rcpp::wrap(flowdirCpp(md));
-    return rcpp_result_gen;
-END_RCPP
-}
-// flowaccCpp
-NumericMatrix flowaccCpp(NumericMatrix dm);
-RcppExport SEXP _microclimf_flowaccCpp(SEXP dmSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type dm(dmSEXP);
-    rcpp_result_gen = Rcpp::wrap(flowaccCpp(dm));
-    return rcpp_result_gen;
-END_RCPP
-}
-// soildCppv
-std::vector<double> soildCppv(std::vector<double> soilm, double Smin, double Smax, double tadd);
-RcppExport SEXP _microclimf_soildCppv(SEXP soilmSEXP, SEXP SminSEXP, SEXP SmaxSEXP, SEXP taddSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::vector<double> >::type soilm(soilmSEXP);
-    Rcpp::traits::input_parameter< double >::type Smin(SminSEXP);
-    Rcpp::traits::input_parameter< double >::type Smax(SmaxSEXP);
-    Rcpp::traits::input_parameter< double >::type tadd(taddSEXP);
-    rcpp_result_gen = Rcpp::wrap(soildCppv(soilm, Smin, Smax, tadd));
-    return rcpp_result_gen;
-END_RCPP
-}
 // soildCppm
 NumericMatrix soildCppm(NumericMatrix twi, double Smin, double Smax, double tfact);
 RcppExport SEXP _microclimf_soildCppm(SEXP twiSEXP, SEXP SminSEXP, SEXP SmaxSEXP, SEXP tfactSEXP) {
@@ -393,27 +194,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// PenmanMonteith2Cpp
-std::vector<double> PenmanMonteith2Cpp(double Rabs, double gHa, double gV, double tc, double mxtc, double pk, double ea, double es, double G, double surfwet, double tdew);
-RcppExport SEXP _microclimf_PenmanMonteith2Cpp(SEXP RabsSEXP, SEXP gHaSEXP, SEXP gVSEXP, SEXP tcSEXP, SEXP mxtcSEXP, SEXP pkSEXP, SEXP eaSEXP, SEXP esSEXP, SEXP GSEXP, SEXP surfwetSEXP, SEXP tdewSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type Rabs(RabsSEXP);
-    Rcpp::traits::input_parameter< double >::type gHa(gHaSEXP);
-    Rcpp::traits::input_parameter< double >::type gV(gVSEXP);
-    Rcpp::traits::input_parameter< double >::type tc(tcSEXP);
-    Rcpp::traits::input_parameter< double >::type mxtc(mxtcSEXP);
-    Rcpp::traits::input_parameter< double >::type pk(pkSEXP);
-    Rcpp::traits::input_parameter< double >::type ea(eaSEXP);
-    Rcpp::traits::input_parameter< double >::type es(esSEXP);
-    Rcpp::traits::input_parameter< double >::type G(GSEXP);
-    Rcpp::traits::input_parameter< double >::type surfwet(surfwetSEXP);
-    Rcpp::traits::input_parameter< double >::type tdew(tdewSEXP);
-    rcpp_result_gen = Rcpp::wrap(PenmanMonteith2Cpp(Rabs, gHa, gV, tc, mxtc, pk, ea, es, G, surfwet, tdew));
-    return rcpp_result_gen;
-END_RCPP
-}
 // soiltempgrid
 List soiltempgrid(List micro);
 RcppExport SEXP _microclimf_soiltempgrid(SEXP microSEXP) {
@@ -422,20 +202,6 @@ BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< List >::type micro(microSEXP);
     rcpp_result_gen = Rcpp::wrap(soiltempgrid(micro));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rhcanopy
-double rhcanopy(double uf, double h, double d, double z);
-RcppExport SEXP _microclimf_rhcanopy(SEXP ufSEXP, SEXP hSEXP, SEXP dSEXP, SEXP zSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type uf(ufSEXP);
-    Rcpp::traits::input_parameter< double >::type h(hSEXP);
-    Rcpp::traits::input_parameter< double >::type d(dSEXP);
-    Rcpp::traits::input_parameter< double >::type z(zSEXP);
-    rcpp_result_gen = Rcpp::wrap(rhcanopy(uf, h, d, z));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -684,15 +450,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // pointmodelsnow
-List pointmodelsnow(DataFrame obstime, DataFrame climdata, std::vector<double> vegp, std::vector<double> other, std::string snowenv, double tol, double maxiter);
+List pointmodelsnow(DataFrame obstime, DataFrame climdata, NumericVector vegp, NumericVector other, std::string snowenv, double tol, double maxiter);
 RcppExport SEXP _microclimf_pointmodelsnow(SEXP obstimeSEXP, SEXP climdataSEXP, SEXP vegpSEXP, SEXP otherSEXP, SEXP snowenvSEXP, SEXP tolSEXP, SEXP maxiterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< DataFrame >::type obstime(obstimeSEXP);
     Rcpp::traits::input_parameter< DataFrame >::type climdata(climdataSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type vegp(vegpSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type other(otherSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type vegp(vegpSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type other(otherSEXP);
     Rcpp::traits::input_parameter< std::string >::type snowenv(snowenvSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
     Rcpp::traits::input_parameter< double >::type maxiter(maxiterSEXP);
@@ -716,14 +482,161 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// gridmodelsnow2
+List gridmodelsnow2(DataFrame obstime, List climdata, List pointm, List vegp, List other, std::string snowenv);
+RcppExport SEXP _microclimf_gridmodelsnow2(SEXP obstimeSEXP, SEXP climdataSEXP, SEXP pointmSEXP, SEXP vegpSEXP, SEXP otherSEXP, SEXP snowenvSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< DataFrame >::type obstime(obstimeSEXP);
+    Rcpp::traits::input_parameter< List >::type climdata(climdataSEXP);
+    Rcpp::traits::input_parameter< List >::type pointm(pointmSEXP);
+    Rcpp::traits::input_parameter< List >::type vegp(vegpSEXP);
+    Rcpp::traits::input_parameter< List >::type other(otherSEXP);
+    Rcpp::traits::input_parameter< std::string >::type snowenv(snowenvSEXP);
+    rcpp_result_gen = Rcpp::wrap(gridmodelsnow2(obstime, climdata, pointm, vegp, other, snowenv));
+    return rcpp_result_gen;
+END_RCPP
+}
 // snowdayan
-List snowdayan(NumericVector stempg);
+NumericVector snowdayan(NumericVector stempg);
 RcppExport SEXP _microclimf_snowdayan(SEXP stempgSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericVector >::type stempg(stempgSEXP);
     rcpp_result_gen = Rcpp::wrap(snowdayan(stempg));
+    return rcpp_result_gen;
+END_RCPP
+}
+// belowpointsnow
+double belowpointsnow(double reqhgt, double meanD, double snowtempg, double Tzd, double Tza, double hiy);
+RcppExport SEXP _microclimf_belowpointsnow(SEXP reqhgtSEXP, SEXP meanDSEXP, SEXP snowtempgSEXP, SEXP TzdSEXP, SEXP TzaSEXP, SEXP hiySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type reqhgt(reqhgtSEXP);
+    Rcpp::traits::input_parameter< double >::type meanD(meanDSEXP);
+    Rcpp::traits::input_parameter< double >::type snowtempg(snowtempgSEXP);
+    Rcpp::traits::input_parameter< double >::type Tzd(TzdSEXP);
+    Rcpp::traits::input_parameter< double >::type Tza(TzaSEXP);
+    Rcpp::traits::input_parameter< double >::type hiy(hiySEXP);
+    rcpp_result_gen = Rcpp::wrap(belowpointsnow(reqhgt, meanD, snowtempg, Tzd, Tza, hiy));
+    return rcpp_result_gen;
+END_RCPP
+}
+// gridmicrosnow1
+List gridmicrosnow1(double reqhgt, DataFrame obstime, DataFrame climdata, List snowm, List micro, List vegp, List other, double mat, std::vector<bool> out);
+RcppExport SEXP _microclimf_gridmicrosnow1(SEXP reqhgtSEXP, SEXP obstimeSEXP, SEXP climdataSEXP, SEXP snowmSEXP, SEXP microSEXP, SEXP vegpSEXP, SEXP otherSEXP, SEXP matSEXP, SEXP outSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type reqhgt(reqhgtSEXP);
+    Rcpp::traits::input_parameter< DataFrame >::type obstime(obstimeSEXP);
+    Rcpp::traits::input_parameter< DataFrame >::type climdata(climdataSEXP);
+    Rcpp::traits::input_parameter< List >::type snowm(snowmSEXP);
+    Rcpp::traits::input_parameter< List >::type micro(microSEXP);
+    Rcpp::traits::input_parameter< List >::type vegp(vegpSEXP);
+    Rcpp::traits::input_parameter< List >::type other(otherSEXP);
+    Rcpp::traits::input_parameter< double >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< std::vector<bool> >::type out(outSEXP);
+    rcpp_result_gen = Rcpp::wrap(gridmicrosnow1(reqhgt, obstime, climdata, snowm, micro, vegp, other, mat, out));
+    return rcpp_result_gen;
+END_RCPP
+}
+// gridmicrosnow2
+List gridmicrosnow2(double reqhgt, DataFrame obstime, List climdata, List snowm, List micro, List vegp, List other, double mat, std::vector<bool> out);
+RcppExport SEXP _microclimf_gridmicrosnow2(SEXP reqhgtSEXP, SEXP obstimeSEXP, SEXP climdataSEXP, SEXP snowmSEXP, SEXP microSEXP, SEXP vegpSEXP, SEXP otherSEXP, SEXP matSEXP, SEXP outSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type reqhgt(reqhgtSEXP);
+    Rcpp::traits::input_parameter< DataFrame >::type obstime(obstimeSEXP);
+    Rcpp::traits::input_parameter< List >::type climdata(climdataSEXP);
+    Rcpp::traits::input_parameter< List >::type snowm(snowmSEXP);
+    Rcpp::traits::input_parameter< List >::type micro(microSEXP);
+    Rcpp::traits::input_parameter< List >::type vegp(vegpSEXP);
+    Rcpp::traits::input_parameter< List >::type other(otherSEXP);
+    Rcpp::traits::input_parameter< double >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< std::vector<bool> >::type out(outSEXP);
+    rcpp_result_gen = Rcpp::wrap(gridmicrosnow2(reqhgt, obstime, climdata, snowm, micro, vegp, other, mat, out));
+    return rcpp_result_gen;
+END_RCPP
+}
+// clearskyradCpp
+NumericVector clearskyradCpp(IntegerVector year, IntegerVector month, IntegerVector day, NumericVector lt, double lat, double lon, NumericVector tc, NumericVector rh, NumericVector pk);
+RcppExport SEXP _microclimf_clearskyradCpp(SEXP yearSEXP, SEXP monthSEXP, SEXP daySEXP, SEXP ltSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP tcSEXP, SEXP rhSEXP, SEXP pkSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type year(yearSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type month(monthSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type day(daySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type lt(ltSEXP);
+    Rcpp::traits::input_parameter< double >::type lat(latSEXP);
+    Rcpp::traits::input_parameter< double >::type lon(lonSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type tc(tcSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type rh(rhSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type pk(pkSEXP);
+    rcpp_result_gen = Rcpp::wrap(clearskyradCpp(year, month, day, lt, lat, lon, tc, rh, pk));
+    return rcpp_result_gen;
+END_RCPP
+}
+// solpositionvCpp
+DataFrame solpositionvCpp(IntegerVector year, IntegerVector month, IntegerVector day, NumericVector lt, double lat, double lon, double slope, double aspect);
+RcppExport SEXP _microclimf_solpositionvCpp(SEXP yearSEXP, SEXP monthSEXP, SEXP daySEXP, SEXP ltSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP slopeSEXP, SEXP aspectSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type year(yearSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type month(monthSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type day(daySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type lt(ltSEXP);
+    Rcpp::traits::input_parameter< double >::type lat(latSEXP);
+    Rcpp::traits::input_parameter< double >::type lon(lonSEXP);
+    Rcpp::traits::input_parameter< double >::type slope(slopeSEXP);
+    Rcpp::traits::input_parameter< double >::type aspect(aspectSEXP);
+    rcpp_result_gen = Rcpp::wrap(solpositionvCpp(year, month, day, lt, lat, lon, slope, aspect));
+    return rcpp_result_gen;
+END_RCPP
+}
+// pointmprocess
+DataFrame pointmprocess(DataFrame pointvars, double zref, double h, double pai, double rho, double Vm, double Vq, double Mc);
+RcppExport SEXP _microclimf_pointmprocess(SEXP pointvarsSEXP, SEXP zrefSEXP, SEXP hSEXP, SEXP paiSEXP, SEXP rhoSEXP, SEXP VmSEXP, SEXP VqSEXP, SEXP McSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< DataFrame >::type pointvars(pointvarsSEXP);
+    Rcpp::traits::input_parameter< double >::type zref(zrefSEXP);
+    Rcpp::traits::input_parameter< double >::type h(hSEXP);
+    Rcpp::traits::input_parameter< double >::type pai(paiSEXP);
+    Rcpp::traits::input_parameter< double >::type rho(rhoSEXP);
+    Rcpp::traits::input_parameter< double >::type Vm(VmSEXP);
+    Rcpp::traits::input_parameter< double >::type Vq(VqSEXP);
+    Rcpp::traits::input_parameter< double >::type Mc(McSEXP);
+    rcpp_result_gen = Rcpp::wrap(pointmprocess(pointvars, zref, h, pai, rho, Vm, Vq, Mc));
+    return rcpp_result_gen;
+END_RCPP
+}
+// flowdirCpp
+IntegerMatrix flowdirCpp(NumericMatrix md);
+RcppExport SEXP _microclimf_flowdirCpp(SEXP mdSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type md(mdSEXP);
+    rcpp_result_gen = Rcpp::wrap(flowdirCpp(md));
+    return rcpp_result_gen;
+END_RCPP
+}
+// flowaccCpp
+NumericMatrix flowaccCpp(NumericMatrix dm);
+RcppExport SEXP _microclimf_flowaccCpp(SEXP dmSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type dm(dmSEXP);
+    rcpp_result_gen = Rcpp::wrap(flowaccCpp(dm));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -744,15 +657,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // meltmu
-NumericMatrix meltmu(NumericMatrix mu, NumericVector stemp, NumericVector tc);
-RcppExport SEXP _microclimf_meltmu(SEXP muSEXP, SEXP stempSEXP, SEXP tcSEXP) {
+NumericMatrix meltmu(NumericMatrix skyview, NumericVector stemp, NumericVector tc);
+RcppExport SEXP _microclimf_meltmu(SEXP skyviewSEXP, SEXP stempSEXP, SEXP tcSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type skyview(skyviewSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type stemp(stempSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type tc(tcSEXP);
-    rcpp_result_gen = Rcpp::wrap(meltmu(mu, stemp, tc));
+    rcpp_result_gen = Rcpp::wrap(meltmu(skyview, stemp, tc));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -781,143 +694,53 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// gridmicrosnow1
-List gridmicrosnow1(double reqhgt, DataFrame obstime, DataFrame climdata, List snowm, List micro, List vegp, List other, std::vector<bool> out);
-RcppExport SEXP _microclimf_gridmicrosnow1(SEXP reqhgtSEXP, SEXP obstimeSEXP, SEXP climdataSEXP, SEXP snowmSEXP, SEXP microSEXP, SEXP vegpSEXP, SEXP otherSEXP, SEXP outSEXP) {
+// applycpp3
+NumericVector applycpp3(NumericVector a, std::string fun_name);
+RcppExport SEXP _microclimf_applycpp3(SEXP aSEXP, SEXP fun_nameSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type reqhgt(reqhgtSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type obstime(obstimeSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type climdata(climdataSEXP);
-    Rcpp::traits::input_parameter< List >::type snowm(snowmSEXP);
-    Rcpp::traits::input_parameter< List >::type micro(microSEXP);
-    Rcpp::traits::input_parameter< List >::type vegp(vegpSEXP);
-    Rcpp::traits::input_parameter< List >::type other(otherSEXP);
-    Rcpp::traits::input_parameter< std::vector<bool> >::type out(outSEXP);
-    rcpp_result_gen = Rcpp::wrap(gridmicrosnow1(reqhgt, obstime, climdata, snowm, micro, vegp, other, out));
-    return rcpp_result_gen;
-END_RCPP
-}
-// gridmodelsnow2
-List gridmodelsnow2(DataFrame obstime, List climdata, List pointm, List vegp, List other, std::string snowenv);
-RcppExport SEXP _microclimf_gridmodelsnow2(SEXP obstimeSEXP, SEXP climdataSEXP, SEXP pointmSEXP, SEXP vegpSEXP, SEXP otherSEXP, SEXP snowenvSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type obstime(obstimeSEXP);
-    Rcpp::traits::input_parameter< List >::type climdata(climdataSEXP);
-    Rcpp::traits::input_parameter< List >::type pointm(pointmSEXP);
-    Rcpp::traits::input_parameter< List >::type vegp(vegpSEXP);
-    Rcpp::traits::input_parameter< List >::type other(otherSEXP);
-    Rcpp::traits::input_parameter< std::string >::type snowenv(snowenvSEXP);
-    rcpp_result_gen = Rcpp::wrap(gridmodelsnow2(obstime, climdata, pointm, vegp, other, snowenv));
-    return rcpp_result_gen;
-END_RCPP
-}
-// gridmicrosnow2
-List gridmicrosnow2(double reqhgt, DataFrame obstime, List climdata, List snowm, List micro, List vegp, List other, std::vector<bool> out);
-RcppExport SEXP _microclimf_gridmicrosnow2(SEXP reqhgtSEXP, SEXP obstimeSEXP, SEXP climdataSEXP, SEXP snowmSEXP, SEXP microSEXP, SEXP vegpSEXP, SEXP otherSEXP, SEXP outSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type reqhgt(reqhgtSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type obstime(obstimeSEXP);
-    Rcpp::traits::input_parameter< List >::type climdata(climdataSEXP);
-    Rcpp::traits::input_parameter< List >::type snowm(snowmSEXP);
-    Rcpp::traits::input_parameter< List >::type micro(microSEXP);
-    Rcpp::traits::input_parameter< List >::type vegp(vegpSEXP);
-    Rcpp::traits::input_parameter< List >::type other(otherSEXP);
-    Rcpp::traits::input_parameter< std::vector<bool> >::type out(outSEXP);
-    rcpp_result_gen = Rcpp::wrap(gridmicrosnow2(reqhgt, obstime, climdata, snowm, micro, vegp, other, out));
-    return rcpp_result_gen;
-END_RCPP
-}
-// leafrcpp
-double leafrcpp(double om, double pai, double gref, double albin, double x, double ltrr);
-RcppExport SEXP _microclimf_leafrcpp(SEXP omSEXP, SEXP paiSEXP, SEXP grefSEXP, SEXP albinSEXP, SEXP xSEXP, SEXP ltrrSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type om(omSEXP);
-    Rcpp::traits::input_parameter< double >::type pai(paiSEXP);
-    Rcpp::traits::input_parameter< double >::type gref(grefSEXP);
-    Rcpp::traits::input_parameter< double >::type albin(albinSEXP);
-    Rcpp::traits::input_parameter< double >::type x(xSEXP);
-    Rcpp::traits::input_parameter< double >::type ltrr(ltrrSEXP);
-    rcpp_result_gen = Rcpp::wrap(leafrcpp(om, pai, gref, albin, x, ltrr));
+    Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
+    Rcpp::traits::input_parameter< std::string >::type fun_name(fun_nameSEXP);
+    rcpp_result_gen = Rcpp::wrap(applycpp3(a, fun_name));
     return rcpp_result_gen;
 END_RCPP
 }
 // microclimatemodel_wrapper
-DataFrame microclimatemodel_wrapper(DataFrame obstime, DataFrame climdata, std::vector<double> vegp, std::vector<double> groundp, double reqhgt, double zref, double lat, double lon);
-RcppExport SEXP _microclimf_microclimatemodel_wrapper(SEXP obstimeSEXP, SEXP climdataSEXP, SEXP vegpSEXP, SEXP groundpSEXP, SEXP reqhgtSEXP, SEXP zrefSEXP, SEXP latSEXP, SEXP lonSEXP) {
+DataFrame microclimatemodel_wrapper(DataFrame obstime, DataFrame climdata, List BLout, std::vector<double> vegp, std::vector<double> groundp, double reqhgt, double zref, double lat, double lon);
+RcppExport SEXP _microclimf_microclimatemodel_wrapper(SEXP obstimeSEXP, SEXP climdataSEXP, SEXP BLoutSEXP, SEXP vegpSEXP, SEXP groundpSEXP, SEXP reqhgtSEXP, SEXP zrefSEXP, SEXP latSEXP, SEXP lonSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< DataFrame >::type obstime(obstimeSEXP);
     Rcpp::traits::input_parameter< DataFrame >::type climdata(climdataSEXP);
+    Rcpp::traits::input_parameter< List >::type BLout(BLoutSEXP);
     Rcpp::traits::input_parameter< std::vector<double> >::type vegp(vegpSEXP);
     Rcpp::traits::input_parameter< std::vector<double> >::type groundp(groundpSEXP);
     Rcpp::traits::input_parameter< double >::type reqhgt(reqhgtSEXP);
     Rcpp::traits::input_parameter< double >::type zref(zrefSEXP);
     Rcpp::traits::input_parameter< double >::type lat(latSEXP);
     Rcpp::traits::input_parameter< double >::type lon(lonSEXP);
-    rcpp_result_gen = Rcpp::wrap(microclimatemodel_wrapper(obstime, climdata, vegp, groundp, reqhgt, zref, lat, lon));
-    return rcpp_result_gen;
-END_RCPP
-}
-// snowoneBtest
-std::vector<double> snowoneBtest(std::vector<double> obstime, std::vector<double> clim, std::vector<double> vegp, double albedo, double initdepth, double lat, double lon, double zref);
-RcppExport SEXP _microclimf_snowoneBtest(SEXP obstimeSEXP, SEXP climSEXP, SEXP vegpSEXP, SEXP albedoSEXP, SEXP initdepthSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP zrefSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::vector<double> >::type obstime(obstimeSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type clim(climSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type vegp(vegpSEXP);
-    Rcpp::traits::input_parameter< double >::type albedo(albedoSEXP);
-    Rcpp::traits::input_parameter< double >::type initdepth(initdepthSEXP);
-    Rcpp::traits::input_parameter< double >::type lat(latSEXP);
-    Rcpp::traits::input_parameter< double >::type lon(lonSEXP);
-    Rcpp::traits::input_parameter< double >::type zref(zrefSEXP);
-    rcpp_result_gen = Rcpp::wrap(snowoneBtest(obstime, clim, vegp, albedo, initdepth, lat, lon, zref));
+    rcpp_result_gen = Rcpp::wrap(microclimatemodel_wrapper(obstime, climdata, BLout, vegp, groundp, reqhgt, zref, lat, lon));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_microclimf_solpositionCpp", (DL_FUNC) &_microclimf_solpositionCpp, 6},
-    {"_microclimf_solarindexCpp", (DL_FUNC) &_microclimf_solarindexCpp, 5},
-    {"_microclimf_clearskyradCpp", (DL_FUNC) &_microclimf_clearskyradCpp, 9},
     {"_microclimf_zeroplanedisCpp", (DL_FUNC) &_microclimf_zeroplanedisCpp, 2},
     {"_microclimf_roughlengthCpp", (DL_FUNC) &_microclimf_roughlengthCpp, 4},
-    {"_microclimf_dpsimCpp", (DL_FUNC) &_microclimf_dpsimCpp, 1},
-    {"_microclimf_dpsihCpp", (DL_FUNC) &_microclimf_dpsihCpp, 1},
-    {"_microclimf_dphihCpp", (DL_FUNC) &_microclimf_dphihCpp, 1},
     {"_microclimf_satvapCpp", (DL_FUNC) &_microclimf_satvapCpp, 1},
-    {"_microclimf_dewpointCpp", (DL_FUNC) &_microclimf_dewpointCpp, 2},
-    {"_microclimf_hourtodayCpp", (DL_FUNC) &_microclimf_hourtodayCpp, 2},
-    {"_microclimf_maCpp", (DL_FUNC) &_microclimf_maCpp, 2},
-    {"_microclimf_mayCpp", (DL_FUNC) &_microclimf_mayCpp, 1},
+    {"_microclimf_dewpointCpp", (DL_FUNC) &_microclimf_dewpointCpp, 1},
+    {"_microclimf_hourtodayCpp", (DL_FUNC) &_microclimf_hourtodayCpp, 3},
+    {"_microclimf_manCpp", (DL_FUNC) &_microclimf_manCpp, 2},
     {"_microclimf_BigLeafCpp", (DL_FUNC) &_microclimf_BigLeafCpp, 14},
     {"_microclimf_weatherhgtCpp", (DL_FUNC) &_microclimf_weatherhgtCpp, 7},
     {"_microclimf_soilmCpp", (DL_FUNC) &_microclimf_soilmCpp, 8},
-    {"_microclimf_pointmprocess", (DL_FUNC) &_microclimf_pointmprocess, 8},
-    {"_microclimf_aperm3D2", (DL_FUNC) &_microclimf_aperm3D2, 4},
-    {"_microclimf_slice_2d", (DL_FUNC) &_microclimf_slice_2d, 3},
-    {"_microclimf_applycpp3", (DL_FUNC) &_microclimf_applycpp3, 2},
-    {"_microclimf_manCpp", (DL_FUNC) &_microclimf_manCpp, 2},
-    {"_microclimf_flowdirCpp", (DL_FUNC) &_microclimf_flowdirCpp, 1},
-    {"_microclimf_flowaccCpp", (DL_FUNC) &_microclimf_flowaccCpp, 1},
-    {"_microclimf_soildCppv", (DL_FUNC) &_microclimf_soildCppv, 4},
     {"_microclimf_soildCppm", (DL_FUNC) &_microclimf_soildCppm, 4},
     {"_microclimf_solargrid", (DL_FUNC) &_microclimf_solargrid, 4},
     {"_microclimf_twostreamgrid", (DL_FUNC) &_microclimf_twostreamgrid, 2},
     {"_microclimf_windgrid", (DL_FUNC) &_microclimf_windgrid, 2},
-    {"_microclimf_PenmanMonteith2Cpp", (DL_FUNC) &_microclimf_PenmanMonteith2Cpp, 11},
     {"_microclimf_soiltempgrid", (DL_FUNC) &_microclimf_soiltempgrid, 1},
-    {"_microclimf_rhcanopy", (DL_FUNC) &_microclimf_rhcanopy, 4},
     {"_microclimf_abovegrid", (DL_FUNC) &_microclimf_abovegrid, 2},
     {"_microclimf_belowgrid", (DL_FUNC) &_microclimf_belowgrid, 4},
     {"_microclimf_runmicro1Cpp", (DL_FUNC) &_microclimf_runmicro1Cpp, 15},
@@ -930,17 +753,22 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_runbioclim4Cpp", (DL_FUNC) &_microclimf_runbioclim4Cpp, 19},
     {"_microclimf_pointmodelsnow", (DL_FUNC) &_microclimf_pointmodelsnow, 7},
     {"_microclimf_gridmodelsnow1", (DL_FUNC) &_microclimf_gridmodelsnow1, 6},
+    {"_microclimf_gridmodelsnow2", (DL_FUNC) &_microclimf_gridmodelsnow2, 6},
     {"_microclimf_snowdayan", (DL_FUNC) &_microclimf_snowdayan, 1},
+    {"_microclimf_belowpointsnow", (DL_FUNC) &_microclimf_belowpointsnow, 6},
+    {"_microclimf_gridmicrosnow1", (DL_FUNC) &_microclimf_gridmicrosnow1, 9},
+    {"_microclimf_gridmicrosnow2", (DL_FUNC) &_microclimf_gridmicrosnow2, 9},
+    {"_microclimf_clearskyradCpp", (DL_FUNC) &_microclimf_clearskyradCpp, 9},
+    {"_microclimf_solpositionvCpp", (DL_FUNC) &_microclimf_solpositionvCpp, 8},
+    {"_microclimf_pointmprocess", (DL_FUNC) &_microclimf_pointmprocess, 8},
+    {"_microclimf_flowdirCpp", (DL_FUNC) &_microclimf_flowdirCpp, 1},
+    {"_microclimf_flowaccCpp", (DL_FUNC) &_microclimf_flowaccCpp, 1},
     {"_microclimf_canintfrac", (DL_FUNC) &_microclimf_canintfrac, 6},
     {"_microclimf_meltmu", (DL_FUNC) &_microclimf_meltmu, 3},
     {"_microclimf_meltmu2", (DL_FUNC) &_microclimf_meltmu2, 3},
     {"_microclimf_snowdaysfun", (DL_FUNC) &_microclimf_snowdaysfun, 2},
-    {"_microclimf_gridmicrosnow1", (DL_FUNC) &_microclimf_gridmicrosnow1, 8},
-    {"_microclimf_gridmodelsnow2", (DL_FUNC) &_microclimf_gridmodelsnow2, 6},
-    {"_microclimf_gridmicrosnow2", (DL_FUNC) &_microclimf_gridmicrosnow2, 8},
-    {"_microclimf_leafrcpp", (DL_FUNC) &_microclimf_leafrcpp, 6},
-    {"_microclimf_microclimatemodel_wrapper", (DL_FUNC) &_microclimf_microclimatemodel_wrapper, 8},
-    {"_microclimf_snowoneBtest", (DL_FUNC) &_microclimf_snowoneBtest, 8},
+    {"_microclimf_applycpp3", (DL_FUNC) &_microclimf_applycpp3, 2},
+    {"_microclimf_microclimatemodel_wrapper", (DL_FUNC) &_microclimf_microclimatemodel_wrapper, 9},
     {NULL, NULL, 0}
 };
 

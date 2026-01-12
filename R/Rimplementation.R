@@ -150,7 +150,7 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5) {
   # Calculate shadowmask
   hor<-array(NA,dim=c(dim(micro$dtm)[1:2],24))
   for (i in 1:24) hor[,,i]<-.horizon(micro$dtm,(i-1)*15)
-  i<-round(micro$sazi/15,0)+1; i[i==25]<-1
+  i<-round((micro$sazi*180/pi)/15,0)+1; i[i==25]<-1
   hora<-hor[,,i]
   # Calculate terrain shading
   shadowmask<-hora*0+1
@@ -168,13 +168,9 @@ twostream<-function(micro, reqhgt = 0.05, pai_a = NA, tfact=1.5) {
   micro<-twostreamgrid(reqhgt,micro)
   micro$progress<-2
   # Clean micro
-  micro$si<-NULL
+  #micro$si<-NULL
   micro$svfa<-NULL
-  micro$lat<-NULL
   micro$long<-NULL
-  micro$vegx<-NULL
-  micro$lref<-NULL
-  micro$ltra<-NULL
   micro$clump<-NULL
   return(micro)
 }
@@ -256,8 +252,6 @@ soiltemp  <- function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5) {
   micro$Vm<-NULL
   micro$Vq<-NULL
   micro$Mc<-NULL
-  micro$soilb<-NULL
-  micro$psi_e<-NULL
   return(micro)
 }
 #' Estimate temperature and humidity at specified height above ground
@@ -299,8 +293,11 @@ aboveground<- function(micro, reqhgt = 0.05, pai_a = NA, tfact = 1.5) {
     micro<-soiltemp(micro,reqhgt,pai_a,tfact)
   }
   h<-dim(micro$tc)[3]
-  micro$Smin<-.rta(micro$Smin,h)
-  micro$Smax<-.rta(micro$Smax,h)
+  micro$Smin <-.rta(micro$Smin,h)
+  micro$Smax <-.rta(micro$Smax,h)
+  micro$lats <- .rta(micro$lats,h)
+  micro$soilb <- .rta(micro$soilb,h)
+  micro$psi_e <- .rta(micro$psi_e,h)
   mout<-abovegrid(reqhgt, micro)
   return(mout)
 }

@@ -694,112 +694,112 @@ checkinputs <- function(weather, vegp, soilc, dtm, windhgt = 2) {
   if (habitat == 1) {  # Evergreen needleleaf forest
     hgt<-15 # Vegetation height
     x<-0.4  # Campbell x
-    gsmax<-0.33 # Maximum stomatal conductance
+    gsmax<-0.1397 # Maximum stomatal conductance
     leafr<-0.25 # Leaf reflectivity (shortwave)
     leafd<-0.01 # Leaf width (m)
   }
   if (habitat == 2) { # Evergreen broadleaf forest
     hgt<-20 # Vegetation height
     x<-1.2  # Campbell x
-    gsmax<-0.33 # Maximum stomatal conductance
+    gsmax<-0.1045 # Maximum stomatal conductance
     leafr<-0.3 # Leaf reflectivity (shortwave)
     leafd<-0.35 # Leaf width (m)
   }
   if (habitat == 3) { # Deciduous needleleaf forest
     hgt<-10 # Vegetation height
     x<-0.4  # Campbell x
-    gsmax<-0.33 # Maximum stomatal conductance
+    gsmax<-0.07353 # Maximum stomatal conductance
     leafr<-0.3 # Leaf reflectivity (shortwave)
     leafd<-0.01  # Leaf width (m)
   }
   if (habitat == 4) { # Deciduous broadleaf forest
     hgt<-15 # Vegetation height
     x<-1.2  # Campbell x
-    gsmax<-0.23 # Maximum stomatal conductance
+    gsmax<-0.1047 # Maximum stomatal conductance
     leafr<-0.3 # Leaf reflectivity (shortwave)
     leafd<-0.07 # Leaf width (m)
   }
   if (habitat == 5) { # Mixed forest
     hgt<-10 # Vegetation height
     x<-0.8  # Campbell x
-    gsmax<-0.28 # Maximum stomatal conductance
+    gsmax<-0.08953 # Maximum stomatal conductance
     leafr<-0.28 # Leaf reflectivity (shortwave)
     leafd<-0.04 # Leaf width (m)
   }
   if (habitat == 6) { # Closed shrublands
     hgt<-2 # Vegetation height
     x<-1  # Campbell x
-    gsmax<-0.35 # Maximum stomatal conductance
+    gsmax<-0.2161 # Maximum stomatal conductance
     leafr<-0.3 # Leaf reflectivity (shortwave)
     leafd<-0.04 # Leaf width (m)
   }
   if (habitat == 7) { # Open shrublands
     hgt<-1.5 # Vegetation height
     x<-0.7  # Campbell x
-    gsmax<-0.35 # Maximum stomatal conductance
+    gsmax<-0.1703 # Maximum stomatal conductance
     leafr<-0.3 # Leaf reflectivity (shortwave)
     leafd<-0.04 # Leaf width (m)
   }
   if (habitat == 8) { # Woody savannas
     hgt<-3 # Vegetation height
     x<-0.7  # Campbell x
-    gsmax<-0.33 # Maximum stomatal conductance
+    gsmax<-0.08219 # Maximum stomatal conductance
     leafr<-0.35 # Leaf reflectivity (shortwave)
     leafd<-0.03 # Leaf width (m)
   }
   if (habitat == 9) { #Savannas
     hgt<-1.5 # Vegetation height
     x<-0.15  # Campbell x
-    gsmax<-0.33 # Maximum stomatal conductance
+    gsmax<-0.07019 # Maximum stomatal conductance
     leafr<-0.35 # Leaf reflectivity (shortwave)
     leafd<-0.01 # Leaf width (m)
   }
   if (habitat == 10) { # Short grasslands
     hgt<-0.25 # Vegetation height
     x<-0.15  # Campbell x
-    gsmax<-0.33 # Maximum stomatal conductance
+    gsmax<-0.09461 # Maximum stomatal conductance
     leafr<-0.35 # Leaf reflectivity (shortwave)
     leafd<-0.01 # Leaf width (m)
   }
   if (habitat == 11) { # Tall grasslands
     hgt<-1.5 # Vegetation height
     x<-0.15  # Campbell x
-    gsmax<-0.33 # Maximum stomatal conductance
+    gsmax<-0.09461 # Maximum stomatal conductance
     leafr<-0.35 # Leaf reflectivity (shortwave)
     leafd<-0.01 # Leaf width (m)
   }
   if (habitat == 12) { # Permanent wetlands
     hgt<-0.5 # Vegetation height
     x<-1.4  # Campbell x
-    gsmax<-0.55 # Maximum stomatal conductance
+    gsmax<-0.2208 # Maximum stomatal conductance
     leafr<-0.5 # Leaf reflectivity (shortwave)
     leafd<-0.09 # Leaf width (m)
   }
   if (habitat == 13) { # Croplands
     hgt<-0.5 # Vegetation height
     x<-0.2  # Campbell x
-    gsmax<-0.33 # Maximum stomatal conductance
+    gsmax<-0.1 # Maximum stomatal conductance
     leafr<-0.3 # Leaf reflectivity (shortwave)
     leafd<-0.02 # Leaf width (m)
   }
   if (habitat == 14) { # Urban and built-up
     hgt<-1.5 # Vegetation height
     x<-1  # Campbell x
-    gsmax<-0.33 # Maximum stomatal conductance
+    gsmax<-0.1 # Maximum stomatal conductance
     leafr<-0.3 # Leaf reflectivity (shortwave)
     leafd<-0.04 # Leaf width (m)
   }
   if (habitat == 15) { # Cropland/Natural vegetation mosaic
     hgt<-1 # Vegetation height
     x<-0.5  # Campbell x
-    gsmax<-0.3 # Maximum stomatal conductance
+    gsmax<-0.095 # Maximum stomatal conductance
     leafr<-0.3 # Leaf reflectivity (shortwave)
     leafd<-0.03 # Leaf width (m)
   }
   if (habitat == 16) { # Barren or sparsely vegetated
     hgt<-0.15 # Vegetation height
     x<-0.6  # Campbell x
-    gsmax<-0.33 # Maximum stomatal conductance
+    gsmax<-0.055 # Maximum stomatal conductance
     leafr<-0.3 # Leaf reflectivity (shortwave)
     leafd<-0.015 # Leaf width (m)
   }

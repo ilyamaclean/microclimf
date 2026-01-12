@@ -387,8 +387,9 @@ runmicro <- function(micropoint, reqhgt, vegp, soilc, dtm, dtmc = NA, altcorrect
                            runchecks,pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
     }
   } else {
+    if (class(micropoint) != "micropoint"  &  class(dtmc) == "logical")  stop("Require dtmc. Please provide\n")
     mout<-.runmicronosnow(micropoint,reqhgt,vegp,soilc,dtm,dtmc,altcorrect,runchecks,
-                    pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
+                          pai_a,tfact,out,slr,apr,hor,twi,wsa,svf)
   }
   return(mout)
 }
@@ -641,7 +642,7 @@ runbioclim <- function(climdata, reqhgt, vegp, soilc, dtm, dtmc = NA, tme = NA, 
       mout<-.runbioclim3(climdata,reqhgt,vegp,soilc,dtm,temp,zref,windhgt,soilm,runchecks,
                          pai_a,tfact,out,vegpisannual)
     } else { # array climate input
-      mout<-.runbioclim4(climdata,tme,reqhgt,vegp,soilc,dtm,dtmc,temp,zrefwindhgt,
+      mout<-.runbioclim4(climdata,tme,reqhgt,vegp,soilc,dtm,dtmc,temp,zref,windhgt,
                          soilm,runchecks,altcorrect,pai_a,tfact,out,vegpisannual)
     } # end if array
   }  # end if time variant

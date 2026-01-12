@@ -1,43 +1,44 @@
 test_that("Test soil water model", {
-  obstime <- c(2024, 12, 15, 12)
-  clim <- c(
-    tc = -5,
-    rh = 75,
-    pk = 101.3,
-    swdown = 100,
-    difrad = 90,
-    lwdown = 234,
-    windspeed = 2,
-    precip = 2
+  hrs   <- c(0:23, 0:23)
+  n     <- length(hrs)
+  obstime <- data.frame(
+    year  = rep(2024L, n),
+    month = rep(3L,    n),
+    day   = rep(c(21, 22),   each = n/2),
+    hour  = as.numeric(hrs)
   )
-  vegp = c(
-    pai = 2,
-    h = 0.5,
-    ltra = 0.1,
-    clump = 0.1
+  # Temperatures in deg C (sinusoid), humidity %, pressure kPa
+  Tair   <- 10 + 5 * sin((hrs - 8) / 24 * 2 * pi)          # °C
+  ea <- 0.7 * satvapCpp(mean(Tair))
+  RH <- 0; for (hr in 1:n) RH[hr] <- (ea / satvapCpp(Tair[hr])) * 100
+  Pk     <- rep(101.3, n)                                  # kPa  (your code uses kPa)
+  # Simulate radiation
+  csr <- clearskyradCpp(obstime$year, obstime$month, obstime$day, obstime$hour,
+                        lat = 50, lon = -5, Tair, RH, Pk)
+  solvars <- solpositionvCpp(obstime$year, obstime$month, obstime$day, obstime$hour, 
+                             lat = 50, lon = -5, slope = 0, aspect = 180)
+  si <- solvars$si
+  Rdir <- 0.3 * csr * si
+  SWd <- 0.5 * csr                                         # W m-2
+  Rdif <- SWd - Rdir                                       # W m-2
+  LWd    <- rep(350, n)                                    # W m-2
+  U2     <- rep(2, n)                                      # m s-1
+  Wdir   <- rep(180, n)                                    # deg
+  Prec   <- rep(0, n)                                      # mm h-1
+  climdata <- data.frame(
+    temp      = Tair,
+    relhum    = RH,
+    pres      = Pk,
+    swdown    = SWd,
+    difrad    = Rdif,
+    lwdown    = LWd,
+    windspeed = U2,
+    winddir   = Wdir,
+    precip    = Prec
   )
-  out <- snowoneBtest(obstime, clim, vegp, albedo = 0.95, initdepth = 0.1,
-                      lat = 50, lon = -5, zref = 2)
-  # format checks
-  expect_true(length(out) == 15)
-  expect_true(all(is.finite(out)))
-
-  # Value checks: Combined canopy and ground
-  expect_gte(out[1], -8); expect_lte(out[1], -4)    # snow surface temperature (deg C)
-  expect_gte(out[2], 0); expect_lte(out[2], 0.001)  # sublimation (m SWE)
-  expect_gte(out[3], 0); expect_lte(out[3], 0.0001)  # temperature melt (m SWE)
-  expect_gte(out[4], 0); expect_lte(out[4], 0.0001)  # rain melt (m SWE)
-  # Value checks: ground only
-  expect_gte(out[5], -8); expect_lte(out[5], -4)    # Combined canopy and ground snow temperature
-  expect_gte(out[6], 0); expect_lte(out[6], 0.001)  # sublimation (m SWE)
-  expect_gte(out[7], 0); expect_lte(out[7], 0.0001)  # temperature melt (m SWE)
-  expect_gte(out[8], 0); expect_lte(out[8], 0.0001)  # rain melt (m SWE)
-  # Other variables
-  expect_gte(out[9], 0); expect_lte(out[9], 1) # Canopy interception
-  expect_gte(out[10], 0.2); expect_lte(out[10], 0.25) # wind friction velocity
-  expect_gte(out[11], 0.1); expect_lte(out[11], 5) # Ground absorbed shortwave radiation
-  expect_gte(out[12], 200); expect_lte(out[12], 300) # Ground absorbed longwave radiation
-  expect_gte(out[13], 0.1); expect_lte(out[13], 0.15) # Canopy transmission
-  expect_gte(out[14], 0.8); expect_lte(out[14], 1) # Convective conductance
-
+  soilm <- soilmCpp(climdata, rmu = 0.021303, mult = 0.000191202, pwr = 1.134773, 
+                    Smax = 0.419, Smin = 0.091, Ksat = 5.89, a = 0.059765)
+  expect_true(length(soilm) == 2)
+  expect_true(all(is.finite(soilm)))
+  expect_gte(min(soilm), 0.35); expect_lte(max(soilm), 0.419) 
 })
