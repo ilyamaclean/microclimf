@@ -5803,6 +5803,8 @@ DataFrame microclimatemodel_wrapper(DataFrame obstime, DataFrame climdata, List 
     NumericVector varTg = BLout["Tg"];
     NumericVector G = BLout["G"];
     NumericVector uf = BLout["uf"];
+    double dp;
+    double zmp;
     if (reqhgt >= 0) {
         // Create additional output variables
         NumericVector Rdirdown(n);
@@ -5824,8 +5826,6 @@ DataFrame microclimatemodel_wrapper(DataFrame obstime, DataFrame climdata, List 
         tirstruct tir = twostreamdif(pai, paia, vegx, lref, ltra, clump, gref);
         stompstruct stomp;
         tiwstruct tiw;
-        double dp;
-        double zmp;
         if (reqhgt > 0.0) {
             stomp = stomparamsCpp(hgt, lat, vegx);
             tiw = windtiCpp(hgt, pai);
