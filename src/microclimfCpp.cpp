@@ -1307,6 +1307,24 @@ abovecanstruct TVabove(double reqhgt, double zref, double h, double d, double zm
     }
     return out;
 }
+// Estimate minimum conductance
+// [[Rcpp::export]]
+double mincondCpp(double leafabs, double gs, double tc, double leafd) 
+{
+    // Estimated Rnet
+    double Rnet = leafabs - 0.97 * sb * radem(tc);
+    // Estimate H
+    double rs = 500.0;
+    if (gs > 0.0) rs = 1 / gs;
+    if (rs > 500.0) rs = 500.0;
+    double Hlf = 1.09767 * std::pow(rs, 0.2672778);
+    double Hf = -1.0 / (1.0 + std::exp(2.0 - Hlf));
+    double H = Hf * Rnet;
+    // Estimate minimum conductance
+    double gmin = 0.0463 * std::pow(std::abs(H) / leafd, 0.2);
+    if (gmin < 0.05) gmin = 0.05;
+    return gmin;
+}
 // Calculate leaf temperature and fluxes
 leaftempstruct leaftemp(double Tcan, double Tg, double tc, double mxtc, double pk, double ea, double es, double uz, double tdew,
     double surfwet, double radLsw, double Rddown, double Rbdown, double Rlw, double pai, double paia, double leafd, 
@@ -1323,10 +1341,14 @@ leaftempstruct leaftemp(double Tcan, double Tg, double tc, double mxtc, double p
     double leafabs = radLsw + lwabs;
     // ** Conductances
     double gh = 0.135 * std::sqrt(uz / leafd) * 1.4;
+    double gmin = mincondCpp(leafabs, 999.99, Tcan, leafd);
+    if (gh < gmin) gh = gmin;
     double gV = gh;
     if (gsmax < 999.99) {
         gV = 0.0;
         double gs = stomcondCpp(PARabs, theta, gsmax, Smax, psi_e, soilb, stomp);
+        gmin = mincondCpp(leafabs, gs, Tcan, leafd);
+        if (gh < gmin) gh = gmin;
         if (gs > 0.0) gV = 1 / (1 / gh + 1 / gs);
     }
     // Temperature

@@ -156,6 +156,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mincondCpp
+double mincondCpp(double leafabs, double gs, double tc, double leafd);
+RcppExport SEXP _microclimf_mincondCpp(SEXP leafabsSEXP, SEXP gsSEXP, SEXP tcSEXP, SEXP leafdSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type leafabs(leafabsSEXP);
+    Rcpp::traits::input_parameter< double >::type gs(gsSEXP);
+    Rcpp::traits::input_parameter< double >::type tc(tcSEXP);
+    Rcpp::traits::input_parameter< double >::type leafd(leafdSEXP);
+    rcpp_result_gen = Rcpp::wrap(mincondCpp(leafabs, gs, tc, leafd));
+    return rcpp_result_gen;
+END_RCPP
+}
 // solargrid
 List solargrid(NumericMatrix slope, NumericMatrix aspect, DataFrame obstime, List micro);
 RcppExport SEXP _microclimf_solargrid(SEXP slopeSEXP, SEXP aspectSEXP, SEXP obstimeSEXP, SEXP microSEXP) {
@@ -829,6 +843,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_weatherhgtCpp", (DL_FUNC) &_microclimf_weatherhgtCpp, 7},
     {"_microclimf_soilmCpp", (DL_FUNC) &_microclimf_soilmCpp, 8},
     {"_microclimf_soildCppm", (DL_FUNC) &_microclimf_soildCppm, 4},
+    {"_microclimf_mincondCpp", (DL_FUNC) &_microclimf_mincondCpp, 4},
     {"_microclimf_solargrid", (DL_FUNC) &_microclimf_solargrid, 4},
     {"_microclimf_twostreamgrid", (DL_FUNC) &_microclimf_twostreamgrid, 2},
     {"_microclimf_windgrid", (DL_FUNC) &_microclimf_windgrid, 2},

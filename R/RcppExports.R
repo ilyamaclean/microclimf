@@ -41,6 +41,10 @@ soildCppm <- function(twi, Smin, Smax, tfact) {
     .Call(`_microclimf_soildCppm`, twi, Smin, Smax, tfact)
 }
 
+mincondCpp <- function(leafabs, gs, tc, leafd) {
+    .Call(`_microclimf_mincondCpp`, leafabs, gs, tc, leafd)
+}
+
 solargrid <- function(slope, aspect, obstime, micro) {
     .Call(`_microclimf_solargrid`, slope, aspect, obstime, micro)
 }
