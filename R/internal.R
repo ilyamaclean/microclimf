@@ -2583,6 +2583,7 @@ flowacc<-function (dtm, basins = NA) {
     ed<-st+(5*24)-1
     if (ed > h) ed<-h
     s<-c(st:ed)
+    s<-s[s<=smx]
     smod<- gridmodelsnow1(obstime[s,],weather[s,],pointm[s,],vegp,other,snowenv)
     # Topographic snow re-distribution
     tpr<-10*mean(weather$windspeed[s])^0.5
@@ -2964,7 +2965,7 @@ flowacc<-function (dtm, basins = NA) {
     st<-(day-1)*(5*24)+1
     ed<-st+(5*24)-1
     s<-c(st:ed)
-    s<-s[s<smx]
+    s<-s[s<=smx]
     # subset weather
     climdata1<-list()
     for (i in 1:8) climdata1[[i]]<-climdata[[i]][,,s]

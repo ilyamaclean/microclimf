@@ -1189,8 +1189,11 @@ windmodel windCpp(double reqhgt, double zref, double h, double pai, double uref,
 {
     
     windmodel out;
+    if (Rcpp::NumericVector::is_na(ws)) ws = 1.0;
+    if (ws < 0.05) ws = 0.05;
     double ufs = (ka * uref) / std::log((zref - tiw.d) / tiw.zm);
     out.uf = ufs * umu * ws;
+    if (out.uf < 0.001) out.uf = 0.001;
     out.uz = out.uf;
     if (reqhgt > 0) {
         if (reqhgt >= h) {
