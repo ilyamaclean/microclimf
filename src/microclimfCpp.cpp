@@ -838,6 +838,7 @@ Rcpp::List BigLeafCpp(DataFrame obstime, DataFrame climdata, std::vector<double>
             if (Rnet > 0 && H[i] > Rnet) H[i] = Rnet;
             // Recalculate stablity variables
             // Stability
+            if (std::abs(H[i]) < 0.1) H[i] = 0.1;
             LL[i] = (ph * cp * std::pow(uf[i], 3.0) * Tk) / (-0.4 * 9.81 * H[i]);
             //if (LL[i] > 10000.0) LL[i] = 10000.0;
             //if (LL[i] < -10000.0) LL[i] = -10000.0;
@@ -3557,7 +3558,6 @@ List runbioclimCpp(NumericVector Tz, NumericVector soilm, std::vector<bool> out,
     if (out[18]) outp["bio19"] = bio19;
     return outp;
 }
-
 // Run microclimate model(hourly, static vegetation, data.frame climate input)
 // [[Rcpp::export]]
 List runbioclim1Cpp(DataFrame obstime, DataFrame climdata, DataFrame pointm, List vegp, List soilc,
@@ -3575,12 +3575,13 @@ List runbioclim1Cpp(DataFrame obstime, DataFrame climdata, DataFrame pointm, Lis
     // Run microclimate model
     List mout = runmicro1Cpp(obstime, climdata, pointm, vegp, soilc, reqhgt, zref, lat, lon, Sminp, Smaxp, tfact,
         true, mat, outm);
+    // delete in here
     NumericVector Tz;
     if (air) {
         Tz = mout["Tz"];
     }
     else {
-        Tz = mout["tleaf"];
+       Tz = mout["tleaf"];
     }
     NumericVector soilm = mout["soilm"];
     List bout = runbioclimCpp(Tz, soilm, out, wetq, dryq, hotq, colq);
@@ -3772,14 +3773,14 @@ NumericVector snowalbCpp(NumericVector prec) {
 snowrad radoneB(obspoint obstime, climpoint clim, vegpoint vegp, snowpoint snow,
     otherpoint other)
 {
-    snowrad out;
+    snowrad out{};
     // ************ Calculate longwave radiation ************* //
     double RlwabsC = 0.97 * clim.Rlw;
     out.RlwabsG = RlwabsC;
     double cld = vegp.clump * vegp.clump;
-    double pait = vegp.pai / (1 - vegp.clump);
-    out.tr = (1 - cld) * std::exp(-pait) + cld;
-    if (vegp.hgt > 0) {
+    double pait = vegp.pai / (1.0 - vegp.clump);
+    out.tr = (1.0 - cld) * std::exp(-pait) + cld;
+    if (vegp.hgt > 0.0) {
         double Rsky = out.tr * clim.Rlw;
         double Rcan = (1.0 - out.tr) * 0.97 * sb * radem(clim.Tci);
         out.RlwabsG = 0.97 * (Rsky + Rcan);
@@ -3834,7 +3835,7 @@ snowrad radoneB(obspoint obstime, climpoint clim, vegpoint vegp, snowpoint snow,
 snowmodpoint snowoneB(obspoint obstime, climpoint clim, vegpoint vegp, snowpoint snow,
     otherpoint other, std::vector<double> sdp, double umu = 1.0)
 {
-    snowmodpoint out;
+    snowmodpoint out{};
     // *** Adjust veg parameters for presence of snow
     double pai = 0.0;
     if (vegp.hgt > snow.sdepg) {
@@ -3843,7 +3844,7 @@ snowmodpoint snowoneB(obspoint obstime, climpoint clim, vegpoint vegp, snowpoint
     double hgt = vegp.hgt - snow.sdepg;
     if (hgt < 0.0) hgt = 0.0;
     double zi = 0.0;
-    if (snow.sdepg > 0.0) zi = ((snow.sdepc - snow.sdepg) * snow.sdenc) / (hgt * 1000.0);
+    if (snow.sdepg > 0.0 && hgt > 0.0) zi = ((snow.sdepc - snow.sdepg) * snow.sdenc) / (hgt * 1000.0);
     double ltra = vegp.ltra * std::exp(-10.1 * zi);
     // Run radiation model
     vegp.hgt = hgt;
@@ -3874,7 +3875,7 @@ snowmodpoint snowoneB(obspoint obstime, climpoint clim, vegpoint vegp, snowpoint
     if (out.Tg < tdew) out.Tg = tdew;
     // ******* Calculate mass balance of snowpack (canopy + ground) ******
     // Sublimation
-    double la;
+    double la = 0.0;;
     if (out.Tc < 0.0) {
         la = 51078.69 - 4.338 * out.Tc - 0.06367 * out.Tc * out.Tc;
     }
@@ -3923,6 +3924,8 @@ snowmodpoint snowoneB(obspoint obstime, climpoint clim, vegpoint vegp, snowpoint
     double Li = 0.0;
     if (snow.sdepc > 0.0) {
         double wgtg = snow.sdepg / snow.sdepc;
+        if (wgtg < 0.0) wgtg = 0.0;
+        if (wgtg > 1.0) wgtg = 1.0;
         double sdencc = wgtg * snow.sdeng + (1.0 - wgtg) * snow.sdenc;
         Li = (snow.sdepc - snow.sdepg) * sdencc;
     }
@@ -4014,7 +4017,7 @@ List pointmodelsnow(DataFrame obstime, DataFrame climdata, NumericVector vegp,
     NumericVector ea(tc.size());
     int tsteps = tc.size();
     for (int i = 0; i < tsteps; ++i) ea[i] = satvapCpp(tc[i]) * rh[i] / 100.0;
-    NumericVector te = tc;
+    NumericVector te = Rcpp::clone(tc);
     // Extract other
     double slope = other[0];
     double aspect = other[1];
@@ -4039,19 +4042,19 @@ List pointmodelsnow(DataFrame obstime, DataFrame climdata, NumericVector vegp,
         sdenc[i] = ((sdp[0] - sdp[1]) * (1 - exp(-sdp[2] * isnowd / 100.0 -
             sdp[3] * 0)) + sdp[1]) * 1000.0;
     }
-    NumericVector sdeng = sdenc;
+    NumericVector sdeng = Rcpp::clone(sdenc);
     // Have a first stab at guessing snow G
     NumericVector G = GFluxCppsnow(tc, sdenc);
     // Have a first stab at guessing diabatic coefficients
-    NumericVector psih(tsteps);
-    NumericVector psim(tsteps);
+    NumericVector psih(tsteps, 0.0);
+    NumericVector psim(tsteps, 0.0);
     NumericVector phih(tsteps, 1.0);
     // ******************** Initial step ************************* //
     // Initalize variables
-    NumericVector Tc(tsteps, tc[1]);
-    NumericVector Tg(tsteps);
-    NumericVector sdepc(tsteps + 1, isnowd);
-    NumericVector sdepg(tsteps + 1, 0.5 * isnowd);
+    NumericVector Tc = Rcpp::clone(tc);
+    NumericVector Tg = Rcpp::clone(tc);
+    NumericVector sdepc(tsteps + 1);
+    NumericVector sdepg(tsteps + 1);
     NumericVector RswabsG(tsteps);
     NumericVector RlwabsG(tsteps);
     NumericVector tr(tsteps);
@@ -4065,18 +4068,20 @@ List pointmodelsnow(DataFrame obstime, DataFrame climdata, NumericVector vegp,
     int iter = 0;
     double mxdif = 0.0;
     // Initalize variables that are passed to snowoneB
-    obspoint obstimeo;
-    climpoint climo;
-    vegpoint vegpo; vegpo.pai = vegp[0]; vegpo.hgt = vegp[1];  vegpo.clump = vegp[3]; vegpo.ltra = vegp[2];
-    otherpoint othero; othero.slope = slope; othero.aspect = aspect; othero.lat = lat; othero.lon = lon; othero.zref = zref;
-    snowpoint snowo;
+    obspoint obstimeo{};
+    climpoint climo{};
+    vegpoint vegpo{}; vegpo.pai = vegp[0]; vegpo.hgt = vegp[1];  vegpo.clump = vegp[3]; vegpo.ltra = vegp[2];
+    otherpoint othero{}; othero.slope = slope; othero.aspect = aspect; othero.lat = lat; othero.lon = lon; othero.zref = zref;
+    snowpoint snowo{};
     while (tst > tol) {
         // **** Iterate through all time steps
         int snowagec = isnowa;
         int snowageg = isnowa;
+        sdepc[0] = isnowd;
+        sdepg[0] = isnowd * 0.5;
         // **** Extract antecident Tc and Tg
-        NumericVector Tco = Tc;
-        NumericVector Tgo = Tg;
+        NumericVector Tco = Rcpp::clone(Tc);
+        NumericVector Tgo = Rcpp::clone(Tg);
         mxdif = 0.0;
         for (int i = 0; i < tsteps; ++i) {
             // Get model inputs
@@ -4111,6 +4116,7 @@ List pointmodelsnow(DataFrame obstime, DataFrame climdata, NumericVector vegp,
             double zm = roughlengthCpp(smod.hgt, smod.pai, d, psih[i]);
             if (zm < 0.001) zm = 0.001;
             double Tk = tc[i] + 273.15;
+            if (std::abs(H[i]) < 0.1) H[i] = 0.1;
             double LL = (ph * cp * std::pow(smod.uf, 3.0) * Tk) / (-ka * 9.81 * H[i]);
             psim[i] = dpsimCpp(zm / LL) - dpsimCpp((zref - d) / LL);
             psih[i] = dpsihCpp((0.2 * zm) / LL) - dpsihCpp((zref - d) / LL);
@@ -4354,7 +4360,7 @@ List gridmodelsnow1(DataFrame obstime, DataFrame climdata, DataFrame pointm, Lis
                         // Calculate wind shelter
                         double ws = wsa[windex[k] * rows * cols + j * rows + i];
                         // Get model inputs
-                        double u2p = umu[k] * ws;
+                        double u2p = umu[k] * ws * u2[k];
                         double Rdifp = Rdif[k] * skyview(i, j);
                         double Rdirp = (Rsw[k] - Rdif[k]) * smu;
                         double Rswp = Rdirp + Rdifp;
@@ -4601,7 +4607,7 @@ List gridmodelsnow2(DataFrame obstime, List climdata, List pointm, List vegp,
                         // Calculate wind shelter
                         double ws = wsa[windex[k] * rows * cols + j * rows + i];
                         // Get model inputs
-                        double u2p = umu[idx] * ws;
+                        double u2p = umu[idx] * ws * u2[idx];
                         double Rdifp = Rdif[idx] * skyview(i, j);
                         double Rdirp = (Rsw[idx] - Rdif[idx]) * smu;
                         double Rswp = Rdirp + Rdifp;

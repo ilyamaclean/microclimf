@@ -2768,7 +2768,9 @@ flowacc<-function (dtm, basins = NA) {
     sdepc[,,s]<-sdc
     sdepg[,,s]<-sdg
     # Recalculate ped
-    pred<-subs[ed]
+    ped<-subs[ed]
+    other$isnowdc <- sdc[,,24]
+    other$isnowdg <- sdg[,,24]
     utils::setTxtProgressBar(pb, day)
   }
   swe<-sdepc*sden
@@ -3273,7 +3275,9 @@ flowacc<-function (dtm, basins = NA) {
     sdepc[,,s]<-sdc
     sdepg[,,s]<-sdg
     # Recalculate ped
-    pred<-subs[ed]
+    ped<-subs[ed]
+    other$isnowdc <- sdc[,,24]
+    other$isnowdg <- sdg[,,24]
     utils::setTxtProgressBar(pb, 0.5*day+ndays*1.5)
   }
   # Recalculate as mm snow water equivelent

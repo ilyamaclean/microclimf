@@ -8,11 +8,11 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
-
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  cache = FALSE
 )
 ```
 <style>
@@ -206,7 +206,7 @@ The model is most sensitive to `pai` (the total one sided area of both leaves an
 
 The most sensible use-case for the `vegpfromhab` function is thus when one has alternative data that could be used to estimate `pai` and `hgt` that can be slotted into the output returned by this function. This is straightforward as the vegetation inputs to the model as returned by `vegpfromhab` is just a list of SpatRasters.
 
-The model is less sensitive to other parameters. The parameter `x` represents how vertically or horizontally the leaves of the canopy are orientated and controls how much direct radiation is transmitted through the canopy at a given solar angle (when the sun is low above the horizon, less radiation is transmitted through vertically orientated leaves). Users may refer to [Campbell (1986)](https://doi.org/10.1016/0168-1923(86)90010-9) for a detailed explanation. Values for deciduous woodland are typically around 1, but for grassland may be closer to 0.2. The parameter `gsmax` is the maximum stomatal conductance (mol / m^2 / s) of leaves and is needed for evapotranspiration calculations. Values typically range from 0.23 for deciduous broadleaf forest to 0.55 for wetland vegetation. [Körner (1995)](https://link.springer.com/chapter/10.1007/978-3-642-79354-7_22) gives values for major vegetation types of the world. The parameter ‘leafr’ is the leaf reflectance to shortwave radiation, with typical values around 0.4. 
+The model is less sensitive to other parameters. The parameter `x` represents how vertically or horizontally the leaves of the canopy are orientated and controls how much direct radiation is transmitted through the canopy at a given solar angle (when the sun is low above the horizon, less radiation is transmitted through vertically orientated leaves). Users may refer to [Campbell (1986)](https://doi.org/10.1016/0168-1923(86)90010-9) for a detailed explanation. Values for deciduous woodland are typically around 1, but for grassland may be closer to 0.2. The parameter `gsmax` is the maximum stomatal conductance (mol / m^2 / s) of leaves and is needed for evapotranspiration calculations. Values typically range from 0.11 for deciduous broadleaf forest to 0.35 for wetland vegetation. [Körner (1995)](https://link.springer.com/chapter/10.1007/978-3-642-79354-7_22) gives values for major vegetation types of the world. The parameter ‘leafr’ is the leaf reflectance to shortwave radiation, with typical values around 0.4. 
 
 The parameter `clump` dictates how much radiation passes through gaps in the canopy, and therefore represents the sub-pixel canopy clumpiness, with values ranging from 0 (uniform) to 1 (highly clumped). In general, it varies with vegetation height and plant area index. The function `clumpestimate` can be used to derive an approximate estimate. The parameter `leafd` is the mean diameter of leaves. 
 
@@ -405,12 +405,12 @@ The function `aboveground` automatically works out which pixels are below canopy
 ```{r eval=FALSE}
 dem <- aggregate(rast(dtmcaerth), 10) * 0
 # Create spatially uniform vegetation and soil parameters  dataset
-vegp2 <- list(pai = array(0.05, dim = c(5, 5, 12)),
+vegp2 <- list(pai = aggregate(rast(vegp$x), 10) * 0 + 0.05,
               hgt = aggregate(rast(vegp$hgt), 10) * 0 + 0.005,
               x = aggregate(rast(vegp$x), 10) * 0 + 1,
-              gsmax = aggregate(rast(vegp$x), 10) * 0 + 1,
+              gsmax = aggregate(rast(vegp$x), 10) * 0 + 0.1,
               leafr = aggregate(rast(vegp$x), 10) * 0 + 0.3,
-              clump = array(0, dim = c(5, 5, 12)),
+              clump = aggregate(rast(vegp$x), 10) * 0,
               leafd = aggregate(rast(vegp$x), 10) * 0 + 0.05,
               leaft = aggregate(rast(vegp$x), 10) * 0 + 0.15)
 soilc2 <- list(soiltype = aggregate(rast(soilc$soiltype), 10),
@@ -441,12 +441,12 @@ The net result is a more complex temperature-height (and humidity) profile as re
 
 ```{r eval=FALSE}
 # Create spatially uniform vegetation a\nd soil parameters  dataset
-vegp2 <- list(pai = array(3, dim = c(5, 5, 12)),
+vegp2 <- list(pai = aggregate(rast(vegp$x), 10) * 0 + 3,
               hgt = aggregate(rast(vegp$hgt), 10) * 0 + 10,
               x = aggregate(rast(vegp$x), 10) * 0 + 1,
-              gsmax = aggregate(rast(vegp$x), 10) * 0 + 1,
+              gsmax = aggregate(rast(vegp$x), 10) * 0 + 0.1,
               leafr = aggregate(rast(vegp$x), 10) * 0 + 0.3,
-              clump = array(0, dim = c(5, 5, 12)),
+              clump = aggregate(rast(vegp$x), 10) * 0,
               leafd = aggregate(rast(vegp$x), 10) * 0 + 0.05,
               leaft = aggregate(rast(vegp$x), 10) * 0 + 0.15)
 soilc2 <- list(soiltype = aggregate(rast(soilc$soiltype), 10),
@@ -593,7 +593,7 @@ Some warnings are given when running the function to notify the user that direct
 
 ```{r eval=FALSE}
 # Download example data from Zenodo
-url <- "https://zenodo.org/records/15008936/files/runmicrobig.zip"
+url <- "https://zenodo.org/records/15009160/files/runmicrobig.zip"
 pathout<-"C:/Temp/tiles/"
 dir.create(pathout)
 setwd(pathout)
@@ -612,9 +612,9 @@ micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
 runmicro_big(micropoint, reqhgt = 0.05, pathout = pathout, big_vegp, big_soilc, dtm)
 ```
 
-The optimal tile size is automatically calculated. Entirely blank tiles (i.e anything with NA in the digital elevation dataset are skipped). Users have the option to specify the tile size or format of the data written to disk and there are quite a few other options for flexibly handling how the model is run. The help file associated with `runmicro_big` gives details. One useful feature is the ability to specify a tile overlap to avoid possible tiling effects. Model output variables for overlapping tiles can then, once converted to `terra::SpatRasters`, can be merged using function `mosaicblend`. This applies a distance weigting to the overlapping area so that sharp boundary effects are avoided. Another potentially useful option is to write the model outputs as compressed nc files. 
+The optimal tile size is automatically calculated. Entirely blank tiles (i.e anything with NA in the digital elevation dataset are skipped). Users have the option to specify the tile size or format of the data written to disk and there are quite a few other options for flexibly handling how the model is run. The help file associated with `runmicro_big` gives details. One useful feature is the ability to specify a tile overlap to avoid possible tiling effects. Model output variables for overlapping tiles can then, once converted to `terra::SpatRasters`, can be merged using function `mosaicblend`. This applies a distance weighting to the overlapping area so that sharp boundary effects are avoided. Another potentially useful option is to write the model outputs as compressed nc files. 
 
-In the second example, using `runmicro_biga`, 1km resolution gridded climate data are used to drive the model. It is assumed that data have already been dowenloaded and unzipped. Again, the the code first runs the point microclimate model, but here the point model must be run for each of the ~400 1km grid cells, which itself takes a little while. Again, the relevant terrain variables are then calculated over the whole study area and the model is then run in tiles. As with `runmicro_big`, the size of tiles and the degree of overlap can be specified as user inputs. 
+In the second example, using `runmicro_biga`, 1km resolution gridded climate data are used to drive the model. It is assumed that data have already been downloaded and unzipped. Again, the the code first runs the point microclimate model, but here the point model must be run for each of the ~400 1km grid cells, which itself takes a little while. Again, the relevant terrain variables are then calculated over the whole study area and the model is then run in tiles. As with `runmicro_big`, the size of tiles and the degree of overlap can be specified as user inputs. 
 
 ```{r eval=FALSE}
 # Assumes data already downloaded from Zenodo - see above
@@ -654,44 +654,57 @@ mypal <- colorRampPalette(c("darkblue", "blue", "green", "yellow", "orange",  "r
 vegp <- microclimf::vegp
 soilc <- microclimf::soilc
 bioclim <- runbioclim(climdata, 0.05, vegp, soilc, dtm, temp = "air")
-plot(bioclim[[1]], col = mypal) # BIO1
+plot(bioclim[[12]], col = rev(mypal)) # BIO2 (in this case soil moisture)
 ```
 ![](images/image11.png)\
 
-
 ## Snow
 In all the examples above, no account of snow cover is taken, primarily because the location used for the examples, being nearly sub-tropical, is snow free. However, the same may not be true of other places, and the option to account for snow cover is included. This is handled by setting `snow = TRUE` in the input of `runmicro` and then also passing the outputs of the snow depth model. There are two options for running the snow model: a quick and  slower method. The distinction between the only matters when microclimate is modelling for a subset of days. Using the slow method a full  hourly model is run for each grid cell and snow depth, as one would expect, is partially contingent on snow depth in the previous time-step. The resulting output is then subset if required.  Using the quick method, a point snow model is run for every hour, but the full grid model is only run for the subset of days for which snow depths
-are required. To ensure a sensible snow budget the point model is used to calculate hourly melt, and the nature of the terrain and vegetation used to calculate a melt factor by which to multiply snow melt derived form the point model. The application of both approaches is shown below. 
+are required. To ensure a sensible snow budget the point model is used to calculate hourly melt, and the nature of the terrain and vegetation used to calculate a melt factor by which to multiply snow melt derived from the point model. This quick method is not very reliable however, so below we showcase the slow method, which by default should be used. 
 
 ```{r eval=FALSE}
-# Run and subset micropoint model using inbuilt datasets
+# Run micropoint model
+climdata <- microclimf::climdata
 climdata$temp <- climdata$temp - 8 # Make it colder so that there is snow
 micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc) 
-micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmin")
-# Run the snow model using the quick method
-smod1 <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth, method = "fast")
 # Run the snow model using the slow method
-smod2 <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth, method = "slow")
-# Compare mean ground snow depths through time
-sdepth1 <- apply(smod1$groundsnowdepth, 3, mean, na.rm = TRUE)
-sdepth2 <- apply(smod2$groundsnowdepth, 3, mean, na.rm = TRUE)
-plot(sdepth1, type = "l", ylim = c(0, 0.2))
-par(new = TRUE)
-plot(sdepth2, type = "l", ylim = c(0, 0.2), col = "blue")
+smod <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth, method = "slow")
+# Plot mean snow water equivelent and snow depth
+swe <- apply(smod$totalSWE, 3, mean, na.rm = TRUE) 
+depth <- apply(smod$totalSWE / smod$snowden, 3, mean, na.rm = TRUE)  # Depth (m)
+par(mfrow = c(2, 1))
+plot(swe ~ as.POSIXct(climdata$obs_time), type = "l", 
+     xlab = "Month",
+     ylab = "Snow water equivelent (mm)")
+plot(depth ~ as.POSIXct(climdata$obs_time), type = "l",
+     xlab = "Month",
+     ylab = "Snow depth (m)")
 ```
 ![](images/image14a.png)\
 
-In addition to ground snow depth, total snow water equivalent and average snowpack and ground snow temperature are returned. Though the quick method is a bit crude, the resulting microclimate outputs are very similar to those obtained using the slow method, only really deviating when the two methjods give different estimates of snow cover. Here we demonstrate this by running and comparing the microclimate model using both snow outputs.
+By default, as is evident from the example above, initial snow depth (and age, which affects snow albedo) is set to zero. Users have the option to set a differetn value, or alternatively to start the model run in summer when there is now snow. In addition to total snow water equivalent, ground snow depth, and average snowpack and ground snow temperature are returned. The micropoint object passed to the snow model is
+not used to run the snow model itself - it is just used to automatically subset the outputs if necessary when method = `slow` so that the correct data are passed to the microclimate model. We show this below, where we run the microclimate model with and without snow and show the effects that snow has on average temperature and soil moisture. If `reqhgt` is below the snow pack, snow temperature as opposed to air temperature is returned. 
 
 ```{r eval=FALSE}
-# Run microclimate model with snow using outputs from the quick model
-mout1 <- runmicro(micropoint, reqhgt = 0.05, vegp, soilc, dtmcaerth, snow = TRUE, snowmod = smod1)
-# Run microclimate model with snow using outputs from the quick model
-mout2 <- runmicro(micropoint, reqhgt = 0.05, vegp, soilc, dtmcaerth, snow = TRUE, snowmod = smod2)
+climdata <- microclimf::climdata
+climdata$temp <- climdata$temp - 8 # Make it colder so that there is snow
+micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc) 
+micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmin")
+smod <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth, method = "slow")
+# Run microclimate model with snow
+mout1 <- runmicro(micropoint, reqhgt = 0.05, vegp, soilc, dtmcaerth, snow = TRUE, snowmod = smod)
+# Run microclimate model without snow
+mout2 <- runmicro(micropoint, reqhgt = 0.05, vegp, soilc, dtmcaerth) # no snow assumed
 Tz1 <- apply(mout1$Tz, 3, mean, na.rm = TRUE)
 Tz2 <- apply(mout2$Tz, 3, mean, na.rm = TRUE)
-plot(Tz1, type = "l", ylim = c(-10, 25), ylab = "Temperature")
-par(new = T)
-plot(Tz2, type = "l", ylim = c(-10, 25), col = "blue", ylab = "")
+soilm1 <- apply(mout1$soilm, 3, mean, na.rm = TRUE)
+soilm2 <- apply(mout2$soilm, 3, mean, na.rm = TRUE)
+par(mfrow = c(2, 1))
+plot(Tz1, type = "l", ylab = "Temperature", ylim = c(-10, 30), col = "blue")
+par(new = TRUE)
+plot(Tz2, type = "l", ylab = "Temperature", ylim = c(-10, 30), col = "red")
+plot(soilm1, type = "l", ylab = "Soil moisture", ylim = c(0, 0.5), col = "blue")
+par(new = TRUE)     
+plot(soilm2, type = "l", ylab = "Soil moisture", ylim = c(0, 0.5), col = "red")
 ```
 ![](images/image14b.png)\
