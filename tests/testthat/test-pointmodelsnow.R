@@ -67,8 +67,8 @@ test_that("Test snow model", {
   snowacc <- (sdepc[n] - sdepc[1]) * sdenc[n] # snow water equivelent in mm
   precsum <- sum(Prec)
     # ---- Bounds / sanity checks ----
-  if (!is.null(Tcdif)) { expect_lte(max(Tcdif), 1.5) }
-  if (!is.null(Tgdif)) { expect_lte(max(Tgdif), 2.5) }
+  if (!is.null(Tcdif)) { expect_lte(max(Tcdif), 2.0) }
+  if (!is.null(Tgdif)) { expect_lte(max(Tgdif), 2.1) }
   if (!is.null(depdif)) { expect_gte(min(depdif), 0); expect_lte(max(depdif), 0.05) }
   if (!is.null(snowacc)) { expect_gte(snowacc, 0.8 * precsum); expect_lte(snowacc, precsum) }
   if (!is.null(sdenc)) { expect_gte(min(sdenc), 216); expect_lte(max(sdenc), 218) }

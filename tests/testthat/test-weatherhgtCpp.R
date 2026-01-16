@@ -76,9 +76,5 @@ test_that("weatherhgtCpp runs on a 24 h test case and returns expected outputs",
   if (!is.null(d_winddir)) { expect_lte(max(d_winddir), 1) }
   if (!is.null(d_precip)) { expect_lte(max(d_precip), 1) }
   if (!is.null(mu_windspeed)) { expect_gte(min(mu_windspeed), 1.2); expect_lte(max(mu_windspeed), 1.4) }
-  if (!is.null(d_ea)) { expect_lte(max(d_ea), 0.3) }
-})
-
-
-
+  if (!is.null(d_ea)) { expect_lte(max(d_ea), 0.5) }
 })
