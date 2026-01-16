@@ -555,6 +555,10 @@ where $\small H_W$ is the horizon angle in an upwind direction computed using di
 
 ![](images/fig1.png)
 
+<small> 
+**Fig. S2.1**. Effects of diabatic coefficients on the estimation of friction velocity. Here the iterative point microclimate model is run for a reference location with a plant area index of 3 and vegetation height of 1 m and for a target location with a plant area index of 1 and vegetation height of 0.5 m over the course of an entire year using the inbuilt weather datasets for 2017 from Caerthillian Cove in Cornwall. In (a) a frequency histogram of the diabatic coefficients for the target location are shown. In (b) the vegetation-driven determinant of friction velocity $(\ln((2-d)/z_m)+\psi_m)$ for the target location is plotted over the course of the year, with the red line depicting $\psi_m=0$. In (c) the log of friction velocity for the target location with and without a diabatic correction applied are plotted against one another, demonstrating that friction velocity is under-estimated when wind speeds are low. In (d) the estimated friction velocity using the ratio approach described above (x-axis) is plotted against the true friction velocity calculated by running the point microclimate iteratively (y-axis). The ratio approach significantly improves estimates of friction velocity when wind speeds are low.
+</small>
+
 A small issue is that the diabatic coefficient for momentum ($\small \psi_M$) is needed to compute wind speeds at user-specified above canopy ($\small z$). A similar ratio approach is used for doing so such that
 
 $$\psi_M(z)=\psi_{M_R}(z)\frac{\ln(z)-\ln(d-z_M)}{\ln(z)-\ln(d_R-z_M^R)}$$
@@ -639,6 +643,9 @@ The volumetric density ($\small \rho_s$) and specific heat ($\small c_s$) of the
 $$\rho_s=1000(\rho_D(1-S_M)+S_M),\space\space c_s=\frac{2400\rho_D}{2.64}+4180S_M$$
 Typical values of $\small \rho_D$, $\small Q_v$, $\small M_V$ and $\small C_M$ for given soil types are shown in Table S2.1.
 
+<small>
+**Table S2.1**. Soil properties for given soil types. This table is stored as an internal dataset in microclimf. Here $\rho_d$ is the bulk density of the soil, $V_Q$ and $V_M$ volumetric quartz and mineral content respectively, $M_C$ the mass fraction of clay, $\theta_{mx}$ and $\theta_{mn}$ the saturated and residual soil moisture fraction, $K_{sat}$ the saturated hydraulic conductivity. The parameters $s_{1..4}$ are the coefficients for the hydrological model.
+</small>
 ![](images/table1.png)
 
 ### Soil grid model simplifications
@@ -651,7 +658,9 @@ $$\mu_G\approx\frac{\sqrt{2}A_D(0)k_s\sin\left[\omega_D(t-t_0(D))+\pi/4\right]/D
 where  $\small k_s$, $\small k_s^R$, $\small D_D$ and $\small D_D^R$ are the thermal conductivities and damping depths for the target and reference location respectively. The remaining challenge is then to calculate the approximate diurnal temperature amplitudes  $\small A_D^R(0)^{'}$ and $\small A_D(0)^{'}$. This is achieved by using the Penman-Monteith equation, but with $\small G$ and $\small G_R$ set to zero and diabatic corrections ignored. This avoids inter-dependencies and hence the need to derive values iteratively. The accuracy of this approximation method is shown in Fig S2.2.
 
 ![](images/fig2.png)
-
+<small>
+**Fig. S2.2**. Comparisons of ground heat flux (a) and soil surface temperature (b, c) estimates derived using the full iterative model (true) and using the simpler approximation method (estimated). In (b) over-laid time-series are shown, with the full method depicted by red lines and simpler method shown as grey lines. In (c) estimates derived using the two methods are plotted against one another. In both (a) and (c), the red lines are the 1:1 relationship.
+</small>
 
 ### Temperatures below ground
 In the soil, heat storage is significant, and both the annual and diurnal temperature cycles are attenuated and occur later in the day or year. Assuming that the annual and diurnal cycles are approximately sinusoidal, that the soil layer is infinitely deep and with uniform thermal properties, from Campbell & Norman (2012) and de Vries (1963), the temperature at depth $\small z$ and time $\small t$ is given by
@@ -667,6 +676,9 @@ $$n=-118.35\frac{z}{D_D}$$
 The assumption of vertically uniform soil properties and an approximately sinusoidal diurnal cycle in ground surface temperature is necessary in order to get a computationally efficient closed-form solution to the ground heat flux equation and to the estimation of below-ground temperatures. An alternative approach, following e.g. Campbell (1985) is to divide the soil into multiple layers and to compute fluxes and temperatures seperately for each layer. This is the approach adopted by the NicheMapR package as described by Kearney & Porter (2017). Comparisons of the simplified approach adopted by `microclimf` with those obtained by the multi-layer soil model in NicheMapR are shown in Fig. S2.3. The two methods produce remarkably similar results. 
 
 ![](images/fig3.png)
+<small>
+**Fig. S2.3**. Predictions of soil temperature made using the multi-layer soil model included in NicheMapR (red) and the simpler rolling-mean approach implemented in microclimf (black).
+</small>
 
 Where the model input data encompass a full year, but don't match a given calander year, the annual cycle in temperatures is simply recycled to accommodate $\small i<1$. I.e. to compute temperatures below ground in early January, data from late December are used. However, the `microclimf` package allows for the microclimate model to be run for periods of time that extend for less than a year or for select days only, making it impossible to calculate a rolling mean of ground surface temperatures than extends back further than the period for which ground surface temperatures have been calculated. It is recommended that a complete time sequence for a year or more is modelled when seeking to derive temperatures below ground. However, when this is not the case, the following approximation method is used: 
 
@@ -707,6 +719,9 @@ where $\small k_{sat}$ is saturated hydraulic conductivity, $\small \overline{\t
 Typical values of $\small S_{mx}$, $\small S_{mn}$ and $\small k_{sat}$ and estimated values for $\small s_{1..4}$ for given soil types are shown in Table S2.1.
 
 ![](images/fig4.png)
+<small>
+**Fig. S2.4**. Comparison of soil moisture (0 – 5 cm depth) estimates derived using the simplified method in microclimf (black) with those obtained using NicheMapR (red). Estimates are for 2017 from Caerthillian Cove in Cornwall, U.K, (49.968°N, 5.215°W) with an assumption of no canopy shading. Data are shown for 11 soil types. Root-Mean-Square (RMS) differences are also indicated. 
+</small>
 
 ### Soil water spatial model
 To avoid the need to evoke a spatially explicit hydrological model, soil moisture derived from the point model is simply distributed spatially using the Beven & Kirkby (1979) topographic wetness index when running the grid model. Thus soil moisture $\small \theta_{i,j}$ in each time increment $\small i$ and grid cell $\small j$ is thus computed as
@@ -719,6 +734,9 @@ $$w_j=\ln\frac{a}{\tan S}s$$
 where, following Beven and Kirkby (1979), $\small a$ is the contributing area, essentially accumulated flow, $\small S$ is the slope angle and $\small s$ is a user-defined scaling factor controlling the sensitivity of spatial variation in soil moisture to topographic wetness, by default set to 2/3. An example of the output obtained using this approach, is shown in Fig. S2.5.
 
 ![](images/fig5.png)
+<small>
+**Fig. S2.5**. Example output obtained by spatially distributing soil moisture by topographic wetness with $\theta$ from the point model set to 0.3 and $s=2/3$.Here shown for a 1 x 1 km area at 1m grid resolution centred on Caerthillian Cove in Cornwall, U.K, (49.968°N, 5.215°W). 
+</small>
 
 ## Below canopy model
 
@@ -782,7 +800,7 @@ where $\small H_c$ is the total combined heat flux from canopy elements and $\sm
 
 
 $$\frac{1}{\bar{K}_{h,0}}=h\int_{0}^{h}\frac{1}{K_H}dz=$$ 
-The effects of this assumption are shown in Fig. S6b (dotted lines).
+The effects of this assumption are shown in Fig. S2.6b (dotted lines).
 
 Next, recalling that the vegetated surface is initially treating as a 'big leaf' -- effectively a single vertically homogeneous layer of phytomass, it should be noted that *sensu stricto*, this layer comprises both the vegetated canopy *and* the underlying ground surface and that therefore the sensible heat flux $\small H$ from the entire surface can be broken down into the component fluxes from the canopy ($\small H_C$) and underlying ground surface $\small H_G$ such that $\small H=H_C+H_G$. To a first approximation it can be assumed that the fraction $\small H_G/H$ is approximately equal the portion of the ground surface unobscured by canopy elements such that 
 
@@ -809,8 +827,7 @@ $$f_1=\sin x, \space f_2=\cos x+1, x=\frac{\pi z}{h}$$
 In the case where $\small z=h$, this simplifies to
 
 $$\int_0^h\frac{1}{K_H(h)}dz=\frac{4.293251}{a_2u_*}$$
-The effects of these assumptions on the temperatures are shown in Fig S6b (dashed lines) 
-
+The effects of these assumptions on the temperatures are shown in Fig S2.6b (dashed lines) 
 
 To compute the near-field contribution, it is recognised that the effects of $\small k_n$ are such that the near-field concentration at height $\small z$ are far more influenced by the local source concentration $\small S(z)$, and the contribution at heights $\small z_i$  are negligible when $\small \lvert z-z_i\rvert>>0$. Thus $\small C_n(z)$ is determined solely from $\small S(z)$ with a minor empirically-derived adjustment made to scale $\small C_n(z)$ to $\small S(z)$ based on total leaf area such that
 
@@ -819,6 +836,10 @@ $$C_n(z)=S(z)(3.05+0.129\ln P_{AI})$$
 The accuracy of all of these approximation methods is shown in Fig S2.6. 
 
 ![](images/fig6.png)
+<small>
+**Fig. S2.6.** Comparison between vertical temperature profiles estimated using Raupach’s localised near-field model (red) and the simpler model emulator approach in microclimf (black) here shown for a 10m tall canopy with other vegetation parameters set at their default value, and calculated using an hourly weather dataset from Caerthillian Cove, Lizard, Cornwall (49.968°N, 5.216°W), here shown for a sunny day in May.In(b) modelled and emulated canopy contributions (dotted lines) and combined canopy and ground contibutions (dashed lines) to the far-field contribution are shown. In (c) the combined near- and far-field contributions areshown. In (d) estimates for 5 m above ground are shown for all hours in May (red line = 1:1 relationship).
+</small>
+
 A near-identical procedure is used for estimated vapour pressure profiles, but with sensible heat fluxes and temperatures substituted for latent heat fluxes and vapour pressure such that
 
 $$e_z=\frac{\bar{K}_{z,0}e_G+\bar{K}_{h,z}e_H+\bar{K}_{h,0}e_C}{\bar{K}_{z,0}+\bar{K}_{h,z}+\bar{K}_{h,0}}$$
@@ -895,10 +916,10 @@ $$\rho_s=(\rho_{max}-\rho_0)(1-\exp(-k_1h_s-k_2a_s)+\rho_0$$
 
 where $\small \rho_{max}$ is the maximum allowable density, $\small \rho_0$ is the initial density, $\small a_s$ is snow age (in decimal days) and $\small k_1$ and $\small k_2$ are fitting parameters, derived from the snow environment (Table S2.2).
 
-**Table S2.2. Snow density parameters for different snow environments.**
+<small>
+**Table S2.2**. Snow density parameters for different snow environments**
+</small>
 ![](images/table2.png)
-
-
 
 The roughness length for momentum is computed as 
 
@@ -941,6 +962,9 @@ $$R_M=0,\space\space T_A\le273.15$$
 $\small f_G\approx\exp(-P_{AI}^S)$ partitions sublimation and rain melt between the canopy and the underlying round layer (the portioning of melt is handled explicitly as it is contingent on mass balance of the snowpacks). A comparison of modelled outputs obtained the approach in `microclimf`, with that using `NicheMapR` for a short (5 cm) grass surface in which canopy snow interception is negligible is shown in Fig S2.7. In `NicheMapR` canopy interception must be provided as a user input.
 
 ![](images/fig7.png)
+<small>
+**Fig. S2.7**. Comparison of snow water equivalent (mm) derived using NicheMapR (red) and microclimf (black) here shown for Caerthillian Cove, Lizard, Cornwall, UK (49.968N, 5.216W) throughout 2017, but with all hourly temperatures reduced by 10°C to ensure the presence of snow.
+</small>
 
 ### Canopy interception
 Following Hedstrom & Pomeroy (1998) snow interception by the canopy is given by
@@ -981,6 +1005,9 @@ $$T_S=s_v\left(T_S^R-T_A\right)+T_A$$
 where $\small s_v$ is the sky view factor and $\small T_A$ is air temperature. This essentially makes makes two assumptions. First that $\small s_v=(R_{net})/(R^R_{net})$ where $\small R_{net}$ is net radiation at the focal location and $\small R^R_{net}$, which is approximately true if snow albedos are similar at the  two locations and any azimuthal biases in the reduction of direct radiation by sky view are minimal. Second it assumes that the sensible heat fluxes is directly proportional to radiation, which is approximately true if latent heat and the rate of heat storage and latent heat are small and increase in a linear manner with net radiation. This is faultier assumption, but the approach is adequate for deriving microclimate estimates (Fig S2.8).
 
 ![](images/fig8.png)
+<small>
+**Fig. S2.8**. Comparison between the approximate (blue) and full (black) snow model run for Caerthillian Cove, Lizard, Cornwall, UK (49.968N, 5.216W) throughout 2017, but with all hourly temperatures reduced by 8°C to ensure temperatures drop below freezing. Values shown are hourly estimates for the coldest day in each month. In (a) snow depth (cm) is shown and in (b) air temperature 5 cm above ground. Though the two approaches deviate in their estimation of snow depth, the estimation of air temperatures match closely.
+</small>
 
 ### Microclimate model with snow
 The snow microclimate model forms an extension of the non-snow model and its formulation is nearly identical to that used when snow is absent, except that in hours with snow present, the following adjustments are made.

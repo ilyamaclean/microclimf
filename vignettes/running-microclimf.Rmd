@@ -660,37 +660,58 @@ plot(bioclim[[12]], col = rev(mypal)) # BIO2 (in this case soil moisture)
 
 ## Snow
 In all the examples above, no account of snow cover is taken, primarily because the location used for the examples, being nearly sub-tropical, is snow free. However, the same may not be true of other places, and the option to account for snow cover is included. This is handled by setting `snow = TRUE` in the input of `runmicro` and then also passing the outputs of the snow depth model. There are two options for running the snow model: a quick and  slower method. The distinction between the only matters when microclimate is modelling for a subset of days. Using the slow method a full  hourly model is run for each grid cell and snow depth, as one would expect, is partially contingent on snow depth in the previous time-step. The resulting output is then subset if required.  Using the quick method, a point snow model is run for every hour, but the full grid model is only run for the subset of days for which snow depths
-are required. To ensure a sensible snow budget the point model is used to calculate hourly melt, and the nature of the terrain and vegetation used to calculate a melt factor by which to multiply snow melt derived from the point model. This quick method is not very reliable however, so below we showcase the slow method, which by default should be used. 
+are required. To ensure a sensible snow budget the point model is used to calculate hourly melt, and the nature of the terrain and vegetation used to calculate a melt factor by which to multiply snow melt derived from the point model. Below we compare the two methods
 
 ```{r eval=FALSE}
 # Run micropoint model
 climdata <- microclimf::climdata
-climdata$temp <- climdata$temp - 8 # Make it colder so that there is snow
+climdata$temp <- climdata$temp - 12 # Make it colder so that there is snow
+micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc) 
+# Subset point model
+micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmin")
+# Run the snow model in slow mode
+smod1 <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth, method = "slow")
+# Run the snow model in quick mode
+smod2 <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth, method = "fast")
+# Compute mean time series and plot : depth = snow water equivelent / snow density
+sdepc1 <- apply(smod1$totalSWE / smod1$snowden, 3, "mean", na.rm = TRUE)
+sdepc2 <- apply(smod2$totalSWE / smod2$snowden, 3, "mean", na.rm = TRUE)
+plot(sdepc1, type = "l", col = "blue", ylim = c(0, 1))
+par(new = TRUE)
+plot(sdepc2, type = "l", col = "red", ylim = c(0, 1))
+```
+![](images/image14p.png)\
+
+The quick method produces broadly similar results, but as expected, the quick method is far from perfect, particularly in picking-up spatial patterns. Below therefore we showcase the slow method, which by default sis better to use. 
+
+```{r eval=FALSE}
+# Run micropoint model
+climdata <- microclimf::climdata
+climdata$temp <- climdata$temp - 12 # Make it colder so that there is snow
 micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc) 
 # Run the snow model using the slow method
-smod <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth, method = "slow")
-# Plot mean snow water equivelent and snow depth
+smod <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth, method = "slow", snowenv = "Maritime")
+# Plot mean snow water equivalent and snow depth
 swe <- apply(smod$totalSWE, 3, mean, na.rm = TRUE) 
 depth <- apply(smod$totalSWE / smod$snowden, 3, mean, na.rm = TRUE)  # Depth (m)
 par(mfrow = c(2, 1))
 plot(swe ~ as.POSIXct(climdata$obs_time), type = "l", 
      xlab = "Month",
-     ylab = "Snow water equivelent (mm)")
+     ylab = "Snow water equivalent (mm)")
 plot(depth ~ as.POSIXct(climdata$obs_time), type = "l",
      xlab = "Month",
      ylab = "Snow depth (m)")
 ```
 ![](images/image14a.png)\
 
-By default, as is evident from the example above, initial snow depth (and age, which affects snow albedo) is set to zero. Users have the option to set a differetn value, or alternatively to start the model run in summer when there is now snow. In addition to total snow water equivalent, ground snow depth, and average snowpack and ground snow temperature are returned. The micropoint object passed to the snow model is
-not used to run the snow model itself - it is just used to automatically subset the outputs if necessary when method = `slow` so that the correct data are passed to the microclimate model. We show this below, where we run the microclimate model with and without snow and show the effects that snow has on average temperature and soil moisture. If `reqhgt` is below the snow pack, snow temperature as opposed to air temperature is returned. 
+By default, as is evident from the example above, initial snow depth (and age, which affects snow albedo) is set to zero. Users have the option to set a different value, or alternatively to start the model run in summer when there is now snow. In addition to total snow water equivalent, ground snow depth, and average snowpack and ground snow temperature and snow density are returned. You may also have noticed, that in running the example, the snow environment has been switched form the default (`Taiga`) to a more sensible `Maritime`. Other options are `Prairie`, `Alpine` or `Tundra`. This affects the way that snow density evolves as a function of snow age. The micropoint object passed to the snow model is not used to run the snow model itself - it is just used to automatically subset the outputs if necessary when method = `slow` so that the correct data are passed to the microclimate model. We show this below, where we run the microclimate model with and without snow and show the effects that snow has on average temperature and soil moisture. If `reqhgt` is below the snow pack, snow temperature as opposed to air temperature is returned. 
 
 ```{r eval=FALSE}
 climdata <- microclimf::climdata
-climdata$temp <- climdata$temp - 8 # Make it colder so that there is snow
+climdata$temp <- climdata$temp - 12 # Make it colder so that there is snow
 micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc) 
 micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmin")
-smod <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth, method = "slow")
+smod <- runsnowmodel(climdata, micropoint, vegp, soilc, dtmcaerth, method = "slow", snowenv = "Maritime")
 # Run microclimate model with snow
 mout1 <- runmicro(micropoint, reqhgt = 0.05, vegp, soilc, dtmcaerth, snow = TRUE, snowmod = smod)
 # Run microclimate model without snow
