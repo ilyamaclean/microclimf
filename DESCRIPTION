@@ -1,7 +1,7 @@
 Package: microclimf
 Type: Package
 Title: Fast above, below or within canopy gridded microclimate modelling with R
-Version: 2026.1.0
+Version: 2.0.0
 Authors@R: c(
     person("Ilya", "Maclean", email = "i.m.d.maclean@exeter.ac.uk", role = "cre"))
 Maintainer: Ilya M. D. Maclean <i.m.d.maclean@exeter.ac.uk>
