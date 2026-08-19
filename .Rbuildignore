@@ -1,0 +1,11 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^doc$
+^Meta$
+^src/.*\.o$
+^src/.*\.dll$
+^src/.*\.so$
+^vignettes/rsconnect$
+^CLAUDE\.md$
+^\.claude$
