@@ -1392,20 +1392,12 @@ double TVbelow(double zref, double z, double d, double h, double pai, double uf,
     double SC = SH + Flux / Kc;
     // Calculate far-field source concentration
     double farg = (Kg * SG + Kh * SH + Kc * SC) / (Kg + Kh + Kc);
-    // Calculate leaf temperature and flux
-    double SN = Fluxz * leafden;
-    // Calculate near-field
-    double near = (3.047519 + 0.128642 * std::log(pai)) * SN;
-    if (std::abs(near) > mxnear) {
-        if (near > 0.0) {
-            near = mxnear;
-        }
-        else {
-            near = -mxnear;
-        }
-    }
-    if (std::isnan(near)) near = 0;
-    return near + farg;
+    // Near-field term removed (set to zero) -- the empirical
+    // (3.047519 + 0.128642*log(pai))*SN formula was found to be structurally
+    // wrong, not just poorly calibrated: SN is a local (pointwise-in-z)
+    // quantity, but the real near-field response is a non-local integral
+    // over the whole source profile, so no function of pai alone can map
+    return farg;
 }
 // Calculate temperature or vapour pressure above ground
 abovemodel TVaboveground(double reqhgt, double zref, double tc, double pk, double ea, double es, double tdew, 
