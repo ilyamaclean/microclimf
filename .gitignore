@@ -8,3 +8,11 @@ inst/doc
 src/*.o
 src/*.dll
 src/*.so
+
+# rsconnect/rpubs publish metadata - local only, not part of the package
+rsconnect/
+vignettes/rsconnect/
+
+# AI assistant working notes - not part of the public package
+CLAUDE.md
+.claude/
