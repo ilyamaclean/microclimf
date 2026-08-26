@@ -276,7 +276,7 @@ checkinputs <- function(weather, vegp, soilc, dtm, windhgt = 2) {
   mxelev<-max(.is(dtm),na.rm=T)
   mnelev<-min(.is(dtm),na.rm=T)
   mxp<-108.5*((293-0.0065*mnelev)/293)^5.26
-  mnp<-87*((293-0.0065*mnelev)/293)^5.26
+  mnp<-87*((293-0.0065*mxelev)/293)^5.26
   # Check weather values
   check.vals(weather$temp,-50,65,"temperature","deg C")
   weather$relhum<-up.lim(weather$relhum,100,"relative humidity")
