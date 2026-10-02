@@ -1,0 +1,1420 @@
+---
+title: "Model Equations"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{modelequations}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+<style>
+  body {
+    text-align: justify;
+  }
+  
+  .col2 {
+    columns: 2 200px;         /* number of columns and width in pixels */
+    -webkit-columns: 2 200px; /* chrome, safari */
+    -moz-columns: 2 200px;    /* firefox */
+  }
+  
+  .leg {
+    font-size: 12px;
+  }
+
+  img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .figure {
+    text-align: center;
+    margin: 20px 0;
+  }
+
+  .figure img {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .figure figcaption {
+    font-size: 12px;
+    text-align: center;
+  }
+</style>
+
+* [Overview](#overview)
+* [Radiation and albedo](#radiation-and-albedo)
+  + [Downward direct radiation](#downward-direct-radiation)
+  + [The position of the sun](#the-position-of-the-sun)
+  + [Diffuse radiation](#diffuse-radiation)
+  + [Longwave and emitted radiation](#longwave-and-emitted-radiation)
+  + [Leaf and ground radiation absorption](#leaf-and-ground-radiation-absorption)
+  + [Radiation adjustments in the grid model](#radiation-adjustments-in-the-grid-model)
+* [Sensible Heat](#sensible-heat)
+  + [Aerodynamic resistance to sensible heat](#aerodynamic-resistance-to-sensible-heat)
+  + [Friction velocity and momentum transport](#friction-velocity-and-momentum-transport)
+  + [Diabatic effects](#diabatic-effects)
+  + [Free convection and low wind speeds](#free-convection-and-low-wind-speeds)
+  + [Grid model simplifications of friction velocity](#grid-model-simplifications-of-friction-velocity)
+* [Latent Heat](#latent-heat)
+  + [Bulk surface fluxes](#bulk-surface-fluxes)
+  + [Leaf stomatal conductance](#leaf-stomatal-conductance)
+* [The soil model](#the-soil-model)
+  + [The soil heat model](#the-soil-heat-model)
+  + [Ground heat flux](#ground-heat-flux)
+  + [The soil water model](#the-soil-water-model)
+  + [Soil grid model simplifications](#soil-grid-model-simplifications)
+  + [Soil water spatial model](#soil-water-spatial-model)
+  + [Temperatures below ground](#temperatures-below-ground)
+* [Below canopy model](#below-canopy-model)
+  + [Conceptual overview](#conceptual-overview)
+  + [The Lagrangian timescale](#the-lagrangian-timescale)
+  + [The diffusivity profile below canopy](#the-diffusivity-profile-below-canopy)
+  + [Weather reference height](#weather-reference-height)
+  + [Resistance through the column](#resistance-through-the-column)
+  + [Bulk canopy approximation](#bulk-canopy-approximation)
+* [References](#references)
+
+## Overview
+The point model solves coupled energy balances for the canopy as a whole and for the ground beneath it. Above the canopy, standard Monin-Obukhov similarity theory (MOST; Foken 2006) is used once the heat transport is sufficiently far from the canopy that turbulence is not strongly influenced by canopy structure. Closer to the canopy, in the roughness sublayer where turbulence is still strongly influenced by canopy structure, heat and vapour transport are represented explicitly using the formulations described under *Sensible Heat* and *Below canopy model*. At steady state the surface energy fluxes ($\small W\,m^{-2}$) satisfy
+
+$$R_{abs}-R_{lw}^\uparrow=H+L+G$$
+
+where $\small R_{abs}$ is absorbed radiation, $\small R_{lw}^\uparrow$ emitted longwave radiation, $\small H$ sensible heat, $\small L$ latent heat and $\small G$ heat storage by the ground. Radiation absorbed by the canopy is
+
+$$R_{abs}=(1-\alpha)R_{sw}^\downarrow+\hat{\varepsilon}_CR_{lw}^\downarrow$$
+
+where $\small R_{sw}^\downarrow$ and $\small R_{lw}^\downarrow$ are downward shortwave and longwave radiation, and $\small \alpha$ is the combined canopy-ground albedo, calculated following Sellers (1985). Emitted longwave radiation is
+
+$$R_{lw}^\uparrow=\hat{\varepsilon}_C\sigma T_C^4$$
+
+where $\small T_C$ is canopy surface temperature ($\small K$). Canopy and ground are assigned a thermal emissivity $\small \varepsilon=0.97$.
+
+Sensible heat is determined by the temperature difference between the canopy exchange surface and air at the working reference height $\small z_R$,
+
+$$\small H=\frac{\tilde{\rho}c_p}{r_{Ha}}(T_C-T_A)$$
+
+where $\small \tilde{\rho}$ is the molar density of air, $\small c_p$ its molar heat capacity, and $\small r_{Ha}$ the bulk aerodynamic resistance to heat transfer ($\small s\,m^{-1}$). The resistance combines transfer from the bulk exchange surface to canopy top, through the roughness sublayer, and through the surface layer above it. These contributions are explained in more detail in *Aerodynamic resistance to sensible heat*, *The diffusivity profile below canopy* and *Resistance through the column* section. Wind speed enters these resistance calculations through the friction velocity, $\small u_*$. Close to the canopy, the wind profile is modified by canopy-generated turbulence, so $\small u_*$ is calculated using a roughness-sublayer correction whose strength depends on canopy density (Raupach 1992; Raupach 1994; see *Friction velocity and momentum transport*). If the supplied weather data are below the top of the roughness sublayers, they are first adjusted upward to a reference height above them (see *Weather reference height*).
+
+Latent heat is given by
+
+$$L=\frac{\lambda\tilde{\rho}}{r_Vp_A}\left[\theta_Ce_s(T_C)-e_A\right]$$
+
+where $\small \lambda$ is latent heat of vaporisation ($\small J\,mol^{-1}$), $\small p_A$ atmospheric pressure ($\small kPa$), $\small e_s(T_C)$ saturation vapour pressure at canopy temperature and $\small e_A$ atmospheric vapour pressure ($\small kPa$). The total resistance to vapour exchange is $\small r_V=r_{Ha}+r_s$, where $\small r_s$ is the bulk surface vapour resistance ($\small s\,m^{-1}$) and $\small \theta_C$ is the effective relative humidity of the bulk exchange surface. The surface term combines transpiration through stomata, evaporation from the soil and evaporation of intercepted water; its resistance and effective humidity are developed under *Bulk surface fluxes*. Stomatal conductance is calculated as a function of temperature, vapour pressure deficit, solar radiation and soil water status following Eller *et al.* (2020).
+
+Ground heat storage is represented using a multilayer soil model following Bittelli *et al.* (2015) and Campbell (1985). The soil is divided into $\small n$ layers with node temperature $\small T_i$, volumetric heat capacity $\small \rho_i c_i$ and thermal conductance
+
+$$K_i=\frac{k_i}{z_{i+1}-z_i}$$
+
+between nodes at depths $\small z_i$ and $\small z_{i+1}$. The upper boundary exchanges radiation at the ground surface and sensible and latent heat with canopy-modified air; those turbulent fluxes use the vertically resolved canopy transport resistance rather than direct exchange with reference-height air (see *Ground heat flux* and *Resistance through the column*). Conductive heat exchange between adjacent soil layers is governed by thermal conductance and the resulting temperature change by volumetric heat capacity. The lower boundary is fixed at the mean annual temperature at 2 m depth by default, with users given the option to provide an alternative value. Soil thermal properties vary with soil physical properties and volumetric water content, which is determined from rainfall, evapotranspiration and water exchange between layers. The ground heat flux $\small G$ is obtained as the residual of the ground-surface energy balance, with ground surface temperature $\small T_G$ obtained by solving the multilayer soil heat equations.
+
+Following Penman (1948) and Monteith (1965) canopy temperature is then obtained by linearising emitted radiation and latent heat in the surface energy balance:
+
+$$T_C=T_A+\frac{R_{abs}-\hat{\varepsilon}_C\sigma T_A^4-\frac{\lambda\tilde{\rho}}{p_Ar_V}D_A-G}{4\hat{\varepsilon}_C\sigma T_e^3+\tilde{\rho}\left(\frac{c_p}{r_{Ha}}+\frac{\lambda}{p_Ar_V}D_e\right)}$$
+
+where
+
+$$T_e=\frac{T_C+T_A}{2}, \qquad D_A=\theta_Ce_s(T_A)-e_A$$
+
+and $\small D_e$ is the slope of the saturated vapour pressure curve given by
+
+$$D_e=\theta_C\left[e_s(T_e+0.5)-e_s(T_e-0.5)\right].$$
+
+Because sensible heat, atmospheric stability, friction velocity and ground heat storage are interdependent, the point model is run iteratively to convergence. In the grid model these interdependencies are instead approximated using quantities derived from the converged point-model solution (see *Grid model simplifications of friction velocity* and *Soil grid model simplifications*).
+
+The model also reconstructs wind, temperature and vapour-pressure profiles away from the canopy and ground exchange surfaces. Immediately above the canopy, transport is still influenced by canopy-generated turbulence and is therefore treated using roughness-sublayer formulations; farther above the canopy, the profiles revert to standard MOST. Within the canopy, temperature and vapour-pressure profiles are reconstructed using the far-field Lagrangian formulation of Raupach (1989a,b). The detailed momentum and scalar formulations are given under *Sensible Heat* and *Below canopy model*, including the roughness-sublayer extensions of Raupach (1992) and Raupach, Finnigan & Brunet (1996).
+
+Each of the terms is described in more detail below.
+
+## Radiation and albedo
+Shortwave albedo is the fraction of incident radiation reflected by the combined canopy and ground surface. Unlike the reflectance of an individual material, vegetation albedo depends on canopy and ground reflectance, transmission through the canopy, solar geometry and the partitioning of incoming radiation between direct and diffuse components.
+
+Following Sellers (1985) and Yuan *et al.* (2017), with additional treatment of radiation passing through larger canopy gaps, shortwave transfer is represented using a two-stream model. Radiation entering the canopy is partitioned into downward direct, downward diffuse and upward diffuse streams; scattering of the direct beam contributes to both diffuse streams. There is no upward direct stream, since reflected or transmitted radiation from canopy elements is treated as diffuse.
+
+### Downward direct radiation
+Let $\small P_i$ be the cumulative one-sided area of leaves and other canopy elements per unit ground area above any height $\small z_i$ within the canopy. For randomly distributed canopy elements, direct radiation $\small R_i^{\downarrow b}$ at $\small z_i$ is attenuated according to
+
+$$R_i^{\downarrow b}=R_0^{\downarrow b}\exp(-KP_i)$$
+
+where $\small R_0^{\downarrow b}$ is beam-normal irradiance above the canopy and $\small K$ is the extinction coefficient. Following Campbell (1986, 1990), canopy element inclinations are represented by a spheroidal distribution. Defining $\small x$ as the ratio of average projected elements on horizontal to vertical surfaces, with $\small x=0$ for a vertical, $\small x=1$ for a spherical and $\small x\rightarrow\infty$ for a horizontal distribution,
+
+$$K\approx\frac{\sqrt{x^2+\tan^2Z}}{x+1.774(x+1.182)^{-0.733}}$$
+
+where $\small Z$ is solar zenith angle. In the special case where $\small x=1$, $\small K=1/(2\cos Z)$; where $\small x=0$, $\small K=2\tan Z/\pi$; and as $\small x\rightarrow\infty$, $\small K\rightarrow1$.
+
+Canopy elements are not distributed randomly at all spatial scales, so a fraction of radiation can pass through larger gaps without interacting with foliage. Let $\small g_n$ be the vertically viewed gap fraction of the full canopy and
+
+$$g_i=g_n^{P_i/P_{AI}}$$
+
+its value above node $\small i$, where $\small P_{AI}$ is total plant area index. Plant area within the vegetated fraction of the canopy is then
+
+$$\tilde P_i=\frac{P_i}{1-g_n}.$$
+
+For an inclined surface, the fraction of beam-normal radiation crossing the canopy plane is
+
+$$s_c=\cos Z\cos s+\sin Z\sin s\cos(\Lambda_s-\Lambda)$$
+
+where $\small s$ is slope, $\small \Lambda_s$ solar azimuth and $\small \Lambda$ aspect. The beam flux across that plane is therefore
+
+$$R_b=s_cR_0^{\downarrow b}$$
+
+and the extinction coefficient expressed per unit area parallel to the ground surface is
+
+$$\tilde K=K(Z)\frac{\cos Z}{s_c}.$$
+
+Direct radiation at $\small z_i$ is then
+
+$$R_i^{\downarrow b}=R_b\left[\tau_i^b+(1-\tau_i^b)\exp(-\tilde K\tilde P_i)\right]$$
+
+where
+
+$$\tau_i^b=g_i^{K_C},\qquad K_C=\frac{1}{s_c}.$$
+
+### The position of the sun
+Solar zenith angle depends on latitude $\small \phi_y$, solar declination $\small \delta$ and hour angle $\small h_s$:
+
+$$\cos Z=\sin\delta\sin\phi_y+\cos\delta\cos\phi_y\cos h_s$$
+
+with
+
+$$h_s=\frac{\pi}{12}(t_s-12)$$
+
+and
+
+$$\delta=\frac{23.5\pi}{180}\cos\left(2\pi\frac{j-159.5}{365.25}\right),$$
+
+where $\small j$ is Astronomical Julian day. Solar time is
+
+$$t_s=t_l+\frac{4(\phi_x-\phi_m)+\Delta_t}{60}$$
+
+where $\small t_l$ is local time, $\small \phi_x$ longitude, $\small \phi_m$ the longitude of the local time-zone meridian and $\small \Delta_t$ the equation of time. Following Milne (1921),
+
+$$\Delta_t=-7.659\sin M+9.863\sin(2M+3.5932)$$
+
+where
+
+$$M=6.24004077+0.01720197(j-2451545).$$
+
+Solar azimuth $\small \Lambda_s$, measured clockwise from north, is obtained from both components so that the quadrant is resolved. Writing $\small \beta$ for solar altitude, with $\small \sin\beta=\cos Z$,
+
+$$\sin\Lambda_s=-\frac{\cos\delta\sin h_s}{\cos\beta}, \qquad \cos\Lambda_s=-\frac{\sin\phi_y\cos\delta\cos h_s-\cos\phi_y\sin\delta}{\sqrt{(\cos\delta\sin h_s)^2+(\sin\phi_y\cos\delta\cos h_s-\cos\phi_y\sin\delta)^2}}.$$
+
+### Diffuse radiation
+The upward and downward diffuse streams satisfy
+
+$$-\frac{dR_i^{d\uparrow}}{dP}=-(a+\gamma)R_i^{d\uparrow}+\gamma R_i^{d\downarrow}+sR_i^{b\downarrow}$$
+$$\frac{dR_i^{d\downarrow}}{dP}=-(a+\gamma)R_i^{d\downarrow}+\gamma R_i^{d\uparrow}+s'R_i^{b\downarrow}$$
+
+where $\small a$ is absorption of diffuse radiation per unit plant area, $\small \gamma$ is the backward-scattering coefficient for diffuse radiation, and $\small s$ and $\small s'$ are the backward- and forward-scattering coefficients for direct radiation. If $\small \alpha_P$ and $\small \tau_P$ are canopy-element reflectance and transmittance,
+
+$$\omega=\alpha_P+\tau_P,\qquad a=1-\omega,$$
+
+$$\delta=\alpha_P-\tau_P,\qquad \gamma=0.5(\omega+J\delta),$$
+
+where $\small J=\cos^2\hat\Theta_P$ and, following Campbell (1990),
+
+$$\hat\Theta_P=9.65(3+x)^{-1.65},$$
+
+bounded above by $\small \pi/2$. For a spherical distribution ($\small x=1$), $\small J\approx1/3$. Following Verhoef (1984) and Pinty *et al.* (2006),
+
+$$s=0.5\left(\omega+\frac{J\delta}{\tilde K}\right)\tilde K,\qquad s'=\omega\tilde K-s.$$
+
+With boundary conditions at the canopy top and ground surface, the diffuse streams are
+
+$$R_i^{d\uparrow}=R_0^{d\downarrow}\left[(1-\tau_i^{d\uparrow})(p_1\exp(-h\tilde{P_i})+p_2\exp(h\tilde{P_i}))+\tau_i^{d\uparrow}\alpha_G\right]+R_i^{db\uparrow}$$
+$$R_i^{d\downarrow}=R_0^{d\downarrow}\left[(1-\tau_i^d)(p_3\exp(-h\tilde{P_i})+p_4\exp(h\tilde{P_i}))+\tau_i^d\right]+R_i^{db\downarrow}$$
+
+where $\small R_0^{d\downarrow}$ is downward diffuse radiation above the canopy, $\small \alpha_G$ is ground reflectance,
+
+$$\tau_i^d=g_i^2,\qquad \tau_i^{d\uparrow}={g_i'}^2,\qquad g_i'=g_n^{(P_{AI}-P_i)/P_{AI}},$$
+
+and the diffuse fluxes generated by scattering of the direct beam are
+
+$$R_i^{db\uparrow}=R_b\left[(1-\tau_i^b\tau_i^{d\uparrow})\left(\frac{p_5}{-\sigma_p}\exp(-\tilde{K}\tilde{P_i})+p_6\exp(-h\tilde{P_i})+p_7\exp(h\tilde{P_i})\right)+\tau_i^b\tau_i^{d\uparrow}\alpha_G\right]$$
+
+and
+
+$$R_i^{db\downarrow}=R_b\left[(1-\tau_i^b)\left(\frac{p_8}{\sigma_p}\exp(-\tilde{K}\tilde{P_i})+p_9\exp(-h\tilde{P_i})+p_{10}\exp(h\tilde{P_i})\right)\right].$$
+
+The coefficients are
+
+::: col2
+**Diffuse components**:<br>
+$\small p_1=\frac{\gamma}{D_1S_1}(u_1-h)$<br>
+$\small p_2=\frac{-\gamma S_1}{D_1}(u_1+h)$<br>
+$\small p_3=\frac{1}{D_2S_1}(u_2+h)$<br>
+$\small p_4=-\frac{S_1}{D_2}(u_2-h)$<br>
+$\small D_1=\frac{1}{S_1}(a+\gamma+h)(u_1-h)-S_1(a+\gamma-h)(u_1+h)$<br>
+$\small D_2=\frac{1}{S_1}(u_2+h)-S_1(u_2-h)$<br>
+$\small S_1=\exp(-h\tilde{P}_{AI})$<br>
+$\small S_2=\exp(-\tilde{K}\tilde{P}_{AI})$<br>
+$\small u_1=a+\gamma\left(1-\frac{1}{\alpha_G}\right)$<br>
+$\small u_2=a+\gamma(1-\alpha_G)$<br>
+$\small h=\sqrt{a^2+2a\gamma}$<br>
+
+**Direct components**:<br>
+$\small p_5=-s(a+\gamma-\tilde{K})-\gamma s'$<br>
+$\small p_6=\frac{1}{D_1}\left[\frac{v_1}{S_1}(u_1-h)-S_2v_2(a+\gamma-h)\right]$<br>
+$\small p_7=-\frac{1}{D_1}\left[v_1S_1(u_1+h)-S_2v_2(a+\gamma+h)\right]$<br>
+$\small p_8=s'(a+\gamma+\tilde{K})+\gamma s$<br>
+$\small p_9=-\frac{1}{D_2}\left[\frac{p_8}{\sigma_pS_1}(u_2+h)+v_3\right]$<br>
+$\small p_{10}=\frac{1}{D_2}\left[\frac{p_8S_1}{\sigma_p}(u_2-h)+v_3\right]$<br>
+$\small v_1=s-\frac{p_5(a+\gamma+\tilde{K})}{-\sigma_p}$<br>
+$\small v_2=s-\gamma-\frac{p_5}{-\sigma_p}(u_1+\tilde{K})$<br>
+$\small v_3=S_2\left(s'+\gamma\alpha_G-\frac{p_8}{\sigma_p}(u_2-\tilde{K})\right)$<br>
+$\small \sigma_p=(a+\gamma)^2-\gamma^2-\tilde{K}^2$<br>
+:::
+
+Writing $\small \alpha_d$ and $\small \alpha_b$ for the diffuse and direct-beam albedos of the combined canopy-ground surface, absorbed shortwave radiation is
+
+$$R_{abs}^{sw}=(1-\alpha_d)R_0^{d\downarrow}+(1-\alpha_b)R_b.$$
+
+where
+
+$$\alpha_d=g_n^4\alpha_G+(1-g_n^4)(p_1+p_2)$$
+$$\alpha_b=g_n^{2+K_C}\alpha_G+(1-g_n^{2+K_C})\left(\frac{p_5}{-\sigma_p}+p_6+p_7\right)$$
+
+### Longwave and emitted radiation
+Longwave reflectance by canopy elements is small, so longwave exchange is represented between bulk radiating surfaces rather than by the shortwave two-stream scattering scheme. 
+
+In the point model, obstruction of the sky by surrounding terrain is ignored. The canopy exchange surface therefore receives downward longwave radiation directly from the sky, whereas the ground receives sky radiation transmitted through the canopy together with longwave radiation emitted by the canopy. Writing $\small \tau_g=g_n^2$ for diffuse longwave transmission through the canopy,
+
+$$R_{abs,G}^{lw}=\varepsilon\tau_gR_{lw}^\downarrow+\varepsilon^2(1-\tau_g)\sigma T_C^4$$
+
+and
+
+$$R_{abs,C}^{lw}=\varepsilon R_{lw}^\downarrow.$$
+
+where emissivity $\small \varepsilon=0.97$. For radiation emitted by the ground, the fraction $\small \tau_g$ escapes through the canopy, whereas the remainder encounters the canopy and is partly returned. Its net outward longwave loss can therefore be written using the effective coefficient
+
+$$\hat{\varepsilon}_G=\varepsilon\tau_g+\varepsilon^2(1-\tau_g).$$
+
+For the canopy exchange surface in the point model,
+
+$$\hat{\varepsilon}_C=\varepsilon.$$
+
+The net outward longwave flux from either surface is thus $\small \hat{\varepsilon}\sigma T^4$. 
+
+### Leaf and ground radiation absorption
+Radiation absorbed by the ground is
+
+$$R_{abs}(G)=(1-\alpha_G)\left(\tau^dR_0^{d\downarrow}+\tau^{bd}R_b+\tau^bR_b\right)+R_{abs,G}^{lw}$$
+
+where, evaluated at the ground,
+
+$$\tau^d=g_n^2+(1-g_n^2)\left(p_3S_1+\frac{p_4}{S_1}\right)$$
+$$\tau^{bd}=(1-g_n^{K_C})\left(\frac{p_8}{\sigma_p}S_2+p_9S_1+\frac{p_{10}}{S_1}\right)$$
+$$\tau^b=g_n^{K_C}+(1-g_n^{K_C})S_2$$
+
+Radiation passing through explicit gaps contributes to $\small \tau^b$ but not to $\small \tau^{bd}$ because it does not interact with canopy elements.
+
+Radiation absorption by individual canopy elements is required to calculate leaf temperature. The mean absorbed flux over the upward- and downward-facing leaf surfaces at height $\small z$ is
+
+$$R_{abs}(L)=(1-\alpha_L)\left[0.5(R_z^{d\downarrow}+R_z^{d\uparrow})+0.5s_L(R_z^{\downarrow b}+R_z^{\uparrow b})\right]+0.5\varepsilon_L(R_z^{\downarrow lw}+R_z^{\uparrow lw})$$
+
+where $\small \varepsilon_L=0.97$ is leaf emissivity and
+
+$$s_L=\tilde K\cos Z.$$
+
+### Radiation adjustments in the grid model
+In the grid model, topography modifies radiation in two ways. Surrounding terrain can block the direct solar beam, while obstruction of the overlying hemisphere reduces the fraction of diffuse shortwave and longwave radiation received directly from the sky.
+
+Direct radiation is set to zero when solar altitude is below the horizon angle $\small \theta_h(\Lambda_s)$ in the direction of the solar azimuth. For each grid cell,
+
+$$\theta_h(\Lambda_s)=\max_i\left[\tan^{-1}\left(\frac{z_i-z_0}{d_i}\right)\right]$$
+
+where $\small z_0$ is focal-cell elevation, $\small z_i$ the elevation of a cell in direction $\small \Lambda_s$ and $\small d_i$ its horizontal distance from the focal cell.
+
+The fraction of the overlying hemisphere occupied by open sky is described by the sky-view factor
+
+$$\Psi_s=\frac{1}{n}\sum_{k=1}^{n}\cos^2\theta_h\left(\frac{2\pi k}{n}\right),$$
+
+with $\small \Psi_s=1$ for an unobstructed horizontal horizon. Diffuse shortwave radiation received from the sky is therefore reduced by $\small \Psi_s$, giving
+
+$$R_{abs}^{sw}=(1-\alpha_d)\Psi_sR_0^{d\downarrow}+(1-\alpha_b)R_b$$
+
+and, for the ground,
+
+$$R_{abs}(G)=(1-\alpha_G)\left(\Psi_s\tau^dR_0^{d\downarrow}+\tau^{bd}R_b+\tau^bR_b\right)+R_{abs,G}^{lw}.$$
+
+Sky obstruction also modifies longwave exchange because the obstructed part of the hemisphere is occupied by surrounding terrain rather than sky. Surrounding terrain is assumed to radiate at air temperature $\small T_A$. The fraction of open sky visible from beneath the canopy is
+
+$$\Psi_G=\tau_g\Psi_s,$$
+
+while terrain occupies the fraction $\small \tau_g(1-\Psi_s)$ and canopy the remaining fraction $\small 1-\tau_g$. The corresponding absorbed longwave fluxes are
+
+$$R_{abs,G}^{lw}=\varepsilon\Psi_GR_{lw}^\downarrow+\varepsilon^2\left[\tau_g(1-\Psi_s)\sigma T_A^4+(1-\tau_g)\sigma T_C^4\right]$$
+
+and
+
+$$R_{abs,C}^{lw}=\varepsilon\Psi_sR_{lw}^\downarrow+\varepsilon^2(1-\Psi_s)\sigma T_A^4.$$
+
+Accounting for the fraction of emitted radiation returned from obstructing terrain or canopy gives
+
+$$\hat{\varepsilon}_G=\varepsilon\Psi_G+\varepsilon^2(1-\Psi_G),\qquad
+\hat{\varepsilon}_C=\varepsilon\Psi_s+\varepsilon^2(1-\Psi_s).$$
+
+These replace the point-model coefficients in the grid-model energy balance. When $\small \Psi_s=1$, the point-model expressions are recovered.
+
+## Sensible Heat
+
+From Fourier's and Fick's laws, the local turbulent transport of sensible heat is given by
+
+$$H=-\tilde{\rho}c_pK_H\frac{dT}{dz}$$
+
+where $\small \tilde{\rho}$ is the molar density of air ($\small mol\,m^{-3}$), $\small c_p$ is the molar heat capacity of air ($\small J\,mol^{-1}\,K^{-1}$), $\small T$ is air temperature ($\small K$), $\small z$ is height ($\small m$), and $\small K_H$ is eddy thermal diffusivity ($\small m^2\,s^{-1}$). The diffusivity describes how efficiently turbulence transports heat vertically: for a given temperature gradient, larger $\small K_H$ results in less heat flux, and likewise for a given heat flux, larger $\small K_H$ results in a smaller temperature gradient.
+
+Because $\small K_H$ changes with height, it is convenient to express the cumulative effect of turbulent transfer between two heights as an aerodynamic resistance
+
+$$r_H(z_1,z_2)=\int_{z_1}^{z_2}\frac{1}{K_H(z)}\,dz$$
+
+The energy balance for the whole canopy can then be written
+
+$$H=\frac{\tilde{\rho}c_p}{r_{Ha}}(T_C-T_A)$$
+
+where $\small T_C$ is the temperature of the bulk canopy heat-exchange surface at effective aerodynamic height $\small z_C$, $\small T_A$ is air temperature at reference height $\small z_R$, and $\small r_{Ha}$ is the total aerodynamic resistance between these two effective heights. The canopy heat-exchange height is
+
+$$z_C=d+z_H^0$$
+
+where $\small d$ is zero-plane displacement height and $\small z_H^0$ is the scalar roughness length excluding any roughness-sublayer correction. From Raupach (1994), displacement height is
+
+$$d=h\left(1-\frac{1-\exp(-\sqrt{7.5P_{AI}})}{\sqrt{7.5P_{AI}}}\right)$$
+
+where $\small P_{AI}$ is total one-sided plant area. Defining
+
+$$\beta=\min\left(\sqrt{0.003+\frac{0.3P_{AI}}{2}},\,0.3\right)$$
+
+the scalar roughness length associated with the canopy heat-exchange surface is
+
+$$z_H^0=0.2\,\max\left[\min\left((h-d)\exp\left(-\frac{\kappa}{\beta}\right),\,0.9(h-d)\right),\,0.004\right]$$
+
+### Aerodynamic resistance to sensible heat
+
+$\small r_{Ha}$ comprises three parts. First, the resistance between the reference height $\small z_R$ and a point $\small z_s$ above canopy in which turbulence is not strongly influenced by canopy structure and over which standard MOST applies. Second, the resistance between canopy top at height $\small h$ and $\small z_s$ in a scalar roughness sublayer over which turbulence is still strongly influenced by canopy structure. Lastly, the resistance between the canopy heat-exchange surface at $\small z_C$ and canopy top. The thermal diffusivity profile above canopy is
+
+$$K_H(z)=\begin{cases}
+K_H(h)+\dfrac{K_H(z_s)-K_H(h)}{z_s-h}(z-h), & h<z\le z_s\\[2ex]
+\dfrac{\kappa u_*(z-d)}{\phi_H(z)}, & z>z_s
+\end{cases}$$
+
+where $\small \kappa=0.41$ is the von Kármán constant, $\small u_*$ is friction velocity, $\small d$ is zero-plane displacement height and $\small \phi_H(z)$ is a dimensionless diabatic correction factor (see below). The canopy-top diffusivity is
+
+$$\frac{1}{K_H(h)}=\frac{\phi_H(h)}{c_{\mathrm{eff}}\kappa u_*(h-d)}+
+\max\left[0,\frac{1}{K_H^w(h)}-\frac{1}{K_{c0}}\right]$$
+
+where
+
+$$c_{\mathrm{eff}}=1+(c_H-1)f,\qquad
+f=\frac{\beta-\sqrt{0.003}}{0.3-\sqrt{0.003}},\qquad
+c_H=3$$
+
+The second term accounts for a near-ground wall layer, where turbulent mixing is limited by proximity to the ground. Here $\small K_H^w(h)$ is the diffusivity predicted at canopy top by the near-ground wall-layer formulation and $\small K_{c0}$ is the diffusivity generated by canopy turbulence at the canopy floor. Both concepts are explained in more detail, and their formulae are given, in the Below canopy model section.
+
+
+The upper boundary of the scalar roughness sublayer is
+
+$$z_s=d+c_{\mathrm{eff}}(h-d)$$
+
+and friction velocity is given by
+
+$$u_*=\frac{\kappa u_{\mathrm{eff}}}{\ln\frac{z_R-d}{z_M}+\psi_M(z_R)}$$
+where from Raupach (1994) $\small z_M$ is the roughness length for momentum given by
+
+$$z_M=(h-d)\exp\left(-\frac{\kappa}{\beta}+0.193\right)$$
+
+and $\small u_{\mathrm{eff}}$ is the effective wind speed and $\small \psi_M(z_R)$ is the integrated diabatic correction for momentum, both defined below.
+
+Writing the slope of the roughness-sublayer branch as
+
+$$m=\frac{K_H(z_s)-K_H(h)}{z_s-h}$$
+
+integration of $\small 1/K_H$ through the roughness sublayer gives
+
+$$r_{hz_s}=\frac{1}{m}\ln\left[\frac{K_H(z_s)}{K_H(h)}\right]$$
+
+with the limiting form $\small r_{hz_s}=(z_s-h)/K_H(h)$ when $\small m\rightarrow0$. Above the roughness sublayer, integration of the MOST portion of the profile gives
+
+$$r_{z_sR}=\frac{\ln\dfrac{z_R-d}{z_s-d}+\psi_H\left(\dfrac{z_s-d}{L_O}\right)-\psi_H\left(\dfrac{z_R-d}{L_O}\right)}{\kappa u_*}$$
+
+where $\small \psi_H$ is the integrated stability correction for heat (see below).
+
+The remaining part of $\small r_{Ha}$ is transfer between the bulk canopy heat-exchange surface at $\small z_C=d+z_H^0$ and canopy top. Since the scalar roughness sublayer is represented explicitly above $\small h$, the roughness length $\small z_H^0$ used for this part of the resistance contains no roughness-sublayer correction. The canopy-to-top resistance is therefore
+
+$$r_{Hh}^0=\max\left\{0,\frac{\ln\dfrac{h-d}{z_H^0}+\psi_H\left(\dfrac{z_H^0}{L_O}\right)-\psi_H\left(\dfrac{h-d}{L_O}\right)}{\kappa u_*}\right\}$$
+
+The total aerodynamic resistance used in the canopy energy balance is therefore
+
+$$r_{Ha}=r_{Hh}^0+r_{hz_s}+r_{z_sR}$$
+
+Equivalently, because the latter two terms are the integrated resistance of the scalar transport column above canopy top,
+
+$$r_{Ha}=r_{Hh}^0+\left[r_{col}(z_R)-r_{col}(h)\right]$$
+
+### Diabatic effects
+
+Diabatic effects modify the local diffusivity through the dimensionless heat-gradient correction
+
+$$\phi_H(\zeta)=1-\zeta\frac{d\psi_H}{d\zeta}$$
+
+where
+
+$$\zeta=\frac{q}{L_O}$$
+
+is dimensionless height, $\small q$ is distance above the displacement plane or the relevant aerodynamic roughness length, and $\small L_O$ is the Obukhov length
+
+$$L_O=-\frac{\tilde{\rho}c_pu_*^3\overline{T}}{\kappa gH}$$
+
+Here $\small g=9.81\,m\,s^{-2}$ is gravitational acceleration and $\small \overline{T}$ is air temperature at reference height ($\small K$). When $\small \phi_H$ is evaluated at canopy top for the within-canopy Lagrangian coefficient it is bounded between 0.5 and 1.5; the surface-layer values used above canopy are not bounded.
+
+Following Harman & Finnigan (2008), the integrated stability correction across a similarity segment is the difference between the stability functions evaluated at its lower and upper limits. For momentum, between the momentum roughness length and height $\small z$,
+
+$$\psi_M(z)=\psi_M\left(\frac{z_M}{L_O}\right)-\psi_M\left(\frac{z-d}{L_O}\right)$$
+
+For heat, between two effective distances $\small q_1$ and $\small q_2$ above the displacement plane,
+
+$$\psi_H\left(\frac{q_1}{L_O}\right)-\psi_H\left(\frac{q_2}{L_O}\right)$$
+
+Thus, for the canopy-to-top resistance $\small r_{Hh}^0$, the limits are $\small q_1=z_H^0$ and $\small q_2=h-d$, whereas for the resistance above the scalar roughness sublayer $\small r_{z_sR}$ they are $\small q_1=z_s-d$ and $\small q_2=z_R-d$.
+
+Following Businger *et al.* (1971), under unstable conditions ($\small \zeta<0$), the momentum stability function is
+
+$$\psi_M(\zeta)=\ln\left[\left(\frac{1+x}{2}\right)^2\left(\frac{1+x^2}{2}\right)\right]-2\arctan x+\frac{\pi}{2},\qquad x=(1-15\zeta)^{1/4}$$
+
+In the model, $\small \psi_M$ is capped at 3. Under stable conditions,
+
+$$\psi_M(\zeta)=-4.7\zeta_{\max}^M\tanh\left(\frac{\zeta}{\zeta_{\max}^M}\right),\qquad \zeta_{\max}^M=\frac{4}{4.7}$$
+
+For heat, under unstable conditions,
+
+$$\psi_H(\zeta)=\ln\left[\left(\frac{1+y}{2}\right)^2\right],\qquad y=\sqrt{1-9\zeta}$$
+
+Large unstable corrections are smoothly limited in the model according to
+
+$$\psi_H\rightarrow\zeta_K+\zeta_K\tanh\left(\frac{\psi_H-\zeta_K}{\zeta_K}\right),\qquad \zeta_K=1.5$$
+
+Under stable conditions,
+
+$$\psi_H(\zeta)=-\frac{4.7}{0.74}\zeta_{\max}^H\tanh\left(\frac{\zeta}{\zeta_{\max}^H}\right),\qquad \zeta_{\max}^H=\frac{0.74\times4}{4.7}$$
+
+Because $\small H$ determines $\small L_O$, while $\small L_O$ in turn modifies $\small K_H$, $\small r_{Ha}$ and $\small u_*$, sensible heat and atmospheric stability are coupled. The point model therefore solves them iteratively to convergence.
+
+### Free convection and low wind speeds
+
+Under light winds over a strongly heated surface, buoyancy can sustain turbulent exchange when shear-generated turbulence is weak. Following Beljaars (1995), the wind speed used to calculate friction velocity is therefore combined with a free-convective velocity scale
+
+$$u_{\mathrm{eff}}=\sqrt{u_{z_R}^2+w_*^2},\qquad
+w_*=\left(\frac{g}{T_A}z_i\frac{H}{\tilde{\rho}c_p}\right)^{1/3}$$
+
+where $\small u_{z_R}$ is wind speed at the reference height, $\small g$ is gravitational acceleration and $\small z_i=1000$ m is the convective boundary-layer depth. The correction is applied only for $\small H>0$; otherwise $\small u_{\mathrm{eff}}=u_{z_R}$.
+
+### Grid model simplifications of friction velocity
+
+Repeating the coupled point-model solution independently for every grid cell would be computationally expensive. The grid model instead obtains an iterative solution for a flat reference location $\small R$ at the centre of the study area, with mean vegetation and soil properties (modal properties for categorical soil type), and scales friction velocity from this reference solution. For a target location,
+
+$$u_*=\mu_uu_*^R,$$
+
+where
+
+$$\mu_u=\frac{\ln\frac{z_r-d_R}{z_{M_R}}+\psi_{M_R}(z_r)}{\ln\frac{z_r-d}{z_M}+\psi_M(z_r)}$$
+
+Here $\small z_r$ is the reference height at which wind speed is specified, and subscripts $\small R$ denote the reference surface. It can be shown empirically that the diabatic corrections have relatively little effect on this ratio (Fig. S2.1), and therefore
+
+$$\mu_u\approx\frac{\ln(z_r-d_R)-\ln z_{M_R}}{\ln(z_r-d)-\ln z_M}.$$
+Wind speed $\small u_{Z_R}$ is also multiplied by the Ryan (1977) terrain shelter coefficient
+
+$$w_c=1-\frac{\arctan(0.17H_W)}{1.65},$$
+
+where $\small H_W$ is the horizon in the upwind direction expressed as a percentage slope (100 times the tangent of the horizon angle). 
+
+The convective velocity scale used for computing effective wind speed is taken from the atmospheric boundary layer 1000m above ground and is therefore not attenuated by terrain shelter, giving
+
+$$u_{\mathrm{eff}}=\sqrt{(w_cu_{z_r})^2+w_*^2},$$
+
+with a minimum of 0.5 $\small m\,s^{-1}$. If $\small u_{\mathrm{eff}}^R$ is the corresponding effective wind at the unsheltered reference location, then
+
+$$u_*=\mu_uu_*^R\frac{u_{\mathrm{eff}}}{u_{\mathrm{eff}}^R}.$$ 
+
+The resulting $\small u_*$ is bounded between $\small 0.5u_*^N$ and $\small 1.5u_*^N$, where
+
+$$u_*^{N}=\frac{\kappa u_{\mathrm{eff}}}{\ln[(z_r-d)/z_M]}.$$ 
+
+This constraint prevents differences in canopy height from being represented as unrealistically strong buoyancy effects. 
+
+
+![](images/fig1.png)
+
+<small>
+**Fig. S2.1**. Effect of stability corrections on the spatial scaling of friction velocity. The point model was run for a reference surface ($\small P_{AI}=3$, $\small h=1$ m) and a target surface ($\small P_{AI}=1$, $\small h=0.5$ m) for the 2017 Caerthillian Cove weather series. (a) Distribution of $\small \psi_M$ at the target location. (b) $\small \ln[(z_r-d)/z_M]+\psi_M$ through the year, with the neutral value shown in red. (c) Friction velocity with and without the stability correction; free-convective hours are shown in blue (RMSE 0.037 in log units). (d) Friction velocity estimated by the ratio approximation against that obtained from the full point calculation; hours affected by the wind-speed floor are shown in blue (RMSE 0.070 in log units).
+</small>
+
+## Latent Heat
+
+### Bulk surface fluxes
+A full expression for latent heat flux from the canopy is
+
+$$L=\frac{\lambda\tilde{\rho}}{p_ar_V}\left[\theta_ce_s(T_c)-e_a\right]$$
+
+where $\small \lambda$, the latent heat of vaporisation, is given by
+
+$$\lambda=45068.7-42.8428T_c,\space T_c\ge0;\qquad \lambda=51078.69-4.338T_c-0.06367T_c^2,\space T_c<0$$
+
+with $\small T_c$ in $^{\circ}$C. Here $\small p_a$ is atmospheric pressure (kPa), $\small e_a$ is air vapour pressure (kPa), $\small \theta_c$ is the effective relative humidity of the exchange surface and $\small e_s(T_c)$ is saturation vapour pressure (kPa), given by
+
+$$e_s(T_c)=0.61078\exp\left(\frac{aT_c}{T_c+b}\right),\qquad
+(a,b)=
+\begin{cases}
+(17.27,237.3), & T_c\geq0\\
+(21.875,265.5), & T_c<0
+\end{cases}$$
+
+The resistance to vapour exchange is $\small r_V=r_{Ha}+r_s$, where $\small r_{Ha}$ is the bulk aerodynamic resistance defined under *Aerodynamic resistance to sensible heat* and $\small r_s$ is bulk surface vapour resistance. For a dry canopy, vapour can enter the canopy air through two parallel pathways: transpiration through the stomata and evaporation from the soil. The stomatal pathway has resistance $\small r_{St}=1/g_{St}$, where $\small g_{St}$ is bulk canopy stomatal conductance. The soil pathway has resistance $\small r_{gc}$, equal to the ground-to-reference resistance $\small r_{gz_R}$ (see *Resistance through the column*) less $\small r_{Ha}$. Vapour supplied by the soil is assigned an effective relative humidity $\small h_r$, allowing evaporation from the soil to become limited as the soil dries rather than assuming a saturated vapour source.
+
+Combining these pathways gives
+
+$$r_s^{dry}=\frac{r_{gc}}{1+r_{gc}g_{St}},\qquad
+\theta_c^{dry}=\frac{r_{gc}g_{St}+h_r}{r_{gc}g_{St}+1}.$$
+
+Thus $\small r_s^{dry}$ is the parallel resistance of the stomatal and soil pathways, while $\small \theta_c^{dry}$ is their conductance-weighted effective relative humidity. As $\small g_{St}\rightarrow0$, exchange is dominated by the soil pathway, so $\small r_s^{dry}\rightarrow r_{gc}$ and $\small \theta_c^{dry}\rightarrow h_r$; as stomatal conductance becomes dominant, $\small r_s^{dry}\rightarrow r_{St}$ and $\small \theta_c^{dry}\rightarrow1$.
+
+Evaporation from intercepted water bypasses $\small r_s^{dry}$. The wet fraction of foliage is
+
+$$w=1\quad\mathrm{during\ rainfall},\qquad
+w=1-\exp\left(-\frac{30S}{P_{AI}}\right)\quad\mathrm{otherwise},$$
+
+where $\small S$ is canopy water storage per unit ground area and $\small P_{AI}$ is plant area index. If available water sustains free evaporation for a fraction $\small \phi$ of the timestep, the effective wet fraction is $\small f_w=\phi w$. Wet and dry foliage then contribute in parallel, giving
+
+$$\frac{1}{r_V}=\frac{f_w}{r_{Ha}}+\frac{1-f_w}{r_{Ha}+r_s^{dry}},$$
+
+and
+
+$$\theta_c=
+\frac{f_w/r_{Ha}+(1-f_w)\theta_c^{dry}/(r_{Ha}+r_s^{dry})}
+{f_w/r_{Ha}+(1-f_w)/(r_{Ha}+r_s^{dry})}.$$
+
+Stomatal transpiration is correspondingly reduced by the factor $\small 1-f_w$. The fraction of rainfall passing directly through the canopy is
+
+$$t_r=\exp[-k_d(\theta_r)P_{AI}],$$
+
+where $\small k_d(\theta_r)$ accounts for rainfall angle, determined from rain terminal velocity and canopy-top wind speed. Intercepted rainfall enters canopy storage; evaporation depletes it, while water exceeding storage capacity drips to the ground, conserving rainfall among direct throughfall, drip, change in storage and evaporation.
+
+Bulk canopy stomatal resistance is derived separately for sunlit and shaded foliage. Their leaf areas are estimated from Beer's law as
+
+$$L_{sun}=\frac{1-\exp(-kP_{AI}f_L)}{k},\qquad L_{sh}=P_{AI}f_L-L_{sun},$$
+
+where $\small k$ is the canopy extinction coefficient and $\small f_L$ is the fraction of plant area comprising living foliage. Bulk canopy stomatal resistance is then
+
+$$r_{St}=\tilde\rho\left(g_{s,sun}L_{sun}+g_{s,sh}L_{sh}\right)^{-1},$$
+
+where $\small g_{s,sun}$ and $\small g_{s,sh}$ are leaf-level stomatal conductances and $\small \tilde\rho$ is molar air density. PAR absorbed by sunlit and shaded leaves is partitioned using Beer's law and rescaled so that total absorption matches the two-stream radiation model.
+
+### Leaf stomatal conductance
+Leaf stomatal conductance $\small g_s$ follows the SOX formulation of Eller *et al.* (2020), in which stomatal opening maximises the product of net CO$_2$ assimilation and xylem hydraulic conductance,
+
+$$A[c_i(g_s)]K[\psi(g_s)],$$
+
+where $\small A$ is leaf net CO$_2$ assimilation (mol CO$_2$ m$^{-2}$ s$^{-1}$), $\small c_i$ is internal CO$_2$ partial pressure (Pa), and normalised xylem hydraulic conductance is
+
+$$K(\psi)=\frac{1}{1+(\psi/\psi_{50})^a}.$$
+
+Here $\small \psi_{50}$ is the leaf water potential at which $\small K=0.5$ and $\small a$ controls the steepness of the vulnerability curve. Setting $\small \partial(AK)/\partial g_s=0$ gives
+
+$$g_s=0.5\frac{\partial A}{\partial c_i}\left(\sqrt{\frac{4\xi}{\partial A/\partial c_i}+1}-1\right),$$
+
+where
+
+$$\xi=\frac{2}{(1/K)(\partial K/\partial\psi)r_p\,1.6D}$$
+
+and $\small D$ is leaf-to-air vapour pressure deficit (mol mol$^{-1}$). Plant hydraulic resistance is
+
+$$r_p=\frac{r_{p,min}}{K(\psi)}.$$
+
+Following the Collatz *et al.* (1991, 1992) C$_3$ and C$_4$ photosynthesis models, $\small \partial A/\partial c_i$ is approximated from the colimitation point $\small c_{i,col}$ as
+
+$$\frac{\partial A}{\partial c_i}=\frac{A(c_a)-A(c_{i,col})}{c_a-c_{i,col}}.$$
+
+Net assimilation is $\small A=W-R_d$, where $\small R_d=f_dV_{cmax}$ and
+
+$$W=\min(W_c,\space W_l,\space W_e).$$
+
+For C$_3$ photosynthesis,
+
+$$W_c=V_{cmax}\left[\frac{c_i-\Gamma}{c_i+K_c(1+O_a/K_o)}\right],\qquad
+W_l=\alpha I_{PAR}\frac{c_i-\Gamma}{c_i+2\Gamma},\qquad
+W_e=0.5V_{cmax},$$
+
+and for C$_4$ photosynthesis,
+
+$$W_c=V_{cmax},\qquad W_l=\alpha I_{PAR},\qquad
+W_e=2\times10^{-4}V_{cmax}\frac{c_i}{P_a}.$$
+
+Leaf internal CO$_2$ partial pressure is
+
+$$c_i=f_0\left(1-D/D_{crit}\right)(c_a-\Gamma),$$
+
+where $\small c_a$ is ambient CO$_2$ partial pressure and $\small f_0$ and $\small D_{crit}$ are empirical parameters. The photo-compensation point is
+
+$$\Gamma=\frac{O_a}{5200\left(0.57^{0.1(T_L-25)}\right)},$$
+
+where $\small T_L$ is leaf temperature ($^{\circ}$C) and $\small O_a=0.2095P_a$. The Rubisco carboxylation and oxygenation Michaelis--Menten constants (Pa) are
+
+$$K_c=30\left(2.1^{0.1(T_A-25)}\right),\qquad
+K_o=30000\left(1.2^{0.1(T_A-25)}\right),$$
+
+where $\small T_A$ is air temperature ($^{\circ}$C). Here $\small \alpha$ is photosynthetic quantum efficiency (mol CO$_2$ mol$^{-1}$ photons), $\small I_{PAR}$ is absorbed PAR (mol photons m$^{-2}$ s$^{-1}$) from the two-stream radiation model, and $\small P_a$ is atmospheric pressure (Pa).
+
+The colimiting assimilation rate $\small A_{col}=W_{col}-R_d$ is obtained from
+
+$$W_{col}=\frac{(W_e+W_l)-\sqrt{(W_e+W_l)^2-4\beta W_eW_l}}{2\beta},$$
+
+$$c_{i,col}=\frac{-V_{cmax}\Gamma-K_c(1+O_a/K_o)W_{col}}{W_{col}-V_{cmax}},$$
+
+where $\small \beta=0.93$. Maximum Rubisco carboxylation rate varies with leaf temperature as
+
+$$V_{cmax}=V_{cmax,25}\frac{2^{0.1(T_L-25)}}{[1+\exp(0.3(T_L-T_{up}))][1+\exp(0.3(T_{lw}-T_L))]},$$
+
+where $\small V_{cmax,25}$ is the value at 25$^{\circ}$C.
+
+The hydraulic sensitivity term is approximated by the secant between $\small \psi_{pd}$ and $\small (\psi_{pd}+\psi_{50})/2$:
+
+$$\frac{\partial K}{\partial\psi}\frac{1}{K}=
+\frac{K(\psi_{pd})-K[(\psi_{pd}+\psi_{50})/2]}
+{\psi_{pd}-(\psi_{pd}+\psi_{50})/2}\frac{1}{K(\psi_{pd})},$$
+
+where predawn canopy water potential (MPa) is
+
+$$\psi_{pd}=\psi_r-\frac{hg\rho}{10^6}.$$
+
+Here $\small \psi_r$ is mean root-zone soil water potential (defined from the rooted soil profile under *The soil water model*), $\small h$ is canopy height (m), $\small g=9.8$ m s$^{-2}$ and $\small \rho=997$ kg m$^{-3}$. Following Christoffersen *et al.* (2016) and Savage *et al.* (2010), minimum plant hydraulic resistance is
+
+$$r_{p,min}=\frac{h}{K_{pet,max}h_v}\chi_{tap},$$
+
+where $\small h_v$ is Huber value (active xylem area per unit leaf area), $\small K_{pet,max}=0.2066116K_{x,max}$, and
+
+$$\chi_{tap}=\frac{\max\left\{[4.3281\ln(1+6.4975h)]^{0.53},1\right\}}{3.1516}.$$
+
+The SOX formulation gives $\small g_s\rightarrow\infty$ as $\small D\rightarrow0$; stomatal conductance is therefore capped at
+
+$$g_s^{max}=V_{cmax,25}\times10^4.$$
+
+## The soil model
+
+### The soil heat model
+In the soil, heat storage is significant, and from Bittelli *et al.* (2015) an equation that describes the rate of change in soil temperature $\small T$ with time $\small t$ and depth $\small z$ is
+
+$$\rho_sc_s\frac{\partial T}{\partial t}=\frac{\partial}{\partial z}\left(k\frac{\partial T}{\partial z}\right)$$
+
+where $\small \rho_sc_s$ is volumetric heat capacity and $\small k$ is thermal conductivity. The volumetric heat capacity is the sum of the contributions from water, air, quartz, other minerals and organic matter,
+
+$$\rho_sc_s=\rho_wc_w\theta+\rho_ac_a\phi_a+\rho_qc_q\phi_q+\rho_mc_m\phi_m+\rho_oc_o\phi_o$$
+
+where $\small \rho$ and $\small c$ are density ($\small kg\cdot m^{-3}$) and specific heat capacity ($\small J\cdot kg^{-1}\cdot K^{-1}$), $\small \phi$ is volume fraction and $\small \theta$ is volumetric soil water content. Subscripts $\small w$, $\small a$, $\small q$, $\small m$ and $\small o$ denote water, air, quartz, other minerals and organic matter respectively.
+
+Following de Vries (1963) and Campbell (1985),
+
+$$k=p_1+p_2\theta-(p_1-p_4)\exp\left[-(p_3\theta)^4\right]$$
+
+where
+
+$\small p_1=\left(0.57+1.73\phi_q+0.93\phi_m\right)/\left(1-0.74\phi_q-0.49\phi_m\right)-2.8\phi_s(1-\phi_s)$<br>
+$\small p_2=2.8\phi_s,\space p_3=1+0.26m_c^{-1/2},\space p_4=0.03+0.7\phi_s^2$<br>
+
+and $\small \phi_s=\phi_q+\phi_m$ is the volume fraction of mineral solids and $\small m_c$ the mineral clay mass fraction (Table S2.1).
+
+The soil profile is divided into $\small n$ layers (default 7). Each node $\small i$ has temperature $\small T_i$ and volumetric heat capacity $\small \rho_i c_i$, while heat transfer between adjacent nodes is described by the conductance
+
+$$K_i=\frac{k_i}{z_{i+1}-z_i},$$
+
+where $\small z_i$ is node depth and $\small k_i$ is the thermal conductivity between nodes $\small i$ and $\small i+1$. For an hourly timestep $\small \Delta t$, the fully implicit heat balance is
+
+$$K_i\left(T_{i+1}^{j+1}-T_i^{j+1}\right)-K_{i-1}\left(T_i^{j+1}-T_{i-1}^{j+1}\right)=\rho_i c_i\left(T_i^{j+1}-T_i^j\right)\frac{z_{i+1}-z_{i-1}}{2\Delta t}$$
+
+where superscripts $\small j$ and $\small j+1$ denote the old and new timesteps respectively. Because each node exchanges heat only with the nodes immediately above and below it, the coupled equations form a tridiagonal system. Writing
+
+$$S_i=\rho_i c_i\frac{z_{i+1}-z_{i-1}}{2\Delta t},$$
+
+the system for four nodes can be written as
+
+$$
+{\small
+\begin{bmatrix}
+B_1 & C_1 & 0 & 0\\
+A_2 & B_2 & C_2 & 0\\
+0 & A_3 & B_3 & C_3\\
+0 & 0 & A_4 & B_4
+\end{bmatrix}
+\begin{bmatrix}
+T_1^{j+1}\\
+T_2^{j+1}\\
+T_3^{j+1}\\
+T_4^{j+1}
+\end{bmatrix}
+=
+\begin{bmatrix}
+D_1\\
+D_2\\
+D_3\\
+D_4
+\end{bmatrix}
+}
+$$
+
+with
+
+$$A_i=-K_{i-1},\qquad B_i=S_i+K_{i-1}+K_i,\qquad C_i=-K_i$$
+
+and, for interior nodes,
+
+$$D_i=S_iT_i^j.$$
+
+The off-diagonal terms therefore describe heat exchange with the neighbouring nodes, while the diagonal term additionally contains heat storage within the layer. Boundary terms are incorporated into $\small D_1$ and $\small D_n$. The deepest node is held at a fixed temperature, typically mean annual air temperature, while the upper boundary is the soil-surface energy balance described below. The resulting tridiagonal system is solved efficiently by Gaussian elimination using the Thomas algorithm (Thomas 1949) to derive soil temperature at any depth and time.
+
+### Ground heat flux
+
+In the point model the rate of heat storage by the ground is computed as the residual of the steady-state energy balance at the surface
+
+$$G=R_{abs}^G-\hat{\varepsilon}_G\sigma T_G^4-H_G-L_G.$$
+where $\small T_G$ is computed as described above.
+
+Beneath a canopy, the ground exchanges sensible and latent heat with canopy-modified air rather than directly with air at reference height. Writing $\small T^*$ and $\small e^*$ for the effective air temperature and vapour pressure seen by the ground, and $\small \overline r$ for the mean resistance across which this exchange occurs, the sensible and latent heat fluxes are
+
+$$H_G=\frac{\tilde{\rho}c_p}{\overline r}\left(T_G-T^*\right),\qquad
+L_G=\frac{\lambda\tilde{\rho}}{p_A\overline r}\left[h_re_s(T_G)-e^*\right].$$
+
+Here $\small h_r$ is the effective relative humidity of the soil surface (see below), $\small p_A$ is atmospheric pressure and $\small \lambda$ is latent heat of vaporisation. Assuming canopy sources are uniformly distributed with height,
+
+$$T^*=T_A+\frac{H\left[r(z_R)-\overline{r}\right]}{\tilde{\rho}c_p},\qquad
+\overline{r}=\frac{1}{h}\int_0^hr(z)\,dz,$$
+
+where $\small H$ is the whole-surface sensible heat flux and $\small r(z)$ is the resistance from the ground to height $\small z$; both $\small r(z)$ and $\small \overline r$ are defined under *Resistance through the column*. Vapour pressure $\small e^*$ is obtained by the analogous construction using the whole-surface latent heat flux. In the absence of a canopy, $\small \overline r$ reduces to the resistance from the ground to reference height and $\small T^*=T_A$. 
+
+### The soil water model
+
+Soil water is governed by rainfall input, evaporation, root uptake and vertical flow. Water movement follows Darcy's law,
+
+$$J_w=-k\frac{d\psi_m}{dz}-gk$$
+
+where $\small J_w$ is water flux density ($\small kg\cdot m^{-2}\cdot s^{-1}$), $\small k$ here denotes hydraulic conductivity (rather than the thermal conductivity used above), $\small \psi_m$ is matric potential and $\small g=9.81\,m\,s^{-2}$. Following Campbell (1985),
+
+$$k=k_s\left(\frac{\psi_e}{\psi_m}\right)^{2+3/b}=k_s\left(\frac{\theta}{\theta_s}\right)^{2b+3},\qquad
+\psi_m=\psi_e\left(\frac{\theta}{\theta_s}\right)^{-b}$$
+
+where $\small k_s$ is saturated hydraulic conductivity, $\small \psi_e$ is air-entry potential, $\small \theta_s$ is water content at saturation and $\small b$ is a pore-size distribution parameter (Table S2.1).
+
+Water is solved over the same $\small n$-layer profile. Across the face between nodes $\small i$ and $\small i+1$, liquid flow is evaluated using the exact Kirchhoff integral of the Campbell conductivity, with isothermal vapour diffusion represented separately and gravity acting on the liquid phase alone:
+
+$$f_i=
+\frac{\psi_{i+1}k_{i+1}-\psi_i k_i}{\Delta z_i(1-n_i)}
++\overline{k}_{v,i}\frac{\psi_{i+1}-\psi_i}{\Delta z_i}
+-gk_i,$$
+
+where $\small n_i=2+3/b_i$, $\small \Delta z_i=z_{i+1}-z_i$ and $\small \overline{k}_{v,i}$ is the mean vapour conductivity of the two nodes. The implicit balance for node $\small i$ is then
+
+$$\frac{\rho_w\overline c_w\left(\psi_i^{j+1}-\psi_i^j\right)\left(z_{i+0.5}-z_{i-0.5}\right)}{\Delta t}
+=f_i-f_{i-1}+U_i,$$
+
+where $\small \rho_w$ is water density, $\small \overline c_w$ is water capacitance and $\small U_i$ represents rainfall, evaporation and root-uptake sources or sinks. The vapour term is most important in very dry soils, particularly coarse soils where liquid conductivity becomes small. As for heat, each node is coupled only to its immediate neighbours. The resulting equations therefore have the same tridiagonal structure,
+
+$$
+{\small
+\begin{bmatrix}
+B_1 & C_1 & 0 & 0\\
+A_2 & B_2 & C_2 & 0\\
+0 & A_3 & B_3 & C_3\\
+0 & 0 & A_4 & B_4
+\end{bmatrix}
+\begin{bmatrix}
+\psi_1^{j+1}\\
+\psi_2^{j+1}\\
+\psi_3^{j+1}\\
+\psi_4^{j+1}
+\end{bmatrix}
+=
+\begin{bmatrix}
+D_1\\
+D_2\\
+D_3\\
+D_4
+\end{bmatrix}
+}
+$$
+As for heat, each node is coupled only to its immediate neighbours, giving a tridiagonal system that is solved iteratively in water-potential space using Newton–Raphson, with each linearised system solved by the Thomas algorithm.
+
+Rainfall reaching the ground comprises throughfall and canopy drip (see *Bulk surface fluxes*). Infiltration into the surface layer is initially limited by its hydraulic conductivity. If the surface node subsequently reaches air entry during the implicit solve it is held at saturation, with any surplus returned to the surface pool where pooling is enabled and otherwise to runoff.
+
+Root water uptake is distributed vertically following Schenk & Jackson (2002),
+
+$$F(z)=\frac{1}{1+(z/z_{50})^c},\qquad
+c=\frac{1.27875}{\log_{10}(z_{50}/z_{95})}$$
+
+where $\small F(z)$ is the cumulative fraction of roots above depth $\small z$, and $\small z_{50}$ and $\small z_{95}$ are the depths above which 50% and 95% of roots occur. The mean root-zone soil water potential $\small \psi_r$ used in the stomatal model is the root-fraction-weighted mean of the layer potentials. Uptake from layer $\small i$ is weighted by both its root fraction $\small F_i$ and a water-stress factor $\small \alpha(\psi_i)$,
+
+$$S_i=E_t\frac{F_i\alpha(\psi_i)}{\sum_jF_j\alpha(\psi_j)},$$
+
+where $\small E_t$ is transpiration demand. The stress factor is one for $\small \psi_i\ge\psi_{dry}$, zero for $\small \psi_i\le\psi_{wilt}$ and varies linearly between, with $\small \psi_{wilt}=-1500\ J\,kg^{-1}$. The threshold $\small \psi_{dry}$ is set by the PFT-specific depletion fraction of the water available between field capacity ($\small -33\ J\,kg^{-1}$) and the wilting point. Normalisation ensures that total uptake equals transpiration demand while allowing drier layers to contribute less. The deepest node contains no roots.
+
+Evaporation from bare or partially bare soil is determined from the surface-layer vapour pressure. Soil matric potential reduces relative humidity below saturation according to
+
+$$h_r=\exp\left(\frac{M_w\psi}{RT}\right)$$
+
+where $\small M_w$ is the molar mass of water, $\small R$ is the gas constant, $\small T$ is absolute temperature and $\small \psi$ is the water potential of the surface layer. This relative humidity enters the ground latent heat flux above and provides the physical dry-end limitation on evaporation as the surface water potential falls. The numerical lower bound on water potential is oven dryness ($\small -10^6\ J\,kg^{-1}$), used only as a guard. The lower soil boundary may be free-draining or held saturated.
+
+<small>
+**Table S2.1**. Soil properties for given soil types. Here $\rho_d$ is soil bulk density, $V_Q$ and $V_M$ volumetric quartz and mineral content, $M_C$ clay mass fraction, $\theta_{mx}$ saturated water content, $\theta_{mn}$ residual water content used as the lower bound of the topographic redistribution (not a hard lower bound on the point-model surface layer), and $K_{sat}$ saturated hydraulic conductivity.
+</small>
+![](images/table1.png)
+
+### Soil grid model simplifications
+
+Solving the multilayer soil model independently at every grid cell would require an iterative solution at every timestep. The grid model instead derives ground heat flux from the converged reference point-model solution, modifying the amplitude and timing of its diurnal component to account for local soil properties and solar exposure.
+
+Writing $\small A_G$ and $\small \phi_G$ for the amplitude and phase of the 24-hour harmonic of the reference ground heat flux $\small G_R$, ground heat flux at a target grid cell is
+
+$$G(t)=G_R(t)-A_G\cos\left[\omega_D(t-\phi_G)\right]
++\mu_GA_G\cos\left[\omega_D(t_w-\phi_G)\right],$$
+
+where $\small \omega_D=2\pi/(24\times3600)$ is the angular frequency of the diurnal cycle, $\small \mu_G$ scales its amplitude and $\small t_w$ adjusts its timing. Thus the daily mean of $\small G_R$ and its departures from the diurnal cycle are retained, while the diurnal component is rescaled and re-timed.
+
+The amplitude-scaling factor is
+
+$$\mu_G=\frac{\hat G}{\hat G_R},$$
+
+where $\small \hat G$ and $\small \hat G_R$ are the expected amplitudes of the diurnal ground heat flux at the target and reference locations respectively. These are derived from the response of a semi-infinite conducting solid to sinusoidal surface forcing (van Wijk & de Vries 1963; Campbell & Norman 2012). If $\small A_0$ is the amplitude of the first 24-hour Fourier harmonic of the ground-surface temperature that would occur in the absence of ground heat flux, $\small T_G^0$, then
+
+$$\hat G=\frac{A_0\hat hY}
+{\sqrt{\hat h^2+\sqrt2\hat hY+Y^2}},$$
+
+where $\small \hat h$ describes the rate at which the surface exchanges energy with its surroundings as its temperature changes, and $\small Y$ describes the rate at which the soil can absorb that temperature variation.
+
+The surface exchange coefficient is
+
+$$\hat h=4\hat{\varepsilon}_G\sigma T_{G0}^3
++\frac{\tilde{\rho}c_p}{r_{gz_R}}
++\frac{\lambda\tilde{\rho}h_r}{p_Ar_{gz_R}}\frac{de_s}{dT},$$
+
+where $\small r_{gz_R}$ is the resistance from the ground to reference height. The three terms represent changes in emitted longwave, sensible and latent heat flux with surface temperature respectively.
+
+The soil thermal admittance is
+
+$$Y=\frac{\sqrt2k}{D_D},$$
+
+where $\small k$ is soil thermal conductivity and $\small D_D$ is the diurnal damping depth,
+
+$$D_D=\sqrt{\frac{2\kappa}{\omega_D}},\qquad
+\kappa=\frac{k}{\rho_sc_s},$$
+
+with $\small \kappa$ the soil thermal diffusivity. The same calculation is made for the reference location to obtain $\small \hat G_R$. The resulting $\small \mu_G$ is evaluated once per day, constrained to be at least 0.1, and set to one when $\small \hat G_R<5$ $\small W\,m^{-2}$.
+
+The timing adjustment accounts for differences in the timing of direct solar heating caused by slope and aspect. Let $\small r_T$ and $\small s_T$ be the first and last hours of direct-beam exposure at the target cell and $\small r_R$ and $\small s_R$ the corresponding times for a flat reference surface. Target clock time $\small t$ is mapped onto the equivalent phase of the reference day as
+
+$$t'=\begin{cases}
+r_R\dfrac{t}{r_T} & t\le r_T\\[2ex]
+r_R+(s_R-r_R)\dfrac{t-r_T}{s_T-r_T} & r_T<t<s_T\\[2ex]
+s_R+(24-s_R)\dfrac{t-s_T}{24-s_T} & t\ge s_T.
+\end{cases}$$
+
+Since only direct radiation carries this timing shift, the mapped time is blended with clock time according to the mean daylight direct fraction $\small f_b$,
+
+$$t_w=f_bt'+(1-f_b)t,$$
+
+where $\small f_b$ is the daylight mean of $\small 1-R_0^{d\downarrow}/R_{sw}^\downarrow$. No timing adjustment is applied on days without a usable sunrise--sunset pair.
+
+The resulting ground heat flux is bounded to $\small \pm500$ $\small W\,m^{-2}$.
+
+Once $\small G$ has been determined, ground-surface temperature $\small T_G$ is obtained by solving the surface energy balance with $\small G$ prescribed,
+
+$$G=R_{abs}^G-\hat{\varepsilon}_G\sigma T_G^4-H_G-L_G.$$
+
+The ground exchanges sensible and latent heat with the same canopy-modified air as in the point model. In the grid model, however, the canopy temperature entering this calculation is approximated using two Penman--Monteith evaluations rather than being solved iteratively together with $\small T_G$ and $\small G$.
+
+Because the grid-cell surface temperature is obtained without the fully converged point-model iteration, it is constrained to
+
+$$T_A-10.98+0.0111425R_n
+\le T_G\le
+T_A+19.31+0.01086R_n,$$
+
+with an additional lower bound 11 $^\circ$C below dewpoint and a maximum departure of 20 $^\circ$C from $\small T_G^0$. The same envelope is applied to the canopy exchange surface.
+
+### Soil water spatial model
+
+In the grid model, spatial variation in soil moisture is represented using the Beven & Kirkby (1979) topographic wetness index. Soil moisture $\small \theta_{i,j}$ at time $\small i$ and grid cell $\small j$ is
+
+$$\theta_{i,j}=
+\theta_{mn}+
+\frac{\theta_{mx}-\theta_{mn}}
+{1+\exp\left[-\ln\frac{\theta_{i,j}'}{1-\theta_{i,j}'}-(w_j-\widetilde w)\right]}$$
+
+where
+
+$$\theta_{i,j}'=\frac{\theta_i^R-\theta_{mn}}{\theta_{mx}-\theta_{mn}}$$
+
+is the reference-location soil moisture $\small \theta_i^R$ expressed as a fraction of the available range, $\small \widetilde w$ is mean topographic wetness across the study area and
+
+$$w_j=\frac{1}{s}\ln\left(\frac{a}{\tan S}\right)$$
+
+with $\small a$ contributing area, $\small S$ slope angle and $\small s$ a scaling parameter controlling the sensitivity of soil moisture to topographic wetness (default 1.7). Where the reference soil water content itself falls below $\small \theta_{mn}$, this transformation is not applied and the reference value is passed through unchanged. This is a redistribution of the reference soil-water state rather than a spatially explicit hydrological model. Where the full point model is applied independently to each cell, soil moisture is obtained directly from the multilayer water balance and no redistribution is applied.
+
+![](images/fig5.png)
+<small>
+**Fig. S2.5**. Example spatial redistribution of soil moisture by topographic wetness for $\theta=0.3$ and $s=2/3$, shown for a 1 × 1 km area at 1 m resolution centred on Caerthillian Cove, Cornwall, U.K. (49.968°N, 5.215°W).
+</small>
+
+### Temperatures below ground
+
+In the point model, soil temperature at any requested depth is obtained by interpolation through the solved multilayer soil-temperature profile. In the grid model, temperature at depth is approximated from the local ground-surface temperature, a depth-specific temperature series transferred from the reference point-model solution, and mean annual temperature, with their relative contributions changing with depth:
+
+$$
+T_z(t)=
+\begin{cases}
+T_G, & N_z\le1\\[1ex]
+\omega_1T_G+(1-\omega_1)T_{zd}, & 1<N_z\le24\\[1ex]
+\omega_2T_{zd}+(1-\omega_2)\overline T_A, & N_z>24,\ N_A<h_y\\[1ex]
+\overline T_A, & N_z>24,\ N_A\ge h_y.
+\end{cases}
+$$
+
+Here $\small h_y$ is the number of hours in a year. The four cases reflect the progressive attenuation of short-period temperature fluctuations with depth. Near the surface, soil temperature closely follows soil surface temperature $\small T_G$; deeper in the soil, rapid fluctuations are increasingly suppressed and the remaining variation is dominated by progressively longer-period changes, ultimately approaching annual mean temperature $\small \overline T_A$.  Because daily fluctuations are attenuated over a much shallower depth than annual fluctuations, the model uses two scaled depth indices to select among these cases:
+
+$$N_z=-118.35\frac{z}{D_D},\qquad
+N_A=-118.35\frac{z}{D_D\sqrt{365}},$$
+
+where $\small z$ is depth below ground and is negative, $\small D_D$ is the diurnal damping depth, and $\small D_D\sqrt{365}$ is the corresponding annual damping depth.
+
+In the two intermediate cases, $\small \omega_1$ and $\small \omega_2$ provide smooth transitions between the adjacent temperature estimates:
+
+$$\omega_1=\frac{1}{1+N_z^2/24},\qquad
+\omega_2=\frac{24}{24+N_A^2/h_y}.$$
+
+The term $\small T_{zd}$ is the reference point-model temperature at the requested depth adjusted to the target grid cell. Writing $\small T_z^R(t)$ for soil temperature at that depth at the reference location, $\small \widetilde{\phantom{x}}$ for a daily mean, and superscript $\small R$ for the reference location,
+
+$$T_{zd}(t)=
+\lambda_r\left[T_z^R(t)-\widetilde T_z^R(t)\right]
++\widetilde T_z^R(t)
++\left[\widetilde T_G(t)-\widetilde T_G^R(t)\right].$$
+
+Thus the within-day temperature anomaly at depth from the reference solution is rescaled, while its daily mean is shifted by the difference in daily mean ground-surface temperature between the target and reference locations. The scaling factor $\small \lambda_r$ is the ratio of their daily ground-surface temperature ranges,
+
+$$\lambda_r=
+\frac{\max_d T_G-\min_d T_G}
+{\max_d T_G^R-\min_d T_G^R},$$
+
+calculated separately for each calendar day and set to zero if the reference ground surface has no daily temperature range.
+
+The use of diurnal and annual damping scales follows the standard solution for sinusoidal surface forcing of a homogeneous semi-infinite soil (de Vries 1963; Campbell & Norman 2012),
+
+$$T_z(t)=\overline{T_G}
++A_D(0)\exp\left(\frac{z}{D_D}\right)
+\sin\left[\omega_D(t-t_0(D))+\frac{z}{D_D}\right]
++A_A(0)\exp\left(\frac{z}{D_A}\right)
+\sin\left[\omega_A(t-t_0(A))+\frac{z}{D_A}\right],$$
+
+where $\small \overline{T_G}$ is mean annual ground-surface temperature, $\small A_D(0)$ and $\small A_A(0)$ are the amplitudes of the diurnal and annual surface-temperature cycles, $\small t_0(D)$ and $\small t_0(A)$ are their phase origins, and $\small \omega_D$ and $\small \omega_A$ are their angular frequencies. The corresponding damping depths are
+
+$$D_D=\sqrt{\frac{2\kappa}{\omega_D}},\qquad
+D_A=\sqrt{\frac{2\kappa}{\omega_A}},\qquad
+\kappa=\frac{k}{\rho_sc_s},$$
+
+where $\small \kappa$ is soil thermal diffusivity. This sinusoidal solution provides the physical basis for the depth scaling but is not evaluated directly by the grid model.
+
+## Below canopy model
+
+### Conceptual overview
+
+This section develops the scalar transport column used both for ground and within-canopy exchange and for the canopy-top-to-reference part of $\small r_{Ha}$ defined under *Aerodynamic resistance to sensible heat*. Within a canopy, turbulent transfer of heat and vapour cannot be modelled using Monin--Obukhov similarity theory (MOST) because leaves and other canopy elements release or absorb heat and water vapour throughout the air column, so transport depends on both where these sources occur and how turbulence disperses them. Raupach (1989a,b) represented this using a Lagrangian treatment in which their effects are separated into a diffusive far-field contribution and a local near-field contribution. For sensible heat,
+
+$$\tilde{\rho}c_pT(z)=C_f(z)+C_n(z),$$
+
+with
+
+$$C_f(z)=\tilde{\rho}c_pT_h-C_n(h)+\int_z^h\frac{H(z_i)}{K_H(z_i)}\,dz_i,$$
+
+where $\small T_h$ is air temperature at canopy height $\small h$, $\small K_H$ is thermal diffusivity and $\small H(z_i)$ is the sensible heat flux crossing height $\small z_i$. Taking upward flux as positive,
+
+$$H(z_i)=H_G+H_C(z_i),$$
+
+where $\small H_G$ is the ground sensible heat flux and $\small H_C(z_i)$ is the cumulative contribution from canopy sources below $\small z_i$. The far-field term therefore accumulates the influence of sources between the height of interest and canopy top, weighted by the resistance to turbulent transport. At $\small z=h$ the integral vanishes and air temperature is coupled directly to $\small T_h$; farther down the canopy, the accumulated canopy and ground fluxes increasingly shape the temperature profile.
+
+The near-field term represents the additional influence of sources close to the height of interest,
+
+$$C_n(z)=\int_0^{\infty}\frac{S(z_i)}{\sigma_\omega(z_i)}\left[k_n\left(\frac{z-z_i}{\sigma_\omega(z_i)T_L}\right)+k_n\left(\frac{z+z_i}{\sigma_\omega(z_i)T_L}\right)\right]dz_i,$$
+
+where $\small S(z_i)$ is source density, $\small \sigma_\omega$ is the standard deviation of vertical velocity and $\small T_L$ is the Lagrangian time scale. The kernel is approximated by
+
+$$k_n=-0.39894\ln\left(1-e^{-\zeta}\right)-0.15623e^{-\zeta},\qquad
+\zeta=\frac{|z-z_i|}{\sigma_\omega(z_i)T_L}.$$
+
+Because $\small k_n$ declines rapidly with distance, $\small C_n(z)$ depends strongly on the magnitude and sign of sources within a few tenths of canopy height of $\small z$. In contrast, the far-field contribution depends on their cumulative effect through the canopy. This distinction is important for the bulk-canopy approximation introduced below.
+
+### The Lagrangian timescale
+
+The Lagrangian formulation requires both the intensity of vertical turbulent motion and the time over which that motion persists. These determine canopy thermal diffusivity through
+
+$$K_H=\sigma_\omega^2T_L$$
+
+Following Raupach (1989b),
+
+$$T_L=\frac{a_2h}{u_*}$$
+
+and the vertical variation in turbulent velocity is represented by
+
+$$\sigma_\omega(z)=u_*g(x),\qquad x=\frac{z}{h}$$
+
+where $\small x$ is relative height within the canopy and
+
+$$g(x)=\frac{a_1+a_0}{2}-\frac{a_1-a_0}{2}\cos(\pi x).$$
+
+Here $\small a_1=1.25$ is the value of $\small \sigma_\omega/u_*$ at canopy top and $\small a_0$ the corresponding value at the canopy floor. Following Massman & Weil (1999), $\small a_0$ decreases as foliage becomes denser and turbulent motion is progressively attenuated towards the ground,
+
+$$a_0=a_1\exp(-4.18\zeta_h),$$
+
+where $\small \zeta_h$ represents the effective drag exerted by the foliage after allowing for mutual sheltering between canopy elements,
+
+$$\zeta_h=\frac{c_dP_{AI}}{1+\xi P_{AI}},\qquad c_d=0.25,\qquad \xi=0.4.$$
+
+Here $\small c_d$ is the drag coefficient of canopy elements and $\small \xi$ is the sheltering coefficient of Massman (1997), which reduces the additional drag contributed by foliage as the canopy becomes denser. Thus $\small \zeta_h$ increases less than proportionally with $\small P_{AI}$, while $\small a_0\rightarrow a_1$ as $\small P_{AI}\rightarrow0$.
+
+The remaining coefficient $\small a_2$ determines the Lagrangian time scale. At canopy top the Lagrangian expression gives $\small K_H=a_1^2a_2hu_*$. Canopy-scale coherent eddies enhance scalar mixing in the roughness sublayer above the value predicted by ordinary surface-layer similarity (Raupach, Finnigan & Brunet 1996), but this enhancement weakens as the canopy becomes sparse. It is therefore scaled by the aerodynamic closure of the drag partition,
+
+$$c_{eff}=1+(c_H-1)f,\qquad
+f=\mathrm{clip}_{[0,1]}\left[
+\frac{\beta(P_{AI})-\beta(0)}{\beta_{max}-\beta(0)}
+\right],$$
+
+where $\small c_H=3$, $\small \beta(0)=\sqrt{0.003}$ and $\small \beta_{max}=0.3$, with $\small \beta$ as defined under *Friction velocity and momentum transport*. The Lagrangian coefficient is then
+
+$$a_2=\frac{c_{eff}\kappa\left(1-d/h\right)}{a_1^2\phi_H^*},$$
+
+where $\small d$ is zero-plane displacement and $\small \phi_H^*$ is the dimensionless heat-gradient function evaluated at canopy top and bounded between 0.5 and 1.5. The neutral value used below to define the extent of the roughness sublayer is therefore
+
+$$a_2^n=\frac{c_{eff}\kappa\left(1-d/h\right)}{a_1^2}.$$
+
+### The diffusivity profile below canopy
+
+The canopy expression above describes turbulence generated by the vegetation, but the resistance between the soil surface and the air above the canopy also depends strongly on the near-ground boundary layer. The model therefore constructs a continuous diffusivity profile from the ground to reference height.
+
+Immediately above the ground, mixing is limited by distance from the surface. The gust velocity available to drive this wall layer is
+
+$$u_g=\frac{a_0}{a_1}u_*,$$
+
+and its thermal diffusivity is
+
+$$K_H^w(z)=\frac{\kappa u_gz}{\phi_H^*(z/L_O)}.$$
+
+The corresponding canopy-generated diffusivity is
+
+$$K_H^c(z)=a_2hu_*g^2(z/h).$$
+
+At the canopy floor this has the value
+
+$$K_{c0}=a_0^2a_2hu_*.$$
+
+The total within-canopy resistance combines the canopy contribution with the additional resistance imposed by the wall layer wherever wall-layer mixing is weaker than $\small K_{c0}$,
+
+$$\frac{1}{K_H(z)}=\frac{1}{K_H^c(z)}+
+\max\left[0,\frac{1}{K_H^w(z)}-\frac{1}{K_{c0}}\right],\qquad z\le h.$$
+
+Near the ground the second term makes $\small K_H$ reduce to the wall-layer value. It vanishes at the height $\small z_w$ where $\small K_H^w=K_{c0}$, above which the canopy term alone determines diffusivity. The crossing condition is
+
+$$\frac{z_w}{\phi_H^*(z_w/L_O)}=\frac{a_0a_1a_2h}{\kappa}.$$
+
+Its location is evaluated with the local wall-layer stability correction set to unity,
+
+$$z_w=\frac{a_0a_1a_2h}{\kappa},$$
+
+while $\small a_2$ retains the canopy-top stability correction defined above. The crossing height is constrained to
+
+$$z_{0h}\le z_w\le h,$$
+
+where the bare-ground roughness length for momentum is $\small z_0=0.004\,\mathrm{m}$ and the corresponding heat roughness length is
+
+$$z_{0h}=0.2z_0=8\times10^{-4}\ \mathrm{m}.$$
+
+Canopy-enhanced mixing also persists for some distance above canopy top. The top of this roughness sublayer, $\small z_s$, is defined by equating the neutral surface-layer diffusivity to the neutral canopy-top diffusivity,
+
+$$\kappa u_*(z_s-d)=a_1^2a_2^nhu_*,$$
+
+so that
+
+$$z_s=d+\frac{a_1^2a_2^nh}{\kappa}=d+c_{eff}(h-d).$$
+
+Within $\small h<z\le z_s$, diffusivity changes linearly from its canopy-top value to the ordinary surface-layer value at $\small z_s$,
+
+$$K_H(z)=K_H(h)+m(z-h),$$
+
+with
+
+$$m=\frac{K_H(z_s)-K_H(h)}{z_s-h},$$
+
+and
+
+$$K_H(z_s)=\frac{\kappa u_*(z_s-d)}{\phi_H^*\left((z_s-d)/L_O\right)}.$$
+
+Here $\small K_H(h)$ is the value obtained from the combined within-canopy expression above, ensuring continuity at canopy top. Above $\small z_s$, ordinary surface-layer similarity applies,
+
+$$K_H(z)=\frac{\kappa u_*(z-d)}{\phi_H^*\left((z-d)/L_O\right)}.$$
+
+As $\small P_{AI}\rightarrow0$, $\small a_0\rightarrow a_1$, $\small c_{eff}\rightarrow1$ and $\small z_s\rightarrow h$, so the complete profile reduces to the bare-ground surface-layer form.
+
+### Weather reference height
+
+The surface-layer expressions used for the supplied forcing are only valid once the flow has cleared the roughness sublayers. The scalar sublayer is always the deeper because
+
+$$c_{eff}=1+2f\ge c_w^{eff}=1+f,$$
+
+so the working reference height need only clear the scalar sublayer,
+
+$$z_R=\max(z_{in},z_s)=\max\left[z_{in},\ d+c_{eff}(h-d)\right].$$
+
+Here $\small z_{in}$ is the height at which the weather series was measured. The momentum sublayer therefore never sets the reference height independently. For spatial runs the maximum requirement across the domain is used so that a single reference height serves the run. Where $\small z_R>z_{in}$, the supplied weather is interpreted as a measurement over reference grass and carried from $\small z_{in}$ to $\small z_R$ using Monin--Obukhov similarity over that reference surface; otherwise it is used at its supplied height.
+
+
+### Resistance through the column
+
+Aerodynamic resistance between any two heights is the integral of inverse diffusivity,
+
+$$r(z_1,z_2)=\int_{z_1}^{z_2}\frac{1}{K_H(z)}\,dz.$$
+
+For ground-to-height resistance, $\small z_{0h}$ is the lower aerodynamic boundary. Writing $\small r(z)$ for resistance from the ground to height $\small z$,
+
+$$r(z)=0\quad\text{for}\quad z\le z_{0h},$$
+
+and for greater heights the integral is accumulated upward from $\small z_{0h}$. The ground-to-reference resistance used elsewhere in the vignette is therefore $\small r_{gz_R}=r(z_R)$. For vegetation shorter than $\small 4z_{0h}$ the canopy column is not resolved and ordinary surface-layer resistances are used.
+
+The ground-to-height resistance can be evaluated analytically within each part of the diffusivity profile. For the canopy contribution, let
+
+$$A_w=\frac{a_1+a_0}{2},\qquad B_w=\frac{a_1-a_0}{2},\qquad D_w=A_w^2-B_w^2=a_0a_1.$$
+
+With $\small x=z/h$,
+
+$$\int\frac{dz}{K_H^c(z)}=\frac{J(x)}{a_2u_*},$$
+
+where
+
+$$J(x)=\frac{1}{\pi}\left[
+\frac{B_w\sin(\pi x)}{D_w\left(A_w-B_w\cos(\pi x)\right)}+
+\frac{2A_w}{D_w^{3/2}}
+\arctan\left(\sqrt{\frac{a_1}{a_0}}\tan\frac{\pi x}{2}\right)
+\right],$$
+
+using the continuous arctangent branch through the canopy and with the limiting canopy-top value
+
+$$J(1)=\frac{A_w}{D_w^{3/2}}.$$
+
+For a requested height within the canopy, define
+
+$$z_c=\min\left[\max(z,z_{0h}),h\right],\qquad z_l=\min(z_c,z_w).$$
+
+The cumulative resistance is then
+
+$$r(z)=
+\frac{J(z_c/h)-J(z_{0h}/h)}{a_2u_*}
++\frac{\ln\dfrac{z_l}{z_{0h}}+\psi_H\left(\dfrac{z_{0h}}{L_O}\right)-\psi_H\left(\dfrac{z_l}{L_O}\right)}{\kappa u_g}
+-\frac{z_l-z_{0h}}{K_{c0}},\qquad z\le h,$$
+
+where the first term is the canopy resistance and the remaining terms are the additional wall-layer resistance. Once $\small z>z_w$, this wall-layer contribution remains fixed at its value at $\small z_w$.
+
+Within the roughness sublayer, the linear diffusivity profile integrates to
+
+$$r(z)=r(h)+\frac{1}{m}\ln\left[1+\frac{m(z-h)}{K_H(h)}\right],\qquad h<z\le z_s,$$
+
+with the limit $\small r(z)=r(h)+(z-h)/K_H(h)$ when $\small m\rightarrow0$. Above the roughness sublayer,
+
+$$r(z)=r(z_s)+
+\frac{\ln\dfrac{z-d}{z_s-d}+\psi_H\left(\dfrac{z_s-d}{L_O}\right)-\psi_H\left(\dfrac{z-d}{L_O}\right)}{\kappa u_*}.$$
+
+Thus a resistance spanning several parts of the column is obtained by accumulating the complete contribution from each lower region and the partial contribution from the region containing the upper height. Resistance between arbitrary heights follows from
+
+$$r(z_1,z_2)=r(z_2)-r(z_1).$$
+
+The ground-surface energy balance also requires the mean resistance through the canopy,
+
+$$\overline r=\frac{1}{h}\int_0^hr(z)\,dz
+=\frac{1}{h}\int_{z_{0h}}^hr(z)\,dz.$$
+
+Most of this second integration is analytic. For the wall-layer stability correction, writing $\small \Psi_H$ for an antiderivative of $\small \psi_H$,
+
+$$\int_a^b\psi_H(z/L_O)\,dz=L_O\left[\Psi_H(b/L_O)-\Psi_H(a/L_O)\right].$$
+
+The antiderivative is evaluated analytically on both stability branches, so this term requires no numerical quadrature. The canopy contribution requires
+
+$$I_J=\int_{z_{0h}/h}^{1}\left[J(x)-J(z_{0h}/h)\right]dx,$$
+
+which is evaluated once for each canopy using composite Simpson's rule with 64 panels in $\small x$. Its hourly contribution to the mean resistance is then $\small hI_J/(a_2u_*)$, so no repeated quadrature is required for this term.
+
+### Bulk canopy approximation
+
+The far-field theory above still requires the vertical distribution of canopy heat sources through $\small H_C(z)$. The canopy energy balance supplies the total canopy sensible heat flux $\small H_C$, but not a resolved source profile. The far-field contribution is therefore evaluated by assuming that canopy sensible heat is distributed uniformly with height. Under this assumption, the cumulative canopy flux crossing height $\small z$ is
+
+$$H_C(z)=H_C\frac{z}{h},$$
+
+and its contribution to the far-field integral becomes
+
+$$\int_z^h\frac{H_C(z_i)}{K_H(z_i)}\,dz_i=H_Cr_c(z),$$
+
+where $\small r_c(z)$ is the effective resistance weighting the distributed canopy source. Writing
+
+$$r_h=r(h),$$
+
+integration by parts gives
+
+$$r_c(z)=r_h-\frac{z}{h}r(z)-\frac{1}{h}\int_z^hr(\xi)\,d\xi.$$
+
+At the ground boundary,
+
+$$r_c(0)=r_h-\overline r,$$
+
+so $\small r_h-r_c(0)=\overline r$, the mean ground-to-canopy resistance used in the ground-surface flux equations above.
+
+The remaining integral in $\small r_c(z)$ has no elementary antiderivative. For $\small z\ge z_{0h}$ it is evaluated on a logarithmic height coordinate using composite Simpson's rule with 64 panels. Writing $\small u=\ln\xi$, $\small u_0=\ln z$, $\small u_1=\ln h$ and $\small \Delta u=(u_1-u_0)/64$,
+
+$$\frac{1}{h}\int_z^hr(\xi)\,d\xi
+=\frac{\Delta u}{3h}\sum_{i=0}^{64}w_i\,r(\xi_i)\xi_i,
+\qquad \xi_i=e^{u_0+i\Delta u},$$
+
+where $\small w_i=1,4,2,\ldots,4,1$. At the ground boundary the lower limit is $\small z_{0h}$, because $\small r(\xi)=0$ below it. The closed-form expression for $\small r(\xi)$ is evaluated directly at each quadrature node.
+
+For repeated spatial calculations, the vertical shape of the resistance profile is evaluated once under neutral conditions and stored as
+
+$$f_r=\frac{r(z)}{r_h},\qquad
+f_c=\frac{r_c(z)}{r_c(z_{0h})}.$$
+
+The hourly resistances are then reconstructed from the current ground-to-canopy-top resistance $\small r_h$ and canopy-mean resistance $\small \overline r$,
+
+$$r(z)=r_hf_r,\qquad
+r_c(z)=\left(r_h-\overline r\right)f_c.$$
+
+The denominator of $\small f_c$ is the floor value produced by the same quadrature used for its numerator. Consequently $\small f_c=1$ exactly at the floor and the reconstruction recovers $\small r_c(0)=r_h-\overline r$ without carrying the quadrature error into the ground boundary condition.
+
+With the resistance terms known, the below-canopy temperature profile follows directly. Let
+
+$$H_B=H_C+H_G$$
+
+be the total sensible heat flux. Applying the boundary temperatures $\small T_h$ at canopy top and $\small T_G$ at the ground gives
+
+$$H_G=\tilde{\rho}c_p
+\frac{\left(T_G-T_h\right)-\dfrac{H_B}{\tilde{\rho}c_p}r_c(0)}
+{r_h-r_c(0)},$$
+
+and the far-field temperature at height $\small z$ is
+
+$$T_F(z)=T_h+\frac{1}{\tilde{\rho}c_p}
+\left[H_G\left(r_h-r(z)\right)+H_Cr_c(z)\right].$$
+
+The second term shows explicitly how the distributed canopy heat source can create curvature, and potentially an interior maximum or minimum, in the below-canopy temperature profile.
+
+The near-field contribution $\small C_n(z)$ cannot be recovered from the total canopy flux alone because its kernel weights the local source density $\small S(z_i)$ over a short vertical distance. Evaluating it would therefore require an assumed vertical distribution of canopy heat sources in addition to the bulk quantities available to the model. The below-canopy calculation consequently retains the far-field term and sets
+
+$$T(z)=T_F(z).$$
+
+Tests against vertically resolved source profiles indicate that the omitted near-field term is usually small under well-ventilated conditions but can reach a few tenths of a degree where canopy heating is strong and wind is weak.
+
+#### Vapour pressure below canopy
+
+Vapour pressure is obtained from the same transport formulation, replacing sensible heat fluxes by latent heat fluxes and the temperature scaling $\small \tilde{\rho}c_p$ by $\small \tilde{\rho}\lambda/p_A$. Writing
+
+$$L_B=L_C+L_G,$$
+
+the ground latent heat flux is
+
+$$L_G=\frac{\tilde{\rho}\lambda}{p_A}
+\frac{\left(e_G-e_h\right)-\dfrac{p_AL_B}{\tilde{\rho}\lambda}r_c(0)}
+{r_h-r_c(0)},$$
+
+and the below-canopy vapour-pressure profile is
+
+$$e_F(z)=e_h+\frac{p_A}{\tilde{\rho}\lambda}
+\left[L_G\left(r_h-r(z)\right)+L_Cr_c(z)\right],$$
+
+where $\small e_h$ is vapour pressure at canopy top, $\small L_C$ is canopy latent heat flux, $\small p_A$ is atmospheric pressure and $\small \lambda$ is latent heat of vaporisation. The ground-surface vapour pressure is
+
+$$e_G=h_re_s(T_G),$$
+
+where $\small h_r$ is the effective relative humidity of the ground surface derived from soil water status. This value is used by the point model and by `runpointmodelasgrid()`; the shortcut grid, which does not solve a cell-specific water balance, sets $\small h_r=1$ for this profile. As for temperature, the near-field term is omitted and the model uses
+
+$$e(z)=e_F(z).$$
+
+
+## References
+Beljaars ACM (1995) The parametrization of surface fluxes in large-scale models under free convection. *Quarterly Journal of the Royal Meteorological Society* 121: 255-270.
+
+Beven KJ, Kirkby MJ (1979) A physically based, variable contributing area model of basin hydrology. *Hydrological Sciences Journal* 24: 43-69.
+
+Bittelli M, Campbell GS, Tomei F (2015) *Soil physics with Python: transport in the soil-plant-atmosphere system*. Oxford University Press, Oxford.
+
+Bonan GB, Patton EG, Finnigan JJ, Baldocchi DD, Harman IN (2021) Moving beyond Monin-Obukhov similarity theory in modelling land-surface processes. *Boundary-Layer Meteorology* 177: 5-24.
+
+Businger JA, Wyngaard JC, Izumi Y, Bradley EF (1971) Flux-profile relationships in the atmospheric surface layer. *Journal of Atmospheric Sciences* 28: 181-9.
+
+Campbell GS (1985) *Soil physics with BASIC: transport models for soil-plant systems*. Elsevier.
+
+Campbell GS (1986) Extinction coefficients for radiation in plant canopies calculated using an ellipsoidal inclination angle distribution. *Agricultural and Forest Meteorology* 36: 317-21.
+
+Campbell GS (1990) Derivation of an angle density function for canopies with ellipsoidal leaf angle distributions. *Agricultural and Forest Meteorology* 49: 173-6.
+
+Campbell GS, Norman JM (2012) *An introduction to environmental biophysics*. 2nd edition. Springer, New York.
+
+Christoffersen BO, Gloor M, Fauset S, Fyllas NM, Galbraith DR, Baker TR, Kruijt B, Rowland L, Fisher RA, Binks OJ, Sevanto S, Xu C, Jansen S, Choat B, Mencuccini M, McDowell NG, Meir P (2016) Linking hydraulic traits to tropical forest function in a size-structured and trait-driven model (TFS v.1-Hydro). *Geoscientific Model Development* 9: 4227-55.
+
+Collatz GJ, Ball JT, Grivet C, Berry JA (1991) Physiological and environmental regulation of stomatal conductance, photosynthesis and transpiration: a model that includes a laminar boundary layer. *Agricultural and Forest Meteorology* 54: 107-36.
+
+Collatz GJ, Ribas-Carbo M, Berry JA (1992) Coupled photosynthesis-stomatal conductance model for leaves of C4 plants. *Australian Journal of Plant Physiology* 19: 519-38.
+
+de Vries DA (1963) *Thermal properties of soils*. pp 210-235 in Physics of plant environment (eds de Vries DA, van Wijk WR). North-Holland Publishing Company, Amsterdam.
+
+Eller CB, Rowland L, Mencuccini M, Rosas T, Williams K, Harper A, Medlyn BE, Wagner Y, Klein T, Teodoro GS, Oliveira RS, Matos IS, Rosado BHP, Fuchs K, Wohlfahrt G, Montagnani L, Meir P, Sitch S, Cox PM (2020) Stomatal optimization based on xylem hydraulics (SOX) improves land surface model simulation of vegetation responses to climate. *New Phytologist* 226: 1622-37.
+
+Foken T (2006) 50 years of the Monin–Obukhov similarity theory. *Boundary-Layer Meteorology* 119: 431-47.
+
+Harman IN, Finnigan JJ (2008) Scalar concentration profiles in the canopy and roughness sublayer. *Boundary-Layer Meteorology* 129: 323-51.
+
+Kearney MR, Porter WP (2017) NicheMapR–an R package for biophysical modelling: the microclimate model. *Ecography* 40: 664-74.
+
+Massman WJ (1997) An analytical one-dimensional model of momentum transfer by vegetation of arbitrary structure. *Boundary-Layer Meteorology* 83: 407-21.
+
+Massman WJ, Weil JC (1999) An analytical one-dimensional second-order closure model of turbulence statistics and the Lagrangian time scale within and above plant canopies of arbitrary structure. *Boundary-Layer Meteorology* 91: 81-107.
+
+Milne RM (1921) Note on the equation of time. *The Mathematical Gazette* 10: 372-5.
+
+Ogée J, Brunet Y, Loustau D, Berbigier P, Delzon S (2003) MuSICA, a CO2, water and energy multilayer, multileaf pine forest model: evaluation from hourly to yearly time scales and sensitivity analysis. *Global Change Biology* 9: 697-717.
+
+Pinty B, Lavergne T, Dickinson RE, Widlowski J-L, Gobron N, Verstraete MM (2006) Simplifying the interaction of land surfaces with radiation for relating remote sensing products to climate models. *Journal of Geophysical Research: Atmospheres* 111: D2.
+
+Raupach MR (1989a) Applying Lagrangian fluid mechanics to infer scalar source distributions from concentration profiles in plant canopies. *Agricultural and Forest Meteorology* 47: 85-108.
+
+Raupach MR (1989b) A practical Lagrangian method for relating scalar concentrations to source distributions in vegetation canopies. *Quarterly Journal of the Royal Meteorological Society* 115: 609-32.
+
+Raupach MR (1992) Drag and drag partition on rough surfaces. *Boundary-Layer Meteorology* 60: 375-95.
+
+Raupach MR (1994) Simplified expressions for vegetation roughness length and zero-plane displacement as functions of canopy height and area index. *Boundary-Layer Meteorology* 71: 211-6.
+
+Raupach MR, Finnigan JJ, Brunet Y (1996) Coherent eddies and turbulence in vegetation canopies: the mixing-layer analogy. *Boundary-Layer Meteorology* 78: 351-82.
+
+Ryan BC (1977) A mathematical model for diagnosis and prediction of surface winds in mountainous terrain. *Journal of Applied Meteorology and Climatology* 16: 571-84.
+
+Savage VM, Bentley LP, Enquist BJ, Sperry JS, Smith DD, Reich PB, von Allmen EI (2010) Hydraulic trade-offs and space filling enable better predictions of vascular structure and function in plants. *Proceedings of the National Academy of Sciences* 107: 22722-7.
+
+Schenk HJ, Jackson RB (2002) The global biogeography of roots. *Ecological Monographs* 72: 311-28.
+
+Sellers PJ (1985) Canopy reflectance, photosynthesis and transpiration. *International Journal of Remote Sensing* 6: 1335-72.
+
+Thomas LH (1949) *Elliptic problems in linear difference equations over a network*. Watson Scientific Computing Laboratory, Columbia University, New York.
+
+van Wijk WR, de Vries DA (1963) *Periodic temperature variations in a homogeneous soil*, pp 102-43 in Physics of plant environment (eds de Vries DA, van Wijk WR). North-Holland Publishing Company, Amsterdam.
+
+Verhoef W (1984) Light scattering by leaf layers with application to canopy reflectance modeling: The SAIL model. *Remote Sensing of Environment* 16: 125–41.
+
+Yasuda N (1988) Turbulent diffusivity and diurnal variations in the atmospheric boundary layer. *Boundary-Layer Meteorology* 43: 209-21.
+
+Yuan H, Dai Y, Dickinson RE, Pinty B, Shangguan W, Zhang S, Wang L, Zhu S (2017) Reexamination and further development of two‐stream canopy radiative transfer models for global land modeling. *Journal of Advances in Modeling Earth Systems* 9: 113-29.

@@ -19,13 +19,12 @@ This is the `dev` branch: version 3 of the package, a substantial rebuild of the
 
 ```r
 # install.packages("remotes")
-remotes::install_github("ilyamaclean/microclimf", ref = "dev", build_vignettes = TRUE)
+remotes::install_github("ilyamaclean/microclimf", ref = "dev")
 ```
 
 The package contains C++ code, so a compiler is needed: Rtools on Windows, Xcode command line
 tools on macOS. Its dependency `terravars` is installed from GitHub automatically; the others
-are on CRAN. Building the vignettes needs `knitr`, `rmarkdown` and pandoc (supplied with
-RStudio); leave out `build_vignettes = TRUE` to install without them.
+are on CRAN. The vignettes come already built, so nothing extra is needed to read them.
 
 To install version 2 instead:
 
