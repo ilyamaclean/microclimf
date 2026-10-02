@@ -1,0 +1,47 @@
+Package: microclimf
+Type: Package
+Title: Fast above, below or within canopy gridded microclimate modelling with R
+Version: 3.0.0.9000
+Authors@R: c(
+    person("Ilya", "Maclean", email = "i.m.d.maclean@exeter.ac.uk", role = "cre"))
+Maintainer: Ilya M. D. Maclean <i.m.d.maclean@exeter.ac.uk>
+Description: Provides a mechanistic model of microclimate above, within and below
+    vegetation canopies and below ground. The model predicts gridded hourly temperature,
+    humidity, wind speed, radiation and soil moisture across real landscapes from standard
+    weather data, elevation, vegetation and soil properties. Canopy and ground energy
+    balance are coupled to multilayer soil heat and water, two-stream radiation and
+    stomatal conductance. To make landscape-scale simulations computationally efficient,
+    the full iterative energy-balance model is solved at one representative location, and
+    conditions in surrounding grid cells are then calculated from that solution while
+    accounting for local terrain, shading, vegetation and soil differences. The full model
+    can alternatively be run independently for every grid cell, with support for tiled and
+    parallel processing. Additional functions calculate microclimate equivalents of the 19
+    standard bioclimatic variables. Core computations are implemented in C++. Snow is not
+    currently represented.
+License: GPL (>= 2)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.2
+Imports:
+    terra,
+    sf,
+    Rcpp,
+    stats,
+    future,
+    future.apply,
+    parallel,
+    terravars (>= 0.0.3)
+LinkingTo: Rcpp
+Remotes: ilyamaclean/terravars
+Suggests:
+    testthat (>= 3.0.0),
+    ncdf4,
+    progressr,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+URL: https://github.com/ilyamaclean/microclimf
+BugReports: https://github.com/ilyamaclean/microclimf/issues
+Depends:
+    R (>= 3.5)
+Config/testthat/edition: 3

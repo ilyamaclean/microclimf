@@ -1,0 +1,667 @@
+---
+title: "Running microclimf (dev version)"
+author: "Ilya Maclean"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Running microclimf}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  cache = FALSE
+)
+```
+<style>
+  body {
+    text-align: justify;
+  }
+  
+  .col2 {
+    columns: 2 200px;         /* number of columns and width in pixels */
+    -webkit-columns: 2 200px; /* chrome, safari */
+    -moz-columns: 2 200px;    /* firefox */
+  }
+  
+  .leg {
+    font-size: 12px;
+  }
+
+  img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .figure {
+    text-align: center;
+    margin: 20px 0;
+  }
+
+  .figure img {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .figure figcaption {
+    font-size: 12px;
+    text-align: center;
+  }
+</style>
+* [Overview](#overview)
+* [What has changed](#what-has-changed)
+* [Package install](#package-install)
+* [Quick start](#quick-start)
+* [Model inputs](#model-inputs)
+  + [Meteorological data](#meteorological-data)
+  + [Vegetation parameters](#vegetation-parameters)
+    + [Habitat classes and plant functional types](#habitat-classes-and-plant-functional-types)
+    + [Vegetation structure and optical properties](#vegetation-structure-and-optical-properties)
+    + [Physiological parameters](#physiological-parameters)
+    + [Vegetation that changes through time](#vegetation-that-changes-through-time)
+    + [Example vegetation dataset](#example-vegetation-dataset)
+  + [Soil parameters](#soil-parameters)
+  + [Additional optional parameters](#additional-optional-parameters)
+* [Running the point microclimate model](#running-the-point-microclimate-model)
+* [Subsetting the microclimate model](#subsetting-the-microclimate-model)
+* [Running the grid model](#running-the-grid-model)
+  + [Soil moisture](#soil-moisture)
+  + [Radiation](#radiation)
+  + [Sensible heat flux and wind](#sensible-heat-flux-and-wind)
+  + [Ground surface temperature](#ground-surface-temperature)
+  + [Above ground](#above-ground)
+  + [Below ground](#below-ground)
+  + [Model output and formats](#model-output-and-formats)
+  + [Running the model with arrays of climate data](#running-the-model-with-arrays-of-climate-data)
+* [Running the model over large areas](#running-the-model-over-large-areas)
+* [Bioclim variables](#bioclim-variables)
+
+
+## Overview
+This vignette describes the latest version of the R package ‘microclimf’. The package contains a series of functions for modelling above and below canopy or below-ground microclimatic conditions across real landscapes, providing gridded outputs.
+
+In line with standard approaches for mechanistic microclimate modelling, the model is founded on the principles of energy balance, with the temperature of a surface or the air above it being contingent on how much energy is received or lost. Opaque surfaces in the environment, namely the canopy and the ground, absorb radiation from the sun, but also emit radiation as thermal energy. These surfaces also exchange sensible heat with the surrounding air and undergo latent heat fluxes, namely evaporative and evapotranspirative cooling. Some of the energy is also stored or released by the ground. Because the various components of the energy budget have a dependence on temperature, the temperature of the environment is calculated by assuming that energy budget always remain in balance and then re-arranging the energy balance equations to solve for temperature. However, because of various interdependencies, e.g. between the degree of surface heating and the exchange of sensible heat, and the temperature of the ground surface and the rate of storage by the ground, a closed-form mathematical solution to the energy budget equations cannot be derived. Rather the model must be solved iteratively, which is computational expensive if modelling over multiple grid cells.
+
+A key aim of microclimf is to ensure computational efficiency, which is achieved in four ways. First, it is assumed that the energy budget can be solved mathematically using the Penman-Monteith method (Penman 1948; Monteith 1965) if these interdependencies are ignored, resulting in only modest errors. If doing so for a single point location, the ratio of the temperature offset from ambient air temperature for that location relative to that for any other location is preserved when solving the model iteratively. Thus, running the model iteratively for a single point location and solving the model mathematically for all grid cells, provides a route to estimating the iterative solution for the entire landscape in a computationally efficient manner. Second, and a further advantage of running a point model separately is that one can subset outputs from the point model. While the point model must be run in hourly time-increments there is no need to do so for the grid model: one can instead opt to select from the point model, only those hours that correspond to e.g. the monthly maximum, minimum or median temperature. Thirdly, some simplifying assumptions are made about the nature of vegetated canopies to avoid the need to describe vertical variation in leaf foliage density in detail when characterising below-canopy microclimates. This eliminates the need to evoke a multi-layer canopy model. Lastly, most of the heavy lifting is done by c++ code, which typically runs much more quickly than R code. The R functions are essentially wrappers for the underlying c++ code meaning users get the high-level expressiveness of R, but the computational performance of compiled c++.
+
+## What has changed
+Below is a summary of how this version on dev differs from  the current version sitting on main. The version on main is the version associated with published paper (Maclean 2026. Methods Ecol Evol, 17: 1112-1123). In this version: 
+
+The point model used to calibrate the grid model no longer uses a simplified representation of soil temperature, hydrology and ground heat storage. Instead, an explicit multi-layer soil model simulates coupled heat and water dynamics through the soil profile, with heat transfer and water movement determined by the thermal and hydraulic properties of each layer.
+
+The grid-model methods for approximating soil heat and water dynamics have been substantially improved, including the effects of slope and aspect on the timing of soil heating. This captures shifts in the diurnal temperature cycle on inclined surfaces—for example, the tendency for west-facing slopes to reach higher temperatures later in the afternoon than flat ground.
+
+The model now has much improved handling of conditions under low wind speed, which were causing near ground temperatures to get too hot in the old model.
+
+The representation of vegetation water loss has been substantially improved by incorporating an explicit stomatal model based on the widely used JULES-SOX land-surface modelling framework. Stomatal opening and closure respond dynamically to PAR, soil moisture, CO₂, temperature and vapour pressure, improving estimates of evaporation and transpiration. The model also better represents rainfall effects on evaporation and distinguishes LAI from PAI, recognising that woody vegetation contributes to canopy structure but not transpiration. Plant functional-type parameters can either be supplied by the user as an additional vegetation layer or estimated automatically from existing vegetation characteristics.
+The handling of heat and vapour exchange under low wind speeds has been greatly improved. The model now accounts for the fact that even in very still conditions, small-scale air movements continue to transfer heat and moisture between surfaces and the surrounding air. This avoids unrealistically suppressing these exchanges when conventional wind speeds approach zero, improving predictions under calm and sheltered conditions.
+
+The below-canopy approximation methods for computing temperature and relative humidity have been greatly improved through better mathematical approximations of a full multi-layer model and by an improved scheme for modelling below canopy turbulence that more sensibly captures transitions to sparse canopy.
+
+The above canopy model has also been improved by incorporating more realistic turbulence in a roughness sub-layer immediately above canopy.
+
+The package now supports parallel computing, allowing calculations to be distributed across multiple processor cores and substantially reducing run times for large spatial simulations.
+
+The code has been reorganised and made more computationally efficient, while a number of minor bugs have also been identified and fixed.
+
+A new function is now included that runs the full point model repeatedly across multiple grid cells to produce gridded outputs. This is useful when the aim is not to downscale, but to generate microclimate outputs at the same spatial resolution as the supplied climate data.
+
+The package now uses a more precise definition of plant area index, allowing users to specify explicitly whether plant area is expressed per unit inclined or horizontal ground area.
+
+This version does not yet incorporate the snow model. A new and improved multilayer snow model, including improved representation of lateral snow redistribution by wind, will be integrated shortly, with full integration planned by the end of October 2026.
+
+There have been minor changes to function names and inputs, reflecting these updated capabilities, and outputs are now returned as multilayer rasters by default. Most of the function renaming reflects the current package structure: the headline function for running the grid model is rungridmodel, with runmodel reserved for automatically handling simulations with or without snow once the snow model is fully integrated. To a large extent, however, forward and backward compatibility has been preserved.
+
+
+## Package install
+Start by installing the package from Github as follows:
+
+```{r eval=FALSE}
+require(devtools)
+install_github("ilyamaclean/microclimf", ref = "dev", build_vignettes = TRUE)
+```
+
+The package has a few dependencies, which may also need to be installed or updated. 
+If there are any install issues, a useful starting point for troubleshooting is to 
+install the dependencies first. These are `abind`, `ncdf4`, `Rcpp`, `sf`, `stats`, `terra`, `utils` and `zoo` all of which are on CRAN.
+
+## Quick start
+Here I provide brief instructions for how to run `microclimf`. More in-depth instructions are provided below. Four sets of input variables are needed: (1) a dataset of hourly weather, (2) a digital elevation dataset, (3) a dataset of vegetation parameters and (4) a dataset of soil properties. The datasets should have exactly the same format and units as the example datasets included with the package. The spatial resolution and extent of outputs is determined by the spatial resolution of the digital elevation dataset, and the spatial datasets of vegetation parameters and soil properties should also match the digital elevation dataset in terms of resolution and extent. It is important also that the x, y and z dimensions of the digital elevation dataset are equivalent – i.e. an equal area projection is used rather than say latitude and longitude, with units of x, y and height all identical and typically in metres. 
+
+The first step is to run the point model in hourly time increments using function `runpointmodel`. One then has the option to subset the point model to say return monthly values and pass these as inputs to the grid model. Both the point model and grid model can be run in two modes: either with hourly weather data provided as a data frame in which case the point model is run once only and the weather is assumed identical across the study area. Alternatively the weather data can be provided as multi-layer SpatRasters, in which the point model is run for each grid cell of the SpatRaster and the weather is assumed to vary across the study region. 
+
+In the code below, weather data are provided as a data frame. The point microclimate model is run and then subset to return only those hours corresponding to the day in each month with the hottest and coldest temperature (as determined by the point model). These are then passed to the grid model. The model returns temperatures (leaf, ground and air), relative humidity, wind speed, and components of the radiation budget, all as multilayer rasters, representing values for each pixel and time-period. In the final lines of code, selected outputs are plotted.
+
+```{r eval=FALSE}
+library(microclimf)
+library(terra)
+# Runs point microclimate model with inbuilt datasets
+micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc)
+# Subset point model outputs
+micropoint_mx <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
+micropoint_mn <- subsetpointmodel(micropoint, tstep = "month", what = "tmin")
+# Run grid model 5 cm above ground with subset values and inbuilt datasets (takes ~20 seconds)
+mout_mx <- rungridmodel(micropoint_mx, reqhgt = 0.05, dtmcaerth, vegp, soilc)
+mout_mn <- rungridmodel(micropoint_mn, reqhgt = 0.05, dtmcaerth, vegp, soilc)
+# Plot air temperatures on hottest hour in micropoint (2017-06-20 13:00:00 UTC)
+plot(mout_mx$Tz[[134]])
+# Plot air temperatures on coldest hour in micropoint (2017-01-03 08:00:00 UTC)
+plot(mout_mn$Tz[[9]])
+# Plot mean of monthly max and min
+mairt <- mean((mout_mn$Tz + mout_mx$Tz) / 2)
+plot(mairt)
+```
+![Maximum (left), minimum (middle) and mean (right) temperature 5 cm above the ground. On warm, sunny days, temperatures immediately above sun-facing slopes can become very high, whereas evapotranspiration from wet soils strongly buffers temperatures along stream channels. The coldest areas are those that are more exposed, while the sheltered valley remains warmer.](images/image1a.png)\
+
+## Model inputs
+Four sets of parameters are needed to run the model: (i) standard hourly meteorological climate-forcing variables representative of macroclimatic conditions across the study site, usually in the form of a data.frame with single values for each hour (though the option to include an array of coarse-gridded values is also available - see below). (ii) A raster of digital elevation data.  (iii) A suite of parameters describing properties of the canopy in the form of high-resolution gridded values. (iv) A suite of parameters describing properties of the soil in the form of high-resolution gridded values. Optionally, some additional parameters can be set when running the models, as detailed below.
+
+Each set of parameters is described in turn. Obtaining the right data to drive the microclimate model is often one of the most challenging aspects of modelling microclimate. Users may wish to explore the `microclimdata` package for automated downloading and processing of various datasets available globally or regionally for doing so. The package is available on Github:  https://github.com/ilyamaclean/microclimdata
+
+
+### Meteorological data
+The inbuilt data.frame `climdata` gives an example of the hourly meteorological variables needed to run the model:
+
+```{r}
+library(microclimf)
+head(climdata)
+```
+
+The data frame contains the following columns: `obs_time` – POSIXlt object of observation times for each climate variable, `temp` – temperatures (deg C), `relhum` - relative humidity (percentage), `pres` - atmospheric pressure (kPa), `swdown` - total downward shortwave radiation received by a horizontal surface (W/m^2), `difrad` - diffuse radiation (W/m^2), `lwdown` total downward longwave radiation (W/m^2), `windspeed` - wind speed at reference height (m/s),  `winddir` - wind direction in degrees and `precip` - hourly precipitation (mm). Precipitation is used to compute soil moisture and sub-model for this actually runs in daily time-steps. Thus, if only daily precipitation data are available, hourly data can be provided as daily values / 24.   
+
+Importantly, the entries of obs_time must all be in UTC (Coordinated Universal Time).
+
+Any input weather dataset provided must use the same format, column names and units as in this example dataset. Most of these are standard meteorology variables that are readily available globally. If unknown for the study area, users may wish to explore the `mcera5` package on github (https://github.com/dklinges9/mcera5) or the `microclimdata` package detailed above.  Diffuse radiation, is sometimes harder to come by as many standard weather stations only estimate total radiation. If unknown, it can be estimated using the `difprop` function in the microctools package (https://github.com/ilyamaclean/microctools). The microctools package, also contains a function `converthumidity`, for converting absolute or specific humidity or vapour pressure to relative humidity.
+
+### Vegetation parameters
+
+Vegetation is supplied to the model as `vegp`, a named list of `SpatRaster` objects (or `PackedSpatRaster` objects; see `terra::wrap`). Each raster must have the same rows and columns as `dtm` - the raster digital elevation dataset.
+
+The vegetation inputs are designed to allow different levels of detail depending on the data available. At a minimum, users must supply either:
+
+* `pai` and `hgt`, describing vegetation height (m) and the total one sided plant area per unit ground area as a measure of shade, or
+* `habitat`, identifying one of 16 broad habitat classes as specified below.
+
+Both can also be supplied. If only `habitat` is supplied each habitat class is assumed to have a fixed `hgt` and `pai`. If only `pai` and `hgt` are supplied the model does its best to guess which habitat is plausible based on `pai` and `hgt` as well as the location of the study area. It is almost always better to supply all three as without supplying all three the defaults are necessarily crude. Clearly not all vegetation of a given habitat type has the same `pai` and `hgt` and equally, `habitat` cannot easily be inferred from `pai`, `hgt` and location alone.
+
+The remaining vegetation parameters are optional. Where an optional parameter is supplied, its value is used directly. Where it is omitted, or is `NA` for a particular grid cell, the model uses a default value associated with the plant functional type for that cell. These defaults are stored in the inbuilt dataset `PFTparams`. This means, for example, that a user with good spatial data on vegetation height and plant area index can supply those explicitly while allowing less important physiological or optical properties to be filled automatically.
+
+A grid cell with either zero `pai` or zero `hgt` is always treated as bare ground.
+
+#### Habitat classes and plant functional types
+
+The 16 habitat classes are used primarily to assign a plant functional type (PFT), which in turn provides default vegetation properties. The mapping is:
+
+| Code | Habitat | Plant functional type |
+|---|---|---|
+| 1 | Evergreen needleleaf forest | NET |
+| 2 | Evergreen broadleaf forest | BET.Tr within 25° of the equator, BET.Te otherwise |
+| 3 | Deciduous needleleaf forest | NDT |
+| 4 | Deciduous broadleaf forest | BDT |
+| 5 | Mixed forest | NET |
+| 6 | Closed shrubland | ESh |
+| 7 | Open shrubland | DSh |
+| 8 | Woody savanna | ESh |
+| 9 | Savanna | C4 within 30° of the equator, C3 otherwise |
+| 10 | Short grassland | C4 within 30° of the equator, C3 otherwise |
+| 11 | Tall grassland | C4 within 30° of the equator, C3 otherwise |
+| 12 | Permanent wetland | C3 |
+| 13 | Cropland | C4 within 30° of the equator, C3 otherwise |
+| 14 | Urban and built-up | C3 |
+| 15 | Cropland / natural vegetation mosaic | C4 within 30° of the equator, C3 otherwise |
+| 16 | Barren or sparsely vegetated | Bare ground, or grass (C4 within 30° of the equator, C3 otherwise) where `pai` or `hgt` indicate vegetation |
+
+Latitude is taken from `dtm` input to the model. The PFTs currently represented are tropical and temperate broadleaf evergreen trees (`BET.Tr`, `BET.Te`), broadleaf deciduous trees (`BDT`), needleleaf evergreen and deciduous trees (`NET`, `NDT`), C3 and C4 grasses, and evergreen and deciduous shrubs (`ESh`, `DSh`).
+
+Their default parameter values can be inspected directly:
+
+```{r eval = FALSE}
+?PFTparams
+```
+
+#### Vegetation structure and optical properties
+
+In addition to `pai` and `hgt` the main structural inputs are:
+
+* `x` - leaf angle distribution parameter, describing the tendency for foliage to be orientated vertically or horizontally and hence how much direct radiation passes through the canopy at a given solar angle. See [Campbell (1986)](https://doi.org/10.1016/0168-1923(86)90010-9).
+* `clump` - canopy clumping factor, ranging from 0 for a spatially uniform canopy to 1 for a highly clumped canopy. It controls the amount of radiation passing through gaps in the canopy. The default is 0.
+* `leafr` - leaf reflectance to shortwave radiation.
+* `leaft` - leaf transmittance to shortwave radiation.
+* `Lfrac` - fraction of total plant area that is living leaf, with the remainder assumed to be woody or dead material. The default is 1.
+
+Leaf reflectance and transmittance to photosynthetically active radiation are assumed to be one quarter of the corresponding shortwave values.
+
+#### Physiological parameters
+
+The remaining optional inputs describe leaf physiology and are used in the photosynthesis model built into `microclimf`. Their units are given in the `units` column of `PFTparams`:
+
+* `Vcmx25` - maximum Rubisco carboxylation rate at 25 °C (µmol / m^2 / s).
+* `Tup`, `Tlow` - upper and lower temperature limits for photosynthesis (°C).
+* `Dcrit` - vapour pressure deficit at which stomatal limitation becomes strong (kPa).
+* `alpha` - quantum efficiency of photosynthesis (mol CO2 / mol PAR).
+* `rpmin` - minimum whole-plant hydraulic resistance (m^2 s MPa / mol).
+* `f0` - ratio of intercellular to ambient CO2 above the compensation point at low vapour pressure deficit.
+* `fd` - ratio of leaf dark respiration to Vcmax.
+* `psi50` - water potential at which the plant loses half of its maximum hydraulic conductance (MPa).
+* `apsi` - xylem hydraulic conductance parameter.
+* `len`, `wid` - leaf length and width (m), which together determine leaf size.
+* `gsmax` - optional upper limit on stomatal conductance (mol / m^2 / s). This caps the conductance predicted by the physiological model. There is no default cap: if `gsmax` is not supplied, stomatal conductance is left unconstrained by this parameter. 
+Some properties are always taken from `PFTparams` and cannot currently be supplied through `vegp`. These are vegetation emissivity, leaf water-film capacity, the fraction of available water that plants can deplete before stress (`pTAW`), and rooting depths.
+
+Only recognised vegetation parameters can be included in `vegp`; unrecognised names generate an error.
+
+
+#### Vegetation that changes through time
+
+Several vegetation properties can vary through time. These are `hgt`, `pai`, `x`, `clump`, `leafr`, `leaft` and `Lfrac`. All other vegetation parameters, including `habitat`, must be provided as a single raster layer.
+
+A single-layer raster is treated as constant for the full model run. A multi-layer raster is treated as a sequence of values through time. The model does not associate layers with calendar dates directly. Instead, it divides the full period represented by the climate data into as many approximately equal intervals as there are vegetation layers and applies one layer to each interval. Thus, 12 vegetation layers over a full year approximate monthly variation, whereas 365 layers approximate daily variation. No more than one vegetation layer per day can be supplied.
+
+Single- and multi-layer vegetation parameters can be mixed freely.
+
+
+#### Example vegetation dataset
+
+The inbuilt dataset `vegp` illustrates the required format. It contains wrapped rasters of `pai`, `hgt`, `habitat`, `x`, `gsmax`, `clump`, `leafr` and `leaft`; all other properties are filled from their PFT defaults. In this example, `pai` and `clump` each contain 12 layers:
+
+```{r, fig.show='hold'}
+library(terra)
+
+names(vegp)
+
+plot(rast(vegp$habitat), main = "Habitat class")
+plot(rast(vegp$pai)[[1]], main = "Jan PAI")
+
+paiarray <- as.array(rast(vegp$pai))
+plot(apply(paiarray, 3, mean, na.rm = TRUE),
+     type = "l", main = "Seasonal variation in PAI")
+
+plot(rast(vegp$hgt), main = "Vegetation height")
+plot(rast(vegp$x), main = "Leaf angle distribution")
+plot(rast(vegp$gsmax), main = "Max. stomatal conductance")
+plot(rast(vegp$clump)[[1]], main = "Jan canopy clumping factor")
+plot(rast(vegp$leafr), col = gray(0:255/255), main = "Leaf reflectance")
+plot(rast(vegp$leaft), col = gray(0:255/255), main = "Leaf transmittance")
+```
+
+### Soil parameters
+The inbuilt dataset `soilc` gives an example of the soil parameters needed to run the model. Here the attributes are shown and plotted:
+
+```{r, fig.show='hold'}
+attributes(soilc)
+plot(rast(soilc$soiltype), main = "Soiltype") # Clay loam throughout
+plot(rast(soilc$groundr), col=gray(0:255/255), main = "Soil reflectance")
+```
+
+* This is a list of the following:
+    * `soiltype` - a PackedSpatRast object of integer soil types
+    * `groundr` - a PackedSpatRast object of soil reflectance values for shortwave radiation (0 - 1)
+
+Again, users in creating such a dataset, can store `soiltype` and `groundr` as either a PackedSpatRast or a SpatRast object.
+
+Soil type 7 corresponds to Clay loam. A full list of which numeric values correspond to which soil types, along with parameters associated with these soil types is shown in the `soilparamstable` table:
+
+```{r}
+soilparamstable
+```
+
+```{r eval=FALSE}
+?soilparamstable
+```
+
+The model also copes with these values being provided as individual data layers if these are added to the list of SpatRasters contained in `soilc`. Note that in all instances soil properties (apart from soil moisture, which is modelled explicitly) are assumed time-invariant. 
+
+### Additional optional parameters
+In addition to specifying `reqhgt` the height (m) above or below ground for which microclimate estimates are required, there are also a set of optional parameters that can be provided to the run functions that control model behaviour. 
+
+For the point model, these are as follows:
+
+* `tme` - Used only when climate data are provided as a multi-layer raster (see below). A POSIXlt/POSIXct time vector (UTC) corresponding to the time of each layer.
+* `dtmc` - Optional coarse-gridded digital elevation dataset. Used only for elevation adjustments to weather data when climate data are provided as a multi-layer raster (see below).
+* `paiFlat` - Optional logical indicating whether plant area index is expressed per unit horizontal ground area (`TRUE`) or per unit local inclined ground-surface area (`FALSE`).
+* `runchecks` - If set to `TRUE` (the default), the model automatically performs checks on the supplied weather data to ensure values are within range (i.e. the correct units are used) and that other inputs are provided in the correct format.
+* `zin` - Height (m) of temperature and humidity data in `weather`.
+* `uzin` - Height (m) of wind speed data in `weather`.
+* `maxIter` - Maximum number of iterations allowed for model convergence.
+* `tolerance` - Convergence tolerance (°C): the maximum allowed change in canopy or ground surface temperature between successive iterations for the solution to be considered converged.
+* `nlayers` - Number of soil layers used for the soil temperature and water model.
+* `totalDepth` - Total depth of the soil profile (m).
+* `surface_organicmu` - Parameter controlling the concentration of soil organic matter towards the surface.
+* `FreeDrain` - Optional logical indicating whether the lowest soil layer is free draining (`TRUE`) or not (`FALSE`).
+* `matemp` - Temperature to which the lowest soil layer is set as a lower boundary condition. By default, mean annual temperature is automatically computed from `weather`.
+* `soilinit` - Optional data frame specifying the initial soil water and temperature conditions in the soil profile, with a column `depth` indicating depth (m), columns `temp` indicating soil temperature (deg C) and `theta` volumetric water content (m3/m3) at that depth. Depth values should be positive, and values are interpolated to the depths at which the model solves soil temperature and water. When omitted, every node is assumed to have temperature set to `matemp` and moisture value midway between its residual and saturated water content.
+* `soilend` - Optional logical. When `TRUE`, returns a data.frame of the final soil water state at the end of the model run, in a form that can be passed as `soilinit` to initialise a subsequent run.
+* `pooling` - Logical indicating whether to retain water that temporarily exceeds infiltration capacity for later infiltration rather than treating it as runoff.
+* `cores` - Used only when climate data are supplied as multi-layer rasters. Controls parallel processing across coarse cells: `off` (default) runs sequentially; `auto` uses one fewer than the number of available cores; `max` uses all available cores; alternatively, a positive integer can be supplied to specify the number of cores to use.
+
+Additionally, for the grid model, these are as follows:
+
+* `tfact` - coefficient determining sensitivity of soil moisture to variation in topographic wetness.
+* `altcorrect` - a single numeric value indicating whether to apply an elevational lapse rate correction to temperatures (0 = no correction, 1 = fixed lapse rate correction, 2 = humidity-dependent variable lapse rate correction). Used only when climate data are provided as a multi-layer raster.
+* `out` - Optional named vector of logicals indicating which variables to return, e.g. `c(Tz = TRUE, soilm = TRUE)`.
+* `splineveg` - Logical indicating whether to interpolate seasonal vegetation layers smoothly rather than assigning discrete layers to days.
+* `saveout` - Logical; when set to `TRUE` the results are saved to `filename`.
+* `filename` - File path used when `saveout = TRUE`.
+* `twiMeanOverride` - Optional common mean wetness reference for tiled runs.
+* `maxmemGB` - Memory budget (GB) used to choose tile size when parallelised. Used only when `cores` is set such that the model runs in parallel tiles; ignored with the default `cores = "off"`.
+* `tilesize` - Optional tile width/height in pixels. Used only when `cores` is set to run the model in parallel mode.
+
+
+The following variables are calculated automatically from `dtm` if not supplied, but can also be provided as separate inputs to avoid edge effects:
+
+* `hor` - an optional array of horizon angles (degrees) in 24 directions.
+* `twi` - optional raster object of topographic wetness index values. 
+* `svf` - optional raster object of sky view factor. 
+* `slr, apr` - slope and aspect in degrees
+
+## Running the point microclimate model
+To ensure the grid model can be run without iteration, the first stage of modelling is to run a point microclimate model iteratively for a flat surface at the centre of the study area using as inputs to the model, vegetation and soil characteristics that are broadly representative of the study area. This is achieved automatically using function `runpointmodel`, using as inputs to the model, the same inputs that are supplied to the grid model as follows:
+
+```{r eval=FALSE}
+# Run the point model
+micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc)
+```
+
+
+Interrogating the attributes of `micropoint` allows us to see what the model returns:
+```{r eval=FALSE}
+attributes(micropoint)
+```
+
+The function essentially gathers various things into a single list object. These are as follows:
+
+* `weather` - the original supplied weather data, but height adjusted if vegetation within the study area exceeds the height of temperature or wind speed measurements.
+* `model` - this is a data.frame that stores all the microclimate point model outputs that the grid model needs. Most are not worth remarking on as they are essentially used to handle adjustments made to the grid model outputs to avoid the need to run it iteratively. However, four variables are worth remarking on. These are `G` the rate of heat storage by the soil (W/m^2), `theta0` - soil water content of the surface soil layer expressed as a volumetric fraction, `Tground` - ground surface temperature and `Tcanopy` - the temperature of the vegetated surface average temperature of vegetation. Plots of `Tground` and `Tcanopy` are shown below.
+* `vegp`, `soilc`, `Lfrac` and `pft` - list of vegetation and soil parameters, the fraction of plant area that is living and the assumed plant functional type, specifically for the location for which the point model was run.
+* `lat` and `lon` are the latitude and longitude of the centre of the study area, which is the location for which the point model was run.
+* `zref` represents the height above ground to which weather data have been adjusted. If none of the vegetation is greater than two meters in height the output `zref` is set to 2 m and `windhgt` is also two meters, the returned weather dataset is identical to that provided to the function. However, for the grid microclimate model to derive below-canopy wind and temperature profiles, the reference height must be higher than the tallest vegetation in the study area. For that reason, if the tallest vegetation exceeds two meters, `zref` is set to the maximum height of the vegetation and the wind speeds and temperatures are adjusted for height in the weather dataset. 
+* `matemp`, `reqhgt` and `paiFlat` just take on the values supplied by the user as inputs but are passed to the grid model for consistency. 
+
+```{r eval=FALSE}
+micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtmcaerth, vegp, soilc)
+mod <- micropoint$model
+tme <- as.POSIXct(micropoint$weather$obs_time)
+par(mar=c(5,5,3,3))
+plot(mod$Tground ~ tme, type="l", ylim = c(-5, 45), col = rgb(1,0,0,0.5), xlab = "Month", ylab = "Temperature") # temperature of ground surface
+par(new = TRUE)
+plot(mod$Tcanopy ~ tme, type="l", ylim = c(-5, 45), col = rgb(0,0.5,0.5,0.5), xlab = "", ylab = "")
+```
+![](images/image1b.png)\
+
+  
+## Subsetting the microclimate model
+The point microclimate model is usually run in hourly time-increments using complete time sequences of weather data to fully allow for the diurnal cycles in ground heat fluxes to be accounted for, but if desired, the grid model can be run for just say the hottest days in each month to derive maximum temperatures. This is achieved using function `subsetpointmodel`. This function takes the output from `runpointmodel` as an input and returns a subset version of it that is passed directly to the grid model.
+
+In the example below, the model is subset to return only those hours corresponding to the day in each month with the hottest temperature (as determined by the point model). The function has several inputs that control its behaviour. If 'tstep' is set to `year` the day in each year with e.g. the hottest or coldest hourly temperature is identified, and if 'tstep' is set to `month` the days in each month in each year with e.g. the hottest or coldest hourly temperatures are returned. If `what` is set to `tmax` or `tmin` the hottest or coldest hour within each month or year are identified. If `what` is set to `tmedian` hourly temperatures within the month or year are ranked and the median hour identified. The final option is to provide a vector of the days in the time sequence to return data for using input `days`. If provided `tstep` is ignored. 
+
+It is necessary that all hours of a given day are returned for two reasons. First, it ensures that the ground heat flux in the grid microclimate model can be estimated as it depends on the full diurnal cycle. Second because the hottest hour on a flat surface may not be the hottest hour on e.g. a steeply south-westerly facing slope - temperatures will typically peak later in the day when the slope is directly facing the sun. Returning hourly values for an entire day ensures that these terrain effects can be properly handled by the grid model. 
+
+```{r eval=FALSE}
+micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
+```
+
+## Running the grid model
+The entire grid model is run in one go using `rungridmodel`, but to illustrate its working, we interrogate each of its outputs in turn. In the examples that follow, the inbuilt datasets of parameter values and a dtm for the study area, `dtmcaerth` are used and the model is run using a data.frame of weather data. Subsequently, the equivalent workflow for when weather data are in the form of coarse-gridded SpatRasters is shown.
+
+```{r eval=FALSE}
+
+```
+
+### Soil moisture
+The first step of the microclimate model is to estimate soil moisture. This is handled in `microclimf`, by spatially distributing the soil moisture values returned by the point microclimate model for each time increment using the Beven and Kirkby (1979) topographic wetness index, such that valleys and flat areas are assumed to have higher water content. Values are adjusted such that the average for the study area in each time step is equivalent to the value obtained by running the point model. To ensure surface soil moisture is exposed as an output to the user, we set `reqhgt = 0.0`.
+
+
+```{r eval=FALSE}
+# Takes ~10 seconds to run
+micro <- rungridmodel(micropoint, reqhgt = 0.0, dtmcaerth, vegp, soilc)
+# Surface soil moisture (2017-01-30 19:00:00 UTC)
+plot(micro$soilm[[20]], col = rev(map.pal("viridis")))
+```
+![](images/image2.png)\
+
+### Radiation
+The next stage, needed to calculate soil surface temperature, is to estimate radiation absorbed by the ground.  Because the ground lies below canopy in some instances, it is necessary also to consider the transmission of radiation through the canopy. The model implements a variant of the Dickinson-Sellers two-stream radiation model described in Yuan et al. (2017) J Adv Model Earth Sy 9: 113–129 to model radiation interception by the canopy, also explicitly handling sloped ground surfaces beneath a canopy. 
+
+Absorbed radiation is the total incoming radiation received by a surface less that which is then reflected or emitted back upward. The total incoming radiation can be partitioned into three sources, each of which is modified by the environment in slightly different ways. The first is direct radiation from the sun. Here, absorption depends on the angle of the surface relative to perpendicular. This is the reason why equatorward-facing slopes are warmer than those that face poleward and is indeed the main reason why temperature decreases with latitude. Here the solar beam is more concentrated, rather like shining a torch directly on a surface as opposed to obliquely. The second source is diffuse solar radiation: that scattered by particles and clouds in the atmosphere. The final source is longwave radiation emitted from surrounding surfaces and the sky. The latter two are isotropic (i.e. having the same value when measured in any direction). In consequence, for these sources, the direction of the surface is unimportant, and radiation interception is instead influenced by sky-view. The model calculates all these fluxes as illustrated below.
+
+```{r eval=FALSE}
+# Downward direct and diffuse shortwave radiation (2017-06-20 13:00:00 UTC)
+plot(micro$Rdirdown[[134]])
+plot(micro$Rdifdown[[134]])
+# Upward shortwave radiation
+plot(micro$Rswup[[134]])
+```
+![](images/image3a.png)\
+
+The darker areas here are locations with shrubs, where less radiation is received at the surface owing to shading.
+
+```{r eval=FALSE}
+# Downward and upward longwave radiation (2017-06-20 13:00:00 UTC)
+plot(micro$Rlwdown[[134]])
+plot(micro$Rlwup[[134]])
+```
+![](images/image3b.png)\
+
+In the case of downward longwave radiation the canopy absorbs and re-emits a significant portion of radiation back downward, so underneath shrubs more longwave radiation is received at the ground surface.  The emitted upward radiation is a direct function of ground surface temperature so is lower in the wetter and cooler water-courses.
+
+If `reqhgt > 0` the fluxes returned by the model correspond to `reqhgt`, and account for partial shading and reflection by the ground surface and scattering by leaves within the canopy. 
+
+### Sensible heat flux and wind
+A surface heated by solar radiation will lose some of this heat to the surrounding air, and by virtue of the laws of energy conservation, the air gains this heat. The exchange of heat between a surface and the surrounding air is termed sensible heat exchange and is influenced strongly by wind speed. The next stage of modelling is therefore to calculate wind speed. At the ground surface the wind speed is effectively zero, so to illustrate the model's workings, we run it for 10 cm above ground:
+
+```{r eval=FALSE}
+# Takes ~10 seconds to run
+micro <- rungridmodel(micropoint, reqhgt = 0.1, dtmcaerth, vegp, soilc)
+# Wind speed 10 cm above ground (2017-01-30 19:00:00 UTC, direction from south)
+plot(micro$windspeed[[20]])
+```
+
+The model handles two processes. Firstly, direction-dependent terrain shelter coefficients are applied. That is the reason why the sheltered valley has particularly low wind speeds. Secondly, the effects of vegetation on wind speeds are determined. If `reqhgt` is above the vegetation, the shape of the wind speed above vegetation is determined by the degree of surface drag, in turn contingent upon vegetation height and the plant area index of vegetation. If `reqhgt` is below canopy, the effect of vegetation is to attenuate wind speeds, but the shape of the wind-height profile below and above canopy differs. For a given `reqhgt` some pixels may lie below canopy and some above. This is all handled automatically.    
+
+### Ground surface temperature
+Once radiation absorbed by the ground and wind speed have been calculated, ground surface temperature is computed. To expose this output to the user, the model must again be run with `reqhgt = 0`, though internally this is done regardless. Below the full workflow for deriving both the hottest and coldest ground surface temperatures is illustrated.
+
+```{r eval=FALSE}
+# Run point model and select hottest and coldest days of each month
+micropoint <- runpointmodel(climdata,0.0,dtmcaerth,vegp,soilc)
+micropoint_mx <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
+micropoint_mn <- subsetpointmodel(micropoint, tstep = "month", what = "tmin")
+# Run grid model and get absolute max and min
+mout_mx <- rungridmodel(micropoint_mx, reqhgt = 0.0, dtmcaerth, vegp, soilc)
+mout_mn <- rungridmodel(micropoint_mn, reqhgt = 0.0, dtmcaerth, vegp, soilc)
+# Plot ground surface temperatures
+plot(max(mout_mx$Tz, na.rm = TRUE)) # hottest
+plot(min(mout_mn$Tz, na.rm = TRUE)) # coldest
+```
+![](images/image5.png)\
+
+As can be seen, the soil surface temperatures on bare, south-facing slopes get pretty hot, but where the soil is wet, temperatures are strongly buffered. The study area is highly maritime and ground frosts are rare, but in more exposed environments, the minimum temperatures do drop below freezing.
+
+### Above ground
+After calculating ground surface temperature, there are two pathways, depending on whether microclimatic conditions below or above ground are required. If `reqhgt > 0` then the model returns air temperature at `reqhgt`, stored as a layer named `Tz` output as illustrated below.     
+
+```{r eval=FALSE}
+# 10 cm above ground - micropoint_mx and micropoint_mn recycled
+mout_mx <- rungridmodel(micropoint_mx, reqhgt = 0.1, dtmcaerth, vegp, soilc)
+mout_mn <- rungridmodel(micropoint_mn, reqhgt = 0.1, dtmcaerth, vegp, soilc)
+# Plot air temperatures 10cm above ground
+plot(max(mout_mx$Tz, na.rm = TRUE)) # hottest
+plot(min(mout_mn$Tz, na.rm = TRUE)) # coldest
+```
+![](images/image6.png)\
+
+The spatial patterns mirror those of ground surface temperature, but the temperatures are not as extreme, as at 10 cm above ground, temperatures are more closely coupled to macroclimate temperatures.
+
+Instead of air temperature, one can also return leaf temperature as follows:
+
+```{r eval=FALSE}
+# Plot leaf temperatures 10cm above ground
+plot(max(mout_mx$tleaf, na.rm = TRUE)) # hottest
+plot(min(mout_mn$tleaf, na.rm = TRUE)) # coldest
+```
+![](images/image7.png)\
+
+Here, because `reqhgt` was set to 10cm, many parts of the plot are blank because the raster contains NA values for any locations where canopy height is lower than 10cm where there are no leaf temperatures to return. In general leaves get much hotter than the air, but not as hot as the ground surface owing to transpirative cooling and the presence of surrounding cooler air. By contrast, it is quite common for leaf temperatures to drop below ground surface temperature. In contrast to the ground, the leaves store very little heat and are not buffered by the warmer temperatures below the ground surface.   
+
+
+#### Below ground
+If `reqhgt` is negative, the model derives estimates of soil temperature and water below ground. Whereas above ground, we can recycle the point model object and derive
+gridded estimates for any height using the same point model object, below ground, the grid model uses different variables from the point model, so we need to rerun it.
+
+```{r eval=FALSE}
+# Run point model and select hottest days of each month
+micropoint10 <- runpointmodel(climdata, reqhgt = -0.1, dtmcaerth, vegp, soilc)
+micropoint50 <- runpointmodel(climdata, reqhgt = -0.5, dtmcaerth, vegp, soilc)
+micropoint10 <- subsetpointmodel(micropoint10, tstep = "month", what = "tmax")
+micropoint50 <- subsetpointmodel(micropoint50, tstep = "month", what = "tmax")
+# Run grid model and get temperatures 10 cm and 50 cm below ground
+mout10 <- rungridmodel(micropoint10, reqhgt = -0.1, dtmcaerth, vegp, soilc)
+mout50 <- rungridmodel(micropoint50, reqhgt = -0.5, dtmcaerth, vegp, soilc)
+# Plot below ground temperatures
+plot(mout10$Tz[[134]], range = c(13, 38)) # 10 cm below
+plot(mout50$Tz[[134]], range = c(13, 38)) # 50 cm below
+```
+![](images/image8.png)\
+
+### Model output and formats
+When running `rungridmodel` the model returns a list of multilayer rasters comprising the following:
+
+* `Tz` - air temperature (deg C) above ground, ground surface temperature (deg C) at `reqhgt = 0` or soil temperature (deg C) below ground
+* `tleaf` - leaf temperature (deg C)
+* `soilm` - volumetric soil water fraction (m3 / m3)
+* `relhum` - relative humidity (percentage)
+* `windspeed` - wind speed (m/s)
+* `Rdirdown` - Downward direct radiation flux perpendicular to the solar beam (W/m2)
+* `Rdifdown` - Downward diffuse radiation (W/m2)
+* `Rswup` - Upward shortwave flux, assumed diffuse (W/m2)
+* `Rlwdown` - Downward longwave flux (W/m2)
+* `Rlwup` - Upward longwave flux (W/m2)
+
+Which of these layers is populated depends on `reqhgt`. Above ground, all except `soilm` are returned. At the ground surface, `relhum` and `windspeed` are not returned as both are meaningless there. Below ground only `Tz` and `soilm` are populated as obviously there are no radiation fluxes, wind speed is zero and moisture conditions are better represented by volumetric soil water content. 
+
+It is possible that not all of these variables will be of interest to the user and, to avoid storing large objects in memory, the user can instead specify which variables to return using the `out` parameter provided as an input to the model. Users may also wish to save outputs to disk, which can be achieved by setting `saveout = TRUE` and specifying a `filename`. Where outputs are saved, a list object is saved as an RDS, with any `SpatRaster` objects wrapped so they can be safely serialized.
+
+### Running the model with arrays of climate data
+In the examples above, the climate data provided as inputs to the model are provided as a data.frame. However, it may be the case that microclimate surfaces are required over larger areas in which the macroclimate data used to drive the model varies. 
+The `runpointmodel` and `rungridmodel` functions handle this option automatically. The climate forcing data are passed to the point model as a list of multilayer SpatRasters. So the model can resolve the times associated with each layer an additional `POSIXlt` vector is passed as an input. Users also have the option to perform some basic elevation adjustments - here the elevation difference between each coarse and fine grid cell is computed and either no `altcorrect = 0`, a fixed (5 deg C / 1000m) `altcorrect = 1` or humidity-dependent `altcorrect = 2` lapse rate is applied.     
+
+The code below illustrates the workflow. First, a dummy list of climate variables is created by converting each variable in the `climdata` data frame to a 5 × 5 pixel multilayer `SpatRaster`. These are then passed to `runpointmodel` in the usual way, together with `tme`, which gives the time associated with each layer, and `dtmc`, a coarse-resolution digital elevation dataset matching the extent and resolution of the climate array. The point model is then run independently for each grid cell in the array. Because this can be a relatively slow step, we set `cores = "auto"`, which distributes the work across the available CPU cores while leaving one core free to keep the machine responsive. The point model output is then subset in the usual way, here to select the warmest day in each month, and the output then passed to the grid model as in previous examples, here deliberately choosing to do no elevation lapse rate correction. The output is no different to previous examples as would be expected as all we have done is change the format of the input climate data rather than the values themselves. 
+
+
+```{r eval=FALSE}
+library(terra)
+# Create a dummy 5 x 5 array of the climate variables 
+#  -- Convert array to raster --
+.rast <- function(x, template) {
+  r <- rast(x)
+  ext(r) <- ext(template)
+  crs(r) <- crs(template)
+  r
+}
+# -- replicate each variable 5 x 5 times --
+.ta <- function(x, template, xdim = 5, ydim = 5) {
+  a <- array(rep(x, each = xdim * ydim),
+             dim = c(ydim, xdim, length(x)))
+  .rast(a, template)
+}
+# -- Create dummy list of rasters
+dtm <- rast(dtmcaerth)
+vars <- names(climdata)[2:10]
+climarrayr <- lapply(climdata[vars], .ta, template = dtm)
+# Get times corresponding to each layer
+tme <- as.POSIXlt(climdata$obs_time, tz="UTC")
+# Create coarse-resolution dtm matching resolution of climate data
+dtmc <- aggregate(dtm, 10, fun = "mean", na.rm = TRUE)
+# Run point model array (takes ~ one minute)
+micropointa <- runpointmodel(climarrayr, reqhgt = 0.05, dtm, vegp, soilc,
+                             tme, dtmc, cores = "auto")
+# Subset point model using defaults (monthly tmax)
+micropointa <- subsetpointmodel(micropointa)
+# Run microclimate model with no altitude correction
+mout <- rungridmodel(micropointa, reqhgt = 0.05, dtm, vegp, soilc, altcorrect = 0)
+# plot maximum temperature
+plot(mout$Tz[[134]])
+```
+![](images/image9.png)\
+
+In the example above, the data are downscaled to match the resolution of `dtm`. In some cases, however, one may simply wish to derive microclimate outputs at the same resolution as inputs. Here, because the iterative point model does need to be run for every grid cell, there is no reason to use the approximation methods built into `rungridmodel`. Instead we simply use `runpointmodelasgrid` as in the example below. Importantly, however, in this case it is expected that `dtm`, `vegp` and `soilc` also have resolutions and extent that match the climate data, so we create dummy datasets of these. Note, that in this case, because of the soil heat storage dynamics, the model does need to be run continuously and there is no option to subset.
+
+```{r eval=FALSE}
+# Create coarse resolution vegp and soilc layers
+vegpc <- lapply(vegp, function(x) {
+  x <- unwrap(x)
+  aggregate(x, fact = 10, fun = mean, na.rm = TRUE)
+})
+vegpc$habitat <- aggregate(unwrap(vegp$habitat), fact = 10,
+                           fun = "modal", na.rm = TRUE)
+soilcc <- lapply(soilc, function(x) {
+  x <- unwrap(x)
+  aggregate(x, fact = 10, fun = mean, na.rm = TRUE)
+})
+soilcc$soiltype <- aggregate(unwrap(soilc$soiltype), fact = 10,
+                           fun = "modal", na.rm = TRUE)
+# Re-use tme, climarrayr and dtmc created in code above
+mout <- runpointmodelasgrid(climarrayr, reqhgt = 0.05, dtmc, 
+                            vegpc, soilcc, tme, cores = "auto")
+# Find hottest day
+hotday <- which.max(climdata$temp)
+plot(mout$Tz[[hotday]])
+```
+![](images/image10.png)\
+
+## Running the model over large areas
+R stores all data into internal memory and although, by using C++ code, memory requirements are substantially improved, the RAM requirements of the microclimate model can be pretty high if outputs are desired for numerous timesteps at high-resolution over large areas. To circumvent this issue the model can be run as tiles. However, the way that terrain shading effects and topographic wetness are calculated means that model outputs are prone to edge effects. To circumvent this issue, the function `rungridmodelbig` is used. This function calculates the wind shelter, horizon angles and topographic wetness over the entire study area before running the model in tiles.
+
+In the example below, the application of `rungridmodelbig` is shown. First some example data are downloaded from Zenodo. These data are 10m resolution model inputs for the entire Lizard Peninsula in Cornwall, an area of approximately 400 square kilometers. The model is run in tiles and the inbuilt climate dataset, which is fairly representative of the study area is used. The code first runs the point microclimate model. The relevant terrain variables are then calculated over the whole study area and the model is then run in tiles. The example takes quite a while to run, but is included here for illustration purposes. Data are stored in a subfolder called `microut` in the directory specified by `pathout`. The full model if run to the end would take up 36GB of disk space, so you may wish to kill the job after a short time unless you really want to interrogate the outputs. Some warnings are given when running the function to notify the user that direct radiation values in a few instances close to dawn and dusk are higher than expected clear-sky radiation values. This is taken care of by the model - the excess is assigned as diffuse radiation, so is nothing to worry about.
+
+```{r eval=FALSE}
+# Download example data from Zenodo
+url <- "https://zenodo.org/records/23091040/files/modeldatav2.zip"
+pathout<-"C:/Temp/tiles/"
+dir.create(pathout)
+setwd(pathout)
+download.file(url, "modeldatav2.zip")
+unzip("modeldatav2.zip")
+# Read in spatial data
+big_vegp <- readRDS("vegp_big.RDS")
+big_soilc <-readRDS("soilc_big.RDS")
+dtm <- rast("dem.tif")
+# Run and subset point model using inbuilt climate dataset (~15 seconds)
+micropoint <- runpointmodel(climdata, reqhgt = 0.05, dtm, big_vegp, big_soilc)
+micropoint <- subsetpointmodel(micropoint, tstep = "month", what = "tmax")
+# Run the model in tiles
+rungridmodelbig(micropoint, reqhgt = 0.05, dtm, big_vegp, big_soilc, 
+                cores = "auto")
+```
+
+The optimal tile size is automatically calculated. Entirely blank tiles (i.e. anything with NA in the digital elevation dataset) are skipped. Users have the option to specify the tile size or whether to distribute the work across available CPU cores. 
+
+## Bioclim variables
+It is common practice to seek to model the distributions of species using bioclimate variables, and the most commonly used are those available from Worldclim. While it is far from the case that simply modelling species distributions using microclimate data will circumvent all the numerous issues associated with species distribution modelling, a function for modelling microclimate equivalents of the standard 19 bioclim variables is nonetheless provided.
+
+Because rainfall typically does not vary that much at fine spatial resolution, the function instead  calculates soil moisture equivalents for the rainfall-associated bioclim variables.
+
+To enhance computational efficiency the microclimate model is run for selected days only. Thus, to compute "mean annual temperature", the mean ambient temperature of each day in the input weather data is calculated, the day with median temperatures in each month selected and the mean across months calculated. This is not, strictly speaking, the same as the mean temperature, but differences are likely to be minor, and for each year of data supplied, there is an approximately 30-fold gain in computational efficiency by calculating e.g. BIO1 in this way. Similarly, to calculate maximum temperature (BIO5), the day of the year with the hottest ambient temperature is selected, and microclimate temperatures calculated on this day only. This ignores the possibility that on a slightly cooler, but sunnier day, microclimate temperatures may be hotter at certain locations. 
+
+The climate forcing data provided must span entire years, but more than one year can be provided at a time. If say 10 years of data are provided, one set of bioclim variables associated with that 10 year period are returned rather than separate variables for each year. Below we illustrate the `runbioclim` function, but using one year of climate data only. The function takes ~20 seconds to run. The function returns a multilayer SpatRast of each of the bioclim variables.
+
+The input parameter `temp` indicates whether to return air or leaf temperature-derived bioclim variables. If `temp = leaf`, for grid cells where `reqhgt` is above vegetation, vertically averaged canopy temperature is used.
+
+```{r eval=FALSE}
+# Use inbuilt datasets
+vegp <- microclimf::vegp
+soilc <- microclimf::soilc
+bioclim <- runbioclim(climdata, 0.05, dtmcaerth, vegp, soilc, temp = "air")
+# Mean temperature of the coldest quarter:
+plot(bioclim[[11]]) 
+# Volumetric soil water fraction of driest quarter 
+plot(bioclim[[17]], col = rev(map.pal("viridis"))) 
+```
+![](images/image11.png)\
+
+
