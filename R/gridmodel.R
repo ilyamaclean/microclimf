@@ -2599,7 +2599,10 @@ runpointmodelasgrid <- function(weather, reqhgt = 0, dtm, vegp, soilc, tme,
       tolerance = tolerance, pooling = pooling, slope = slope[i, j], aspect = aspect[i, j],
       svfa = svfa[i, j], shelterc = shelterArr[i, j, ], shadow = shadowVec,
       soilinit = soilinit, soilinitWarn = (k == 1L),
-      phys = lapply(physM, function(m) m[i, j]))
+      phys = lapply(physM, function(m) m[i, j]),
+      # The zero-flux ground temperature serves the grid model's shortcuts,
+      # which this route does not use.
+      zeroFluxGround = FALSE)
 
     m <- res$model
     Tz <- m$Tzabove; RHz <- m$RHzabove; windz <- m$windzabove

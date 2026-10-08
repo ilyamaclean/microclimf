@@ -380,7 +380,14 @@ namespace utils {
         return lUnstableNewtonCpp(psi_m, zref, d, zm, 1);
     }
 
-    double clipMOlength(double L, double zref, double d, double zm, double beta)
+    double stableBoundCpp(double zref, double d, double zm, double beta)
+    {
+        const double ln_z = std::log((zref - d) / zm);
+        const double psim_max = beta * ln_z;
+        return lStableFinalCpp(psim_max, zref, d, zm);
+    }
+
+    double clipMOlength(double L, double zref, double d, double zm, double beta, double stableBound)
     {
         const double ln_z = std::log((zref - d) / zm);
         const double psim_min = -beta * ln_z;
@@ -414,8 +421,7 @@ namespace utils {
             // near-neutral one if the correction itself is compared
             // instead. Comparing L directly against the milder
             // (larger-L) bound catches this over-stable case correctly.
-            const double psim_max = beta * ln_z;
-            const double L_bound = lStableFinalCpp(psim_max, zref, d, zm);
+            const double L_bound = (stableBound > 0.0) ? stableBound : stableBoundCpp(zref, d, zm, beta);
             if (L < L_bound) {
                 return L_bound;
             }
@@ -623,8 +629,8 @@ namespace utils {
         }
     }
 
-    ThomasResult thomasSolveCpp(std::vector<double> aa, std::vector<double> bb,
-        std::vector<double> cc, std::vector<double> dd, std::vector<double> x,
+    void thomasSolveCpp(const std::vector<double>& aa, std::vector<double>& bb,
+        std::vector<double>& cc, std::vector<double>& dd, std::vector<double>& x,
         int first, int last)
     {
         for (int i = first; i < last; ++i) {
@@ -637,12 +643,6 @@ namespace utils {
         for (int i = (last - 1); i >= first; --i) {
             x[i] = dd[i] - cc[i] * x[i + 1];
         }
-        ThomasResult out;
-        out.bb = bb;
-        out.cc = cc;
-        out.dd = dd;
-        out.x = x;
-        return out;
     }
 
     // Return n + 2 soil-node depths (m), starting at 0 and thickening with depth.
@@ -665,18 +665,32 @@ namespace utils {
     // quartz, other minerals, organic matter, water and air. The pore-space
     // term includes water-vapour heat transport, so conductivity responds to
     // both soil wetness and temperature.
-    double thermalConductivityCpp(double Vq, double Vm, double Vo, double Vw,
-        double Mc, double Tc, double pk)
+    SoilSolid soilSolidCpp(double Vq, double Vm, double Vo, double Mc)
     {
+        SoilSolid s;
         // Conductivity of the solid skeleton, weighted geometrically by its
         // mineral and organic constituents.
         double Vsolid = Vq + Vm + Vo;
-        double kSolid = std::pow(8.8, Vq / Vsolid) * std::pow(2.5, Vm / Vsolid) * std::pow(0.25, Vo / Vsolid);
-        double Ga = 0.088 * ((Vq + Vm) / Vsolid) + 0.5 * (Vo / Vsolid);
-        double Q = 7.25 * Mc + 2.52;
-        double xwo = 0.33 * Mc + 0.078;
+        s.Vsolid = Vsolid;
+        s.kSolid = std::pow(8.8, Vq / Vsolid) * std::pow(2.5, Vm / Vsolid) * std::pow(0.25, Vo / Vsolid);
+        s.Ga = 0.088 * ((Vq + Vm) / Vsolid) + 0.5 * (Vo / Vsolid);
+        s.Q = 7.25 * Mc + 2.52;
+        s.xwo = 0.33 * Mc + 0.078;
+        s.porosity = 1.0 - Vsolid;
+        return s;
+    }
+
+    double thermalConductivityCpp(double Vq, double Vm, double Vo, double Vw,
+        double Mc, double Tc, double pk)
+    {
+        return thermalConductivityCpp(soilSolidCpp(Vq, Vm, Vo, Mc), Vw, Tc, pk);
+    }
+
+    double thermalConductivityCpp(const SoilSolid& s, double Vw, double Tc, double pk)
+    {
+        const double Vsolid = s.Vsolid, kSolid = s.kSolid, Ga = s.Ga, Q = s.Q, xwo = s.xwo;
         // Split pore space between liquid water and gas.
-        double porosity = 1.0 - Vsolid;
+        const double porosity = s.porosity;
         double gasPorosity = porosity - Vw;
         if (gasPorosity < 0.0)  gasPorosity = 0.0;
         double Tk = Tc + 273.15;

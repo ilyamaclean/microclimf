@@ -423,8 +423,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // BigLeafCpp
-Rcpp::DataFrame BigLeafCpp(Rcpp::NumericVector year, Rcpp::NumericVector month, Rcpp::NumericVector day, Rcpp::NumericVector hour, Rcpp::NumericVector temp, Rcpp::NumericVector relhum, Rcpp::NumericVector pres, Rcpp::NumericVector swdown, Rcpp::NumericVector difrad, Rcpp::NumericVector lwdown, Rcpp::NumericVector windspeed, Rcpp::NumericVector winddir, Rcpp::NumericVector precip, Rcpp::List vegp, Rcpp::List soilc, double Lfrac, double lat, double lon, double zref, double reqhgt, double Ca, double matemp, double zAbove, int maxIter, double tolerance, bool pooling, double slope, double aspect, double svfa, Rcpp::NumericVector shelterc, Rcpp::NumericVector Tinit, Rcpp::NumericVector thetainit);
-RcppExport SEXP _microclimf_BigLeafCpp(SEXP yearSEXP, SEXP monthSEXP, SEXP daySEXP, SEXP hourSEXP, SEXP tempSEXP, SEXP relhumSEXP, SEXP presSEXP, SEXP swdownSEXP, SEXP difradSEXP, SEXP lwdownSEXP, SEXP windspeedSEXP, SEXP winddirSEXP, SEXP precipSEXP, SEXP vegpSEXP, SEXP soilcSEXP, SEXP LfracSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP zrefSEXP, SEXP reqhgtSEXP, SEXP CaSEXP, SEXP matempSEXP, SEXP zAboveSEXP, SEXP maxIterSEXP, SEXP toleranceSEXP, SEXP poolingSEXP, SEXP slopeSEXP, SEXP aspectSEXP, SEXP svfaSEXP, SEXP sheltercSEXP, SEXP TinitSEXP, SEXP thetainitSEXP) {
+Rcpp::DataFrame BigLeafCpp(Rcpp::NumericVector year, Rcpp::NumericVector month, Rcpp::NumericVector day, Rcpp::NumericVector hour, Rcpp::NumericVector temp, Rcpp::NumericVector relhum, Rcpp::NumericVector pres, Rcpp::NumericVector swdown, Rcpp::NumericVector difrad, Rcpp::NumericVector lwdown, Rcpp::NumericVector windspeed, Rcpp::NumericVector winddir, Rcpp::NumericVector precip, Rcpp::List vegp, Rcpp::List soilc, double Lfrac, double lat, double lon, double zref, double reqhgt, double Ca, double matemp, double zAbove, int maxIter, double tolerance, bool pooling, double slope, double aspect, double svfa, Rcpp::NumericVector shelterc, Rcpp::NumericVector Tinit, Rcpp::NumericVector thetainit, bool zeroFluxGround);
+RcppExport SEXP _microclimf_BigLeafCpp(SEXP yearSEXP, SEXP monthSEXP, SEXP daySEXP, SEXP hourSEXP, SEXP tempSEXP, SEXP relhumSEXP, SEXP presSEXP, SEXP swdownSEXP, SEXP difradSEXP, SEXP lwdownSEXP, SEXP windspeedSEXP, SEXP winddirSEXP, SEXP precipSEXP, SEXP vegpSEXP, SEXP soilcSEXP, SEXP LfracSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP zrefSEXP, SEXP reqhgtSEXP, SEXP CaSEXP, SEXP matempSEXP, SEXP zAboveSEXP, SEXP maxIterSEXP, SEXP toleranceSEXP, SEXP poolingSEXP, SEXP slopeSEXP, SEXP aspectSEXP, SEXP svfaSEXP, SEXP sheltercSEXP, SEXP TinitSEXP, SEXP thetainitSEXP, SEXP zeroFluxGroundSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -460,7 +460,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shelterc(sheltercSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type Tinit(TinitSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type thetainit(thetainitSEXP);
-    rcpp_result_gen = Rcpp::wrap(BigLeafCpp(year, month, day, hour, temp, relhum, pres, swdown, difrad, lwdown, windspeed, winddir, precip, vegp, soilc, Lfrac, lat, lon, zref, reqhgt, Ca, matemp, zAbove, maxIter, tolerance, pooling, slope, aspect, svfa, shelterc, Tinit, thetainit));
+    Rcpp::traits::input_parameter< bool >::type zeroFluxGround(zeroFluxGroundSEXP);
+    rcpp_result_gen = Rcpp::wrap(BigLeafCpp(year, month, day, hour, temp, relhum, pres, swdown, difrad, lwdown, windspeed, winddir, precip, vegp, soilc, Lfrac, lat, lon, zref, reqhgt, Ca, matemp, zAbove, maxIter, tolerance, pooling, slope, aspect, svfa, shelterc, Tinit, thetainit, zeroFluxGround));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -774,7 +775,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_radiationPointCpp", (DL_FUNC) &_microclimf_radiationPointCpp, 15},
     {"_microclimf_splineFitCpp", (DL_FUNC) &_microclimf_splineFitCpp, 2},
     {"_microclimf_splineEvalCpp", (DL_FUNC) &_microclimf_splineEvalCpp, 2},
-    {"_microclimf_BigLeafCpp", (DL_FUNC) &_microclimf_BigLeafCpp, 32},
+    {"_microclimf_BigLeafCpp", (DL_FUNC) &_microclimf_BigLeafCpp, 33},
     {"_microclimf_satvapCpp", (DL_FUNC) &_microclimf_satvapCpp, 1},
     {"_microclimf_geometricCpp", (DL_FUNC) &_microclimf_geometricCpp, 2},
     {"_microclimf_fillNAIDWCpp", (DL_FUNC) &_microclimf_fillNAIDWCpp, 5},

@@ -77,8 +77,8 @@ splineEvalCpp <- function(fit, queryX) {
     .Call(`_microclimf_splineEvalCpp`, fit, queryX)
 }
 
-BigLeafCpp <- function(year, month, day, hour, temp, relhum, pres, swdown, difrad, lwdown, windspeed, winddir, precip, vegp, soilc, Lfrac, lat, lon, zref, reqhgt = NA_real_, Ca = 400.0, matemp = NA_real_, zAbove = NA_real_, maxIter = 100L, tolerance = 1e-2, pooling = FALSE, slope = 0.0, aspect = 0.0, svfa = 1.0, shelterc = as.numeric( c(1.0)), Tinit = as.numeric( c()), thetainit = as.numeric( c())) {
-    .Call(`_microclimf_BigLeafCpp`, year, month, day, hour, temp, relhum, pres, swdown, difrad, lwdown, windspeed, winddir, precip, vegp, soilc, Lfrac, lat, lon, zref, reqhgt, Ca, matemp, zAbove, maxIter, tolerance, pooling, slope, aspect, svfa, shelterc, Tinit, thetainit)
+BigLeafCpp <- function(year, month, day, hour, temp, relhum, pres, swdown, difrad, lwdown, windspeed, winddir, precip, vegp, soilc, Lfrac, lat, lon, zref, reqhgt = NA_real_, Ca = 400.0, matemp = NA_real_, zAbove = NA_real_, maxIter = 100L, tolerance = 1e-2, pooling = FALSE, slope = 0.0, aspect = 0.0, svfa = 1.0, shelterc = as.numeric( c(1.0)), Tinit = as.numeric( c()), thetainit = as.numeric( c()), zeroFluxGround = TRUE) {
+    .Call(`_microclimf_BigLeafCpp`, year, month, day, hour, temp, relhum, pres, swdown, difrad, lwdown, windspeed, winddir, precip, vegp, soilc, Lfrac, lat, lon, zref, reqhgt, Ca, matemp, zAbove, maxIter, tolerance, pooling, slope, aspect, svfa, shelterc, Tinit, thetainit, zeroFluxGround)
 }
 
 satvapCpp <- function(tc) {

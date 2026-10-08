@@ -255,7 +255,8 @@ namespace pointmodel {
     // reduces the driving wind for topographic shelter; bare ground has no
     // separate canopy-top or within-canopy mixing state.
     void windmodelCpp(const vegpstruct& vegp, double zref, double d, envstruct& env,
-        double shelterc = 1.0, double zi = mc::freeConvZi, double beta = mc::freeConvBeta);
+        double shelterc = 1.0, double zi = mc::freeConvZi, double beta = mc::freeConvBeta,
+        double stableBound = -1.0);
 
     // Aerodynamic resistance to heat transfer (s/m) from the surface
     // roughness length to an arbitrary height above the canopy: the
@@ -448,6 +449,9 @@ namespace pointmodel {
         // In the Campbell formulation the hydraulic-conductivity exponent
         // is derived from b as 2*b + 3 wherever it is required.
         std::vector<double> psi_min; // oven-dry water potential, the solver's lower bound
+        // The parts of each layer's thermal conductivity fixed by its make-up
+        // (utils::soilSolidCpp). Where empty they are formed when needed.
+        std::vector<utils::SoilSolid> solid;
     };
 
     // Time-varying state of the soil temperature profile.
@@ -479,11 +483,34 @@ namespace pointmodel {
         std::vector<double> Tc;       // temperature of each layer (deg C)
         std::vector<double> oldTc;    // temperature of each layer at the previous timestep (deg C)
         std::vector<double> rootfrac; // fraction of root water uptake taken from each layer
+        std::vector<double> psiDry;   // potential at which uptake from each layer begins to fall
+                                      // (uptakeStressPsiCpp), for the depletion share psiDryShare
+        double psiDryShare = -1.0;    // the depletion share psiDry was formed for; negative if not yet
+    };
+
+    // Working arrays of SoilHeatCpp and SoilWaterCpp. A caller that solves
+    // many timesteps keeps one of each, so that the arrays are created once.
+    // Nothing in them is carried from one call to the next.
+    struct soilheatwork {
+        std::vector<double> ff, CT, lambda, aa, bb, cc, dd, TePrev;
+        void size(int m) {
+            for (std::vector<double>* v : { &ff, &CT, &lambda, &aa, &bb, &cc, &dd, &TePrev }) v->assign(m, 0.0);
+        }
+    };
+    struct soilwaterwork {
+        std::vector<double> aa, bb, cc, dd, ff, Ca, dpsi, dkh, dkv, dFaceA, dFaceB;
+        std::vector<double> Tkel, vpSat, humidity, stepOrigin, stepTaken, STr;
+        std::vector<double> kh, kv; // one more entry than the rest: the lower boundary node
+        void size(int n) {
+            for (std::vector<double>* v : { &aa, &bb, &cc, &dd, &ff, &Ca, &dpsi, &dkh, &dkv, &dFaceA, &dFaceB,
+                &Tkel, &vpSat, &humidity, &stepOrigin, &stepTaken }) v->assign(n, 0.0);
+            kh.assign(n + 1, 0.0);
+            kv.assign(n + 1, 0.0);
+        }
     };
 
     // Result of a single call to SoilWaterCpp.
     struct soilwaterresult {
-        soilwatermod state;  // updated soil water state
         bool success;        // whether the Newton iteration converged
         int iterations;      // number of iterations taken
         double Evapmmhr;     // bare-soil evaporation for this timestep (mm)
@@ -610,8 +637,16 @@ namespace pointmodel {
     // weights are renormalised so available layers share the demand. If every
     // layer is fully stressed, uptake is zero rather than forcing extraction
     // from unavailable water.
+    // `psiDry`, where given, holds each layer's stress potential from
+    // uptakeStressPsiCpp, which depends only on the soil and `p`.
     std::vector<double> transpirationDistributeCpp(const soilpstruct& soilp, const std::vector<double>& rootfrac,
-        double totalTransp_mm, double dT, const std::vector<double>& psiw, double p = 0.5);
+        double totalTransp_mm, double dT, const std::vector<double>& psiw, double p = 0.5,
+        const std::vector<double>* psiDry = nullptr);
+
+    // The water potential at which root uptake from each of `n` layers begins
+    // to fall: that of the layer once the share `p` of its water between field
+    // capacity and the wilting point has been drawn.
+    std::vector<double> uptakeStressPsiCpp(const soilpstruct& soilp, double p, int n);
 
     // Advances the multilayer soil-temperature profile by one timestep.
     // Heat diffusion is solved implicitly with temperature- and moisture-
@@ -634,7 +669,10 @@ namespace pointmodel {
     // For vegetation shorter than 10 mm the surface row solves a blend of two
     // balances (the matching constraint): the ground's own (env) and the whole
     // surface's (envS), weighted w and 1 - w. See matchResidualCpp.
-    soilheatmod SoilHeatCpp(soilheatmod state, const soilpstruct& soilp, const envstruct& env,
+    //
+    // `state` is advanced in place: its `Te` is both the starting estimate and
+    // the result, and `oldTe` the profile at the start of the timestep.
+    void SoilHeatCpp(soilheatmod& state, const soilpstruct& soilp, const envstruct& env, soilheatwork& work,
         double dT = 3600.0, double Fact = 1.0, int maxNrIterations = 100, double tolerance = 1e-2,
         const envstruct* envS = nullptr, double wMatch = 1.0);
 
@@ -660,8 +698,12 @@ namespace pointmodel {
     // mass-balance residual and takes full steps, halving a step only when it
     // fails to reduce the residual. The tolerance is on the profile-wide
     // mass-balance residual (kg m-2 s-1); 1e-6 is 0.0036 mm per hour.
-    soilwaterresult SoilWaterCpp(soilwatermod state, const soilpstruct& soilp, const envstruct& env,
-        double dT = 3600.0, double pTAW = 0.5, int maxNrIterations = 100, double tolerance = 1e-6);
+    // `state` is advanced in place: its potentials, water contents and vapour
+    // are both the starting estimate and the result, and `oldtheta` and
+    // `oldvapor` the stores at the start of the timestep.
+    soilwaterresult SoilWaterCpp(soilwatermod& state, const soilpstruct& soilp, const envstruct& env,
+        soilwaterwork& work, double dT = 3600.0, double pTAW = 0.5, int maxNrIterations = 100,
+        double tolerance = 1e-6);
 
     // The timestep orchestration that couples these component models and
     // advances their shared state is implemented in pointmodel.cpp.

@@ -7,16 +7,6 @@
 
 namespace utils {
 
-    // Result of a tridiagonal solve via the Thomas algorithm: the
-    // (forward-eliminated) diagonal and right-hand-side coefficients, and
-    // the solution vector x.
-    struct ThomasResult {
-        std::vector<double> bb;
-        std::vector<double> cc;
-        std::vector<double> dd;
-        std::vector<double> x;
-    };
-
     // Zero-plane displacement height (m): the effective height at which a
     // canopy's drag on the wind above it appears to originate, so that the
     // above-canopy wind profile behaves as a standard logarithmic profile
@@ -114,7 +104,14 @@ namespace utils {
     // one quantity drives an ever-larger change in the other. `beta`
     // controls how much stability correction is allowed, symmetrically,
     // before L is pulled back towards the neutral (unstressed) case.
-    double clipMOlength(double L, double zref, double d, double zm, double beta = 0.9);
+    // `stableBound`, where positive, is the stable-side bound already found for
+    // these heights and roughness by stableBoundCpp, which depends on nothing else.
+    double clipMOlength(double L, double zref, double d, double zm, double beta = 0.9,
+        double stableBound = -1.0);
+
+    // The Obukhov length at which the stable-side stability correction reaches
+    // the largest value clipMOlength allows. Fixed by the heights and roughness.
+    double stableBoundCpp(double zref, double d, double zm, double beta = 0.9);
 
     // Exact, closed-form recovery of the bulk momentum stability
     // correction psi_m implied by an already-known friction velocity uf
@@ -325,8 +322,10 @@ namespace utils {
     // (non-iterative) solution method exploiting the tridiagonal
     // structure. Used by both the soil heat and soil water solvers to
     // advance their respective layered profiles by one timestep.
-    ThomasResult thomasSolveCpp(std::vector<double> aa, std::vector<double> bb,
-        std::vector<double> cc, std::vector<double> dd, std::vector<double> x,
+    // The solution is written to x[first..last]; bb, cc and dd are used as
+    // working space and hold the eliminated coefficients on return.
+    void thomasSolveCpp(const std::vector<double>& aa, std::vector<double>& bb,
+        std::vector<double>& cc, std::vector<double>& dd, std::vector<double>& x,
         int first, int last);
 
     // Node depths (m) for a layered soil profile of n layers spanning a
@@ -348,6 +347,15 @@ namespace utils {
     // affects how efficiently heat moves through it.
     double thermalConductivityCpp(double Vq, double Vm, double Vo, double Vw,
         double Mc, double Tc, double pk);
+
+    // The parts of a soil's thermal conductivity fixed by its make-up: the
+    // solid fraction and its conductivity, the shape factor, the two
+    // clay-dependent constants of the vapour term, and the porosity.
+    struct SoilSolid { double Vsolid; double kSolid; double Ga; double Q; double xwo; double porosity; };
+    SoilSolid soilSolidCpp(double Vq, double Vm, double Vo, double Mc);
+    // Thermal conductivity from those and the state that varies: water
+    // content, temperature and pressure.
+    double thermalConductivityCpp(const SoilSolid& s, double Vw, double Tc, double pk);
 
     // Volumetric heat capacity (J/m^3/K) of a soil (or other porous
     // medium): how much energy is needed to raise a unit volume of the

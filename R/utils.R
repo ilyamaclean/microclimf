@@ -653,7 +653,7 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
                         reqhgt = NA_real_, matemp = NA_real_, zAbove = NA_real_,
                         maxIter = 100, tolerance = 1e-2, pooling = FALSE,
                         slope = 0, aspect = 0, svfa = 1, shelterc = 1,
-                        Tinit = NULL, thetainit = NULL) {
+                        Tinit = NULL, thetainit = NULL, zeroFluxGround = TRUE) {
   vegp$clump <- clump
   vegp$gsmaxCap <- ifelse(is.na(gsmaxCap), -1, gsmaxCap)
   # Forcing times are UTC. Reading them without a timezone would parse them in
@@ -672,7 +672,8 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
              vegp, soilc, Lfrac, lat, lon, zref, reqhgt, Ca, matemp, zAbove, maxIter, tolerance, pooling,
              slope, aspect, svfa, shelterc,
              if (is.null(Tinit)) numeric(0) else Tinit,
-             if (is.null(thetainit)) numeric(0) else thetainit)
+             if (is.null(thetainit)) numeric(0) else thetainit,
+             zeroFluxGround)
 }
 
 # Output fields of the grid models, in the order they are returned.
@@ -898,7 +899,7 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
                                 zoutOverride = NA_real_,
                                 slope = 0, aspect = 0, svfa = 1, shelterc = 1, shadow = 0,
                                 soilinit = NULL, soilend = FALSE, soilinitWarn = TRUE,
-                                phys = list()) {
+                                phys = list(), zeroFluxGround = TRUE) {
   # Mean annual temperature anchors the deep soil thermal boundary as well as
   # the default initial temperature profile. A short weather record can give a
   # seasonally biased estimate, so warn when it is being used as a substitute
@@ -995,10 +996,10 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
     # Use a short reference-grass surface calculation to obtain the
     # stability-dependent temperature, humidity and wind profiles needed to
     # translate the forcing from its measurement height to the common
-    # above-canopy reference height.
+    # above-canopy reference height. Only those profiles are read from it.
     grassrun <- .runbigleaf(weather_adj, grassvegp, grasssoilc, Lfrac = 1,
                            lat = lat, lon = lon, zref = zin, zAbove = zout, matemp = matemp,
-                           maxIter = maxIter, tolerance = tolerance)
+                           maxIter = maxIter, tolerance = tolerance, zeroFluxGround = FALSE)
     weather_adj$temp <- grassrun$Tabove
     weather_adj$relhum <- grassrun$RHabove
     weather_adj$windspeed <- grassrun$windAbove
@@ -1019,7 +1020,7 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
                       gsmaxCap = meangsmax, reqhgt = reqhgt, matemp = matemp,
                       maxIter = maxIter, tolerance = tolerance, pooling = pooling,
                       slope = slope, aspect = aspect, svfa = svfa, shelterc = shelterc,
-                      Tinit = init$Te, thetainit = init$theta)
+                      Tinit = init$Te, thetainit = init$theta, zeroFluxGround = zeroFluxGround)
   TeEnd <- attr(model, "TeEnd"); thetaEnd <- attr(model, "thetaEnd")
   attr(model, "TeEnd") <- NULL; attr(model, "thetaEnd") <- NULL
 

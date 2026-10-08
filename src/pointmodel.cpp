@@ -321,7 +321,7 @@ namespace pointmodel {
     // surface-layer profile through Monin-Obukhov stability, and the resulting
     // friction velocity sets both canopy-top wind and within-canopy mixing.
     void windmodelCpp(const vegpstruct& vegp, double zref, double d, envstruct& env,
-        double shelterc, double zi, double beta)
+        double shelterc, double zi, double beta, double stableBound)
     {
         double hgt = vegp.hgt;
         double pai = vegp.pai;
@@ -380,7 +380,7 @@ namespace pointmodel {
         // it does, so its result is taken as given. Comparing the two and
         // keeping the smaller would reject it: on the stable side the milder
         // length is the larger one.
-        LL = utils::clipMOlength(LL, zref, d, zm);
+        LL = utils::clipMOlength(LL, zref, d, zm, 0.9, stableBound);
         // Apply the stability corrections implied by the current heat flux;
         // sensible heat and turbulence converge together in the outer surface
         // energy-balance iteration. With no heat flux the surface layer is
@@ -407,7 +407,7 @@ namespace pointmodel {
             if (prevFinite && H != 0.0 && ((prevL < 0.0) != (LL < 0.0))) env.stabFlipped = true;
             if (env.stabFlipped && prevFinite) {
                 const double invL = 0.5 * (1.0 / prevL + (H != 0.0 ? 1.0 / LL : 0.0));
-                LL = (invL != 0.0) ? utils::clipMOlength(1.0 / invL, zref, d, zm) : 1e99;
+                LL = (invL != 0.0) ? utils::clipMOlength(1.0 / invL, zref, d, zm, 0.9, stableBound) : 1e99;
                 uf = 0.5 * (prevUf + uf);
                 if (std::abs(LL) < 1e98) {
                     psi_m = utils::dpsimCpp(zm / LL) - utils::dpsimCpp((zref - d) / LL);
@@ -1003,28 +1003,50 @@ namespace pointmodel {
         return hr;
     }
 
+    // The parts of the soil surface's balance that do not depend on the trial
+    // surface temperature: the surface layer's water potential and the air's
+    // heat capacity, density and vapour pressure.
+    struct surfaceFixed { double psiw; double cp; double ph; double ea; };
+
+    static surfaceFixed surfaceFixedCpp(const soilpstruct& soilp, const envstruct& env, double theta)
+    {
+        surfaceFixed f;
+        f.psiw = waterPotentialCpp(soilp, theta, 0);
+        f.cp = utils::cpairCpp(env.tair);
+        f.ph = utils::phairCpp(env.tair, env.pk);
+        f.ea = utils::satvapCpp(env.tair) * env.rh / 100.0;
+        return f;
+    }
+
+    static double soilsurfaceEBCpp(const envstruct& env, double Tsurface, const surfaceFixed& f);
+
     // Net energy available to enter the soil at a trial surface temperature:
     // absorbed radiation minus emitted longwave, sensible heat and latent
     // heat. Positive values imply net downward heat flux into the soil.
     double soilsurfaceEBCpp(const soilpstruct& soilp, const envstruct& env, double Tsurface, double theta)
+    {
+        return soilsurfaceEBCpp(env, Tsurface, surfaceFixedCpp(soilp, env, theta));
+    }
+
+    static double soilsurfaceEBCpp(const envstruct& env, double Tsurface, const surfaceFixed& f)
     {
         // Net radiation. `env.emGround` is the coefficient that belongs with
         // the absorbed longwave RadlwabsStepCpp supplied: the ground's emission
         // net of the share the canopy and terrain return to it.
         double Rnet = env.RabsGround - env.emGround * sb * utils::rademCpp(Tsurface);
         // Turbulent sensible heat exchange with the reference air.
-        double cp = utils::cpairCpp(env.tair);
-        double ph = utils::phairCpp(env.tair, env.pk);
+        double cp = f.cp;
+        double ph = f.ph;
         double H = ((ph * cp) / env.rHa) * (Tsurface - env.tair);
         // Moisture-limited evaporation from the soil surface.
-        double hr = soilrelhumCpp(soilp, Tsurface, theta);
+        double hr = std::exp(Mw * f.psiw / (RgasC * (Tsurface + 273.15)));
         // The whole surface's balance, set for the matching constraint (see
         // matchResidualCpp): foliage and soil as the network's two sources at
         // one temperature, in parallel, with factor (a + b hr)/(a + b).
         if (env.wholeB >= 0.0 && env.wholeA >= 0.0 && env.wholeA + env.wholeB > 0.0)
             hr = (env.wholeA + env.wholeB * hr) / (env.wholeA + env.wholeB);
         double es = utils::satvapCpp(Tsurface) * hr;
-        double ea = utils::satvapCpp(env.tair) * env.rh / 100.0;
+        double ea = f.ea;
         double la = utils::latentHeatCpp(Tsurface);
         double rVs = (env.rVg > 0.0) ? env.rVg : env.rHa;
         double L = ((la * ph) / (rVs * env.pk)) * (es - ea);
@@ -1181,6 +1203,10 @@ namespace pointmodel {
         return capacity_vapor;
     }
 
+    struct evapFixed { double kelvin; double esSat; double ea; double coef; };
+    static evapFixed evapFixedCpp(const envstruct& env, double Tsurface);
+    static double evaporationFluxCpp(const soilpstruct& soilp, double theta, double dT, const evapFixed& f);
+
     // Soil evaporation over one timestep, driven by the vapour-pressure
     // gradient from moisture-limited pore air at the surface to the air the
     // soil exchanges with, across the soil's vapour resistance. The pore air's
@@ -1188,14 +1214,72 @@ namespace pointmodel {
     // energy balance takes it.
     double evaporationFluxCpp(const soilpstruct& soilp, const envstruct& env, double theta, double Tsurface, double dT)
     {
-        double psiw = waterPotentialCpp(soilp, theta, 0); // J/kg
+        return evaporationFluxCpp(soilp, theta, dT, evapFixedCpp(env, Tsurface));
+    }
+
+    // The parts of the soil's evaporation that do not depend on its water
+    // content: the Kelvin equation's denominator at the surface temperature,
+    // the saturated vapour pressure there and the air's vapour pressure (Pa),
+    // and the conversion from a vapour pressure difference to a flux.
+    static evapFixed evapFixedCpp(const envstruct& env, double Tsurface)
+    {
+        evapFixed f;
         double Tk = env.tair + 273.15; // deg C -> K
-        double hs = std::exp(Mw * psiw / (RgasC * (Tsurface + 273.15))); // soil effective relative humidity (0-1)
-        double es = 1000.0 * utils::satvapCpp(Tsurface) * hs;              // kPa -> Pa
-        double ea = 1000.0 * utils::satvapCpp(env.tair) * (env.rh / 100.0); // kPa -> Pa
+        f.kelvin = RgasC * (Tsurface + 273.15);
+        f.esSat = 1000.0 * utils::satvapCpp(Tsurface);                    // kPa -> Pa
+        f.ea = 1000.0 * utils::satvapCpp(env.tair) * (env.rh / 100.0);    // kPa -> Pa
         double rV = (env.rVg > 0.0) ? env.rVg : env.rHa;
-        double Ev = (Mw / (rV * RgasC * Tk)) * (es - ea) * dT; // soil evaporation (kg/m^2/s -> mm)
-        return Ev;
+        f.coef = Mw / (rV * RgasC * Tk);
+        return f;
+    }
+
+    static double evaporationFluxCpp(const soilpstruct& soilp, double theta, double dT, const evapFixed& f)
+    {
+        double psiw = waterPotentialCpp(soilp, theta, 0); // J/kg
+        double hs = std::exp(Mw * psiw / f.kelvin);       // soil effective relative humidity (0-1)
+        return f.coef * (f.esSat * hs - f.ea) * dT;       // soil evaporation (kg/m^2/s -> mm)
+    }
+
+    std::vector<double> uptakeStressPsiCpp(const soilpstruct& soilp, double p, int n)
+    {
+        std::vector<double> out(n);
+        for (int i = 0; i < n; ++i) {
+            double theta_fc = thetaFromPsiCpp(soilp, mc::psiFieldCapacity, i);
+            double theta_wilt = thetaFromPsiCpp(soilp, mc::psiWiltingPoint, i);
+            out[i] = waterPotentialCpp(soilp, theta_fc - p * (theta_fc - theta_wilt), i);
+        }
+        return out;
+    }
+
+    // The uptake from each layer, written to `S`, given each layer's stress
+    // potential `psiDry` (uptakeStressPsiCpp).
+    static void uptakeShareCpp(const soilpstruct& soilp, const std::vector<double>& rootfrac,
+        double totalTransp_mm, double dT, const std::vector<double>& psiw, const std::vector<double>& psiDry,
+        std::vector<double>& S)
+    {
+        int n = static_cast<int>(psiw.size());
+        S.assign(n, 0.0);
+        if (totalTransp_mm > 0.0) {
+            double Trate = totalTransp_mm / dT;
+            // Water available to roots spans field capacity to the wilting
+            // point, and `p` is the share of it a plant draws on before
+            // uptake from a layer begins to fall away. It falls to zero only
+            // at a much lower potential, so a layer drier than the wilting
+            // point still supplies roots that reach it. All three limits are
+            // potentials, the same in every soil; each soil's own retention
+            // curve turns them into water contents.
+            for (int i = 0; i < n; ++i) {
+                double aw = utils::alphaWetCpp(psiw[i], soilp.psie[i]);
+                double ad = utils::alphaDryCpp(psiw[i], psiDry[i], mc::psiUptakeLimit);
+                double alpha = aw * ad;
+                S[i] = rootfrac[i] * alpha;
+            }
+            double sumw = std::accumulate(S.begin(), S.end(), 0.0);
+            for (int i = 0; i < n; ++i) {
+                double w = (sumw > 0.0) ? (S[i] / sumw) : 0.0;
+                S[i] = w * Trate;
+            }
+        }
     }
 
     // Allocate the canopy's total transpiration demand among soil layers.
@@ -1203,39 +1287,29 @@ namespace pointmodel {
     // is either waterlogged or too dry; the remaining weights are normalised
     // so that available layers collectively meet the imposed demand.
     std::vector<double> transpirationDistributeCpp(const soilpstruct& soilp, const std::vector<double>& rootfrac,
-        double totalTransp_mm, double dT, const std::vector<double>& psiw, double p)
+        double totalTransp_mm, double dT, const std::vector<double>& psiw, double p,
+        const std::vector<double>* psiDry)
     {
         int n = static_cast<int>(psiw.size());
-        std::vector<double> S(n);
+        std::vector<double> S(n, 0.0);
         if (totalTransp_mm > 0.0) {
-            std::vector<double> w(n);
-            double Trate = totalTransp_mm / dT;
-            for (int i = 0; i < n; ++i) {
-                // Water available to roots spans field capacity to the wilting
-                // point, and `p` is the share of it a plant draws on before
-                // uptake from a layer begins to fall away. It falls to zero only
-                // at a much lower potential, so a layer drier than the wilting
-                // point still supplies roots that reach it. All three limits are
-                // potentials, the same in every soil; each soil's own retention
-                // curve turns them into water contents.
-                double theta_fc = thetaFromPsiCpp(soilp, mc::psiFieldCapacity, i);
-                double theta_wilt = thetaFromPsiCpp(soilp, mc::psiWiltingPoint, i);
-                double psi_dry = waterPotentialCpp(soilp, theta_fc - p * (theta_fc - theta_wilt), i);
-                double aw = utils::alphaWetCpp(psiw[i], soilp.psie[i]);
-                double ad = utils::alphaDryCpp(psiw[i], psi_dry, mc::psiUptakeLimit);
-                double alpha = aw * ad;
-                w[i] = rootfrac[i] * alpha;
+            std::vector<double> own;
+            if (psiDry == nullptr || static_cast<int>(psiDry->size()) != n) {
+                own = uptakeStressPsiCpp(soilp, p, n);
+                psiDry = &own;
             }
-            double sumw = std::accumulate(w.begin(), w.end(), 0.0);
-            for (int i = 0; i < n; ++i) {
-                w[i] = (sumw > 0.0) ? (w[i] / sumw) : 0.0;
-                S[i] = w[i] * Trate;
-            }
-        }
-        else {
-            for (int i = 0; i < n; ++i) S[i] = 0.0;
+            uptakeShareCpp(soilp, rootfrac, totalTransp_mm, dT, psiw, *psiDry, S);
         }
         return S;
+    }
+
+    // Forms the state's stress potentials for the depletion share `p`, unless
+    // it already holds them for that share.
+    static void ensureUptakeStressCpp(soilwatermod& state, const soilpstruct& soilp, double p)
+    {
+        if (state.psiDryShare == p && state.psiDry.size() == state.psiw.size()) return;
+        state.psiDry = uptakeStressPsiCpp(soilp, p, static_cast<int>(state.psiw.size()));
+        state.psiDryShare = p;
     }
 
     matchresidual matchResidualCpp(const soilpstruct& soilp, const envstruct& env, const envstruct* envS,
@@ -1267,25 +1341,36 @@ namespace pointmodel {
     // no free-drainage-style flux option for heat as there is for water, so
     // a shallow profile relative to the timestep can show an artificially
     // damped deep-layer response.
-    soilheatmod SoilHeatCpp(soilheatmod state, const soilpstruct& soilp, const envstruct& env,
+    void SoilHeatCpp(soilheatmod& state, const soilpstruct& soilp, const envstruct& env, soilheatwork& work,
         double dT, double Fact, int maxNrIterations, double tolerance, const envstruct* envS, double wMatch)
     {
         int n = state.n;
         double boundaryT = state.oldTe[n];
-        std::vector<double> ff(n + 1), CT(n + 1), lambda(n + 1);
-        std::vector<double> aa(n + 1), bb(n + 1), cc(n + 1), dd(n + 1);
+        work.size(n + 1);
+        std::vector<double>& ff = work.ff, & CT = work.CT, & lambda = work.lambda;
+        std::vector<double>& aa = work.aa, & bb = work.bb, & cc = work.cc, & dd = work.dd;
         const double gg = 1.0 - Fact;
         // The old profile is the storage reference for the entire timestep;
         // inner iterations refine the new state rather than advancing time.
-        const std::vector<double> oldTe_fixed = state.oldTe;
-        std::vector<double> Te_new = state.Te;
-        std::vector<double> Te_prev = Te_new;
-        std::vector<double> wc = state.wc;
-        std::vector<double> dz = state.dz;
-        std::vector<double> Vq = soilp.Vq;
-        std::vector<double> Vm = soilp.Vm;
-        std::vector<double> Vo = soilp.Vo;
-        std::vector<double> Mc = soilp.Mc;
+        const std::vector<double>& oldTe_fixed = state.oldTe;
+        std::vector<double>& Te_new = state.Te;
+        std::vector<double>& Te_prev = work.TePrev;
+        Te_prev = Te_new;
+        const std::vector<double>& wc = state.wc;
+        const std::vector<double>& dz = state.dz;
+        const std::vector<double>& Vq = soilp.Vq;
+        const std::vector<double>& Vm = soilp.Vm;
+        const std::vector<double>& Vo = soilp.Vo;
+        const std::vector<double>& Mc = soilp.Mc;
+        // The make-up of each layer fixes part of its conductivity for the run.
+        std::vector<utils::SoilSolid> ownSolid;
+        if (static_cast<int>(soilp.solid.size()) != n + 1) {
+            ownSolid.resize(n + 1);
+            for (int i = 0; i <= n; ++i) ownSolid[i] = utils::soilSolidCpp(Vq[i], Vm[i], Vo[i], Mc[i]);
+        }
+        const std::vector<utils::SoilSolid>& solid = ownSolid.empty() ? soilp.solid : ownSolid;
+        // The surface water content does not change within this solve.
+        const surfaceFixed sfix = surfaceFixedCpp(soilp, env, wc[0]);
         int nrIterations = 0;
         double maxdT = 1e99;
         double qsurface = 0.0;
@@ -1305,7 +1390,7 @@ namespace pointmodel {
             // satisfies the original nonlinear balance exactly: they change how
             // the solution is reached, not what it converges to.
             for (int i = 0; i <= n; ++i) {
-                lambda[i] = utils::thermalConductivityCpp(Vq[i], Vm[i], Vo[i], wc[i], Mc[i], Te_new[i], env.pk);
+                lambda[i] = utils::thermalConductivityCpp(solid[i], wc[i], Te_new[i], env.pk);
                 CT[i] = utils::heatCapacityCpp(Vq[i], Vm[i], Vo[i], wc[i], Te_new[i], env.pk) * state.vol[i];
             }
             // Conductive coupling between adjacent soil layers.
@@ -1318,11 +1403,11 @@ namespace pointmodel {
                 qsurface = mr.q;
                 lamS = mr.lam;
             } else {
-                qsurface = soilsurfaceEBCpp(soilp, env, Tsurf_iter, wc[0]);
+                qsurface = soilsurfaceEBCpp(env, Tsurf_iter, sfix);
                 // Centred difference over 1 K, the convention groundTemp0Cpp and
                 // utils::penmanMonteithCpp already use on this same balance.
-                double qplus = soilsurfaceEBCpp(soilp, env, Tsurf_iter + 0.5, wc[0]);
-                double qminus = soilsurfaceEBCpp(soilp, env, Tsurf_iter - 0.5, wc[0]);
+                double qplus = soilsurfaceEBCpp(env, Tsurf_iter + 0.5, sfix);
+                double qminus = soilsurfaceEBCpp(env, Tsurf_iter - 0.5, sfix);
                 lamS = -(qplus - qminus);
             }
             // Emitted longwave alone guarantees this much restoring strength,
@@ -1358,8 +1443,7 @@ namespace pointmodel {
                 }
             }
             Te_prev = Te_new;
-            utils::ThomasResult TBC = utils::thomasSolveCpp(aa, bb, cc, dd, Te_new, 0, n);
-            Te_new = TBC.x;
+            utils::thomasSolveCpp(aa, bb, cc, dd, Te_new, 0, n);
             // The surface balance was linearised about Tsurf_iter, and the
             // penalty lamS*(Tsurf_iter - Te_new[0]) it carries into the surface
             // row vanishes only when the two agree. That mismatch is therefore
@@ -1373,11 +1457,9 @@ namespace pointmodel {
             }
             ++nrIterations;
         }
-        state.Te = Te_new;
         state.iters = nrIterations;
         state.lamS = lamS;
         state.condSlope = CT[0] / dT + ff[0];
-        return state;
     }
 
     // Maximum rainfall that can enter the soil during this timestep without
@@ -1396,7 +1478,8 @@ namespace pointmodel {
         double kv1 = vaporConductivityFromPsiThetaCpp(soilp, state.psiw[1], state.theta[1], state.Tc[1] + 273.15, 1);
         double ff0max = (state.psiw[1] * kh1 - soilp.psie[0] * k0sat) / (state.dz[0] * (1.0 - nPsi0))
             + 0.5 * kv1 * (state.psiw[1] - soilp.psie[0]) / state.dz[0] - g * k0sat;
-        std::vector<double> STr = transpirationDistributeCpp(soilp, state.rootfrac, env.Et, dT, state.psiw, pTAW);
+        std::vector<double> STr = transpirationDistributeCpp(soilp, state.rootfrac, env.Et, dT, state.psiw, pTAW,
+            &state.psiDry);
         return Evapmmhr - dT * (ff0max - STr[0]);
     }
 
@@ -1405,23 +1488,40 @@ namespace pointmodel {
     // Vertical transport, storage, bare-soil evaporation and root uptake are
     // coupled nonlinearly, with either free drainage or a saturated lower
     // boundary controlling water loss at depth.
-    soilwaterresult SoilWaterCpp(soilwatermod state, const soilpstruct& soilp, const envstruct& env,
-        double dT, double pTAW, int maxNrIterations, double tolerance)
+    soilwaterresult SoilWaterCpp(soilwatermod& state, const soilpstruct& soilp, const envstruct& env,
+        soilwaterwork& work, double dT, double pTAW, int maxNrIterations, double tolerance)
     {
         const double rho = 1000.0;
         const int n = soilp.nLayers;
         // Fixed start-of-timestep water and vapour stores provide the mass-
         // balance reference while the current state is iterated to convergence.
-        const std::vector<double> oldtheta = state.oldtheta;
-        const std::vector<double> oldvapor = state.oldvapor;
-        std::vector<double> psiw = state.psiw;
-        std::vector<double> theta = state.theta;
-        std::vector<double> vapor = state.vapor;
-        std::vector<double> k(n + 1, 0.0);
-        std::vector<double> aa(n, 0.0), bb(n, 0.0), cc(n, 0.0), dd(n, 0.0);
-        std::vector<double> ff(n, 0.0), Ca(n, 0.0), dpsi(n, 0.0);
-        std::vector<double> kh(n + 1, 0.0), kv(n + 1, 0.0), dkh(n, 0.0), dkv(n, 0.0);
-        std::vector<double> dFaceA(n, 0.0), dFaceB(n, 0.0);
+        const std::vector<double>& oldtheta = state.oldtheta;
+        const std::vector<double>& oldvapor = state.oldvapor;
+        std::vector<double>& psiw = state.psiw;
+        std::vector<double>& theta = state.theta;
+        std::vector<double>& vapor = state.vapor;
+        std::vector<double>& k = state.k;
+        k.assign(n + 1, 0.0);
+        work.size(n);
+        std::vector<double>& aa = work.aa, & bb = work.bb, & cc = work.cc, & dd = work.dd;
+        std::vector<double>& ff = work.ff, & Ca = work.Ca, & dpsi = work.dpsi;
+        std::vector<double>& kh = work.kh, & kv = work.kv, & dkh = work.dkh, & dkv = work.dkv;
+        std::vector<double>& dFaceA = work.dFaceA, & dFaceB = work.dFaceB;
+        std::vector<double>& STr = work.STr;
+        ensureUptakeStressCpp(state, soilp, pTAW);
+        // Layer temperatures are fixed within this solve, and with them the
+        // saturated vapour density of each layer's pore air and the parts of
+        // the surface's evaporation that do not depend on its water content.
+        std::vector<double>& Tkel = work.Tkel, & vpSat = work.vpSat;
+        for (int i = 0; i < n; ++i) {
+            Tkel[i] = state.Tc[i] + 273.15;
+            vpSat[i] = utils::satVapDensityCpp(Tkel[i]);
+        }
+        const evapFixed efix = evapFixedCpp(env, state.Tc[0]);
+        // Each step leaves every layer's water content and pore-air humidity
+        // formed from its new potential, which the next assembly reuses.
+        std::vector<double>& humidityStep = work.humidity;
+        bool fromStep = false;
         // Lower boundary: either a saturated fixed-head condition or, under
         // free drainage, continuation of the deepest resolved layer.
         if (!soilp.FreeDrain) {
@@ -1431,7 +1531,7 @@ namespace pointmodel {
         }
         // State and step of the last full Newton step, so that a step which
         // increases the residual can be retraced at half the length.
-        std::vector<double> stepOrigin(n, 0.0), stepTaken(n, 0.0);
+        std::vector<double>& stepOrigin = work.stepOrigin, & stepTaken = work.stepTaken;
         double originResidual = 0.0, stepFraction = 1.0;
         bool haveStep = false;
         double surplusRate = 0.0;   // water a saturated surface cannot accept (kg m-2 s-1)
@@ -1441,7 +1541,7 @@ namespace pointmodel {
         while (iter < maxNrIterations) {
             // Net water flux at the surface combines rainfall reaching the
             // ground with evaporation from the current surface state.
-            Evapmmhr = evaporationFluxCpp(soilp, env, theta[0], state.Tc[0], dT);
+            Evapmmhr = evaporationFluxCpp(soilp, theta[0], dT, efix);
             // precipGround is throughfall after canopy interception, so the
             // soil surface receives only the water that actually reaches the ground.
             double surfaceFlux = (Evapmmhr - env.precipGround) / dT;
@@ -1462,13 +1562,13 @@ namespace pointmodel {
                 double hp = PSI_SLOPE_FRAC * std::abs(psiw[0]);
                 if (hp < PSI_SLOPE_MIN) hp = PSI_SLOPE_MIN;
                 double theta_probe = thetaFromPsiCpp(soilp, psiw[0] + hp, 0);
-                double Evprobe = evaporationFluxCpp(soilp, env, theta_probe, state.Tc[0], dT);
+                double Evprobe = evaporationFluxCpp(soilp, theta_probe, dT, efix);
                 dEvap_dpsi = ((Evprobe - Evapmmhr) / hp) / dT;
                 if (!(dEvap_dpsi > 0.0)) dEvap_dpsi = 0.0;
             }
             // Distribute plant water uptake across roots using the current
             // layer water potentials.
-            std::vector<double> STr = transpirationDistributeCpp(soilp, state.rootfrac, env.Et, dT, psiw, pTAW);
+            uptakeShareCpp(soilp, state.rootfrac, env.Et, dT, psiw, state.psiDry, STr);
 
             // Liquid and vapour conductivities, their derivatives with respect
             // to water potential, and the derivative of stored water, for each
@@ -1477,12 +1577,20 @@ namespace pointmodel {
             // conductivity varies through the Kelvin humidity and through the
             // air-filled porosity.
             for (int i = 0; i < n; ++i) {
-                double Tkelvin = state.Tc[i] + 273.15;
+                double Tkelvin = Tkel[i];
                 kh[i] = hydraulicConductivityFromThetaCpp(soilp, theta[i], i);
-                kv[i] = vaporConductivityFromPsiThetaCpp(soilp, psiw[i], theta[i], Tkelvin, i);
+                // The pore air's humidity and saturated vapour density are
+                // shared by the vapour conductivity and the vapour storage
+                // (vaporConductivityFromPsiThetaCpp, dVaporDPsiCpp).
+                const double humidity = fromStep ? humidityStep[i] : std::exp(Mw * psiw[i] / (RgasC * Tkelvin));
+                const double vp = vpSat[i];
+                kv[i] = 0.66 * (soilp.thetaS[i] - theta[i]) * 0.000024 * vp * humidity * Mw / (RgasC * Tkelvin);
                 k[i] = kh[i] + kv[i];
-                double Cw = dThetaDPsiCpp(soilp, psiw[i], i);
-                double Cv = dVaporDPsiCpp(soilp, psiw[i], theta[i], Tkelvin, i);
+                // A step leaves the potential below air entry and the water
+                // content on the retention curve at it (dThetaDPsiCpp).
+                double Cw = fromStep ? -theta[i] / (soilp.b[i] * psiw[i]) : dThetaDPsiCpp(soilp, psiw[i], i);
+                double Cv = (soilp.thetaS[i] - theta[i]) * vp * humidity *
+                    (Mw / (RgasC * Tkelvin)) - Cw * vp * humidity;
                 Ca[i] = state.vol[i] * (rho * Cw + Cv) / dT;
                 dkh[i] = -(2.0 + 3.0 / soilp.b[i]) * kh[i] / psiw[i];
                 double airFilled = soilp.thetaS[i] - theta[i];
@@ -1576,8 +1684,10 @@ namespace pointmodel {
                     psiw[i] = std::min(psiw[i], soilp.psie[i] - 1e-8);
                     psiw[i] = std::max(psiw[i], soilp.psi_min[i]);
                     theta[i] = thetaFromPsiCpp(soilp, psiw[i], i);
-                    vapor[i] = vaporFromPsiCpp(soilp, psiw[i], theta[i], state.Tc[i] + 273.15, i);
+                    humidityStep[i] = std::exp(Mw * psiw[i] / (RgasC * Tkel[i]));
+                    vapor[i] = (soilp.thetaS[i] - theta[i]) * vpSat[i] * humidityStep[i];
                 }
+                fromStep = true;
                 ++iter;
                 continue;
             }
@@ -1586,8 +1696,7 @@ namespace pointmodel {
             // profile-wide mass-balance residual, and take it in full, within
             // the physically allowed range between oven dryness and air
             // entry.
-            utils::ThomasResult TBC = utils::thomasSolveCpp(aa, bb, cc, dd, dpsi, 0, n - 1);
-            dpsi = TBC.x;
+            utils::thomasSolveCpp(aa, bb, cc, dd, dpsi, 0, n - 1);
             for (int i = 0; i < n; ++i) {
                 stepOrigin[i] = psiw[i];
                 stepTaken[i] = dpsi[i];
@@ -1596,19 +1705,16 @@ namespace pointmodel {
                 psiw[i] = std::max(psiw[i], soilp.psi_min[i]);
 
                 theta[i] = thetaFromPsiCpp(soilp, psiw[i], i);
-                vapor[i] = vaporFromPsiCpp(soilp, psiw[i], theta[i], state.Tc[i] + 273.15, i);
+                humidityStep[i] = std::exp(Mw * psiw[i] / (RgasC * Tkel[i]));
+                vapor[i] = (soilp.thetaS[i] - theta[i]) * vpSat[i] * humidityStep[i];
             }
+            fromStep = true;
             originResidual = massBalance;
             stepFraction = 1.0;
             haveStep = true;
             ++iter;
         }
-        state.psiw = psiw;
-        state.theta = theta;
-        state.vapor = vapor;
-        state.k = k;
         soilwaterresult out;
-        out.state = state;
         out.success = (massBalance <= tolerance);
         out.iterations = iter;
         out.Evapmmhr = Evapmmhr;
@@ -1702,6 +1808,10 @@ namespace pointmodel {
         // so the bound is a numerical backstop rather than a physical limit and
         // is placed where no soil in equilibrium with the air can go.
         out.psi_min.assign(out.psie.size(), mc::psiOvenDry);
+        out.solid.resize(out.Vq.size());
+        for (size_t i = 0; i < out.Vq.size(); ++i) {
+            out.solid[i] = utils::soilSolidCpp(out.Vq[i], out.Vm[i], out.Vo[i], out.Mc[i]);
+        }
         return out;
     }
 
@@ -1892,7 +2002,8 @@ namespace pointmodel {
         double zref, double reqhgt, double Ca, double zAbove,
         int maxIter = 100, double tolerance = 1e-2, bool pooling = false,
         double slope = 0.0, double aspect = 0.0, double svfa = 1.0,
-        const std::vector<double>& shelterc = std::vector<double>{1.0})
+        const std::vector<double>& shelterc = std::vector<double>{1.0},
+        bool zeroFluxGround = true)
     {
         int n = static_cast<int>(temp.size());
         // Per-timestep wind shelter coefficient -- real topographic wind
@@ -1957,6 +2068,15 @@ namespace pointmodel {
         const bool runHasColumn = vegp.hgt > 0.0;
         utils::ColumnStruct runCol{};
         if (runHasColumn) runCol = utils::columnSetupCpp(vegp.hgt, vegp.pai, d);
+        // The stable-side bound on the Obukhov length depends only on the
+        // reference height, displacement and roughness, so it is found once.
+        const double runStableBound = utils::stableBoundCpp(zref, d, utils::roughlengthCpp(vegp.hgt, vegp.pai, d));
+        // Each layer's root-uptake stress potential depends only on the soil
+        // and the plant's depletion share.
+        ensureUptakeStressCpp(soilwater, soilp, vegp.pTAW);
+        // The soil solves' working arrays, created once for the run.
+        soilheatwork heatWork;
+        soilwaterwork waterWork;
         // Weight of the ground's own balance in the soil's surface row (the
         // matching constraint, see matchResidualCpp): 0 at and below the soil's
         // heat roughness height, where ground and foliage are one surface, 1 at
@@ -2069,7 +2189,8 @@ namespace pointmodel {
 
                 // The sensible heat this pass's stability is formed from.
                 const double Hused = env.H;
-                windmodelCpp(vegp, zref, d, env, shelterSpatial ? shelterc[i] : shelterc[0]);
+                windmodelCpp(vegp, zref, d, env, shelterSpatial ? shelterc[i] : shelterc[0],
+                    mc::freeConvZi, mc::freeConvBeta, runStableBound);
                 double rRise = 0.0;
                 double rGz = groundaeroresistCpp(vegp, zref, d, env, runCol, runHasColumn, &rRise); // ground to zref, for the soil model
                 // Canopy/heat-exchange surface to zref; on bare ground the exchange
@@ -2178,12 +2299,11 @@ namespace pointmodel {
                     envS.wholeA = cw.aNet;
                     envS.wholeB = cw.bNet;
                 }
-                soilheat = SoilHeatCpp(soilheat, soilp, envG, 3600.0, 1.0, maxIter, 1e-2,
+                SoilHeatCpp(soilheat, soilp, envG, heatWork, 3600.0, 1.0, maxIter, 1e-2,
                     matchHere ? &envS : nullptr, wMatch);
                 soilwater.Tc = soilheat.Te;
                 soilwater.oldTc = soilheat.oldTe;
-                soilwaterresult swres = SoilWaterCpp(soilwater, soilp, envG, 3600.0, vegp.pTAW, maxIter);
-                soilwater = swres.state;
+                soilwaterresult swres = SoilWaterCpp(soilwater, soilp, envG, waterWork, 3600.0, vegp.pTAW, maxIter);
                 witers = swres.iterations;
                 // Water the saturated surface could not take after all, beyond
                 // what the capacity estimate above withheld, joins the same
@@ -2293,8 +2413,9 @@ namespace pointmodel {
             // the landscape shortcut to separate local radiative/aerodynamic
             // forcing from the soil's thermal-storage response. It takes reference
             // air across the full column, as the shortcut's own zero-flux pass
-            // does, so that the two stay comparable.
-            double Tground0 = groundTemp0Cpp(soilp, env, soilwater.theta[0], soilheat.Te[0]);
+            // does, so that the two stay comparable. Nothing in the solve reads
+            // it, so a caller with no use for it can leave it out.
+            double Tground0 = zeroFluxGround ? groundTemp0Cpp(soilp, env, soilwater.theta[0], soilheat.Te[0]) : nanv;
             out.rHa[i] = env.rHa;
             out.rBL[i] = rHa_conv;
             out.rSurf[i] = rV_conv - rHa_conv;
@@ -2393,6 +2514,8 @@ namespace pointmodel {
     // fixed-temperature lower boundary for the whole run, so it starts at the
     // deep temperature (`matemp`) whatever `Tinit` holds. The soil state at the
     // end of the run is attached to the result as attributes TeEnd and thetaEnd.
+    // With `zeroFluxGround` false the zero-ground-heat-flux diagnostic
+    // `Tground0` is not solved and is returned as NA.
     Rcpp::DataFrame BigLeafCpp(
         Rcpp::NumericVector year, Rcpp::NumericVector month,
         Rcpp::NumericVector day, Rcpp::NumericVector hour,
@@ -2405,7 +2528,8 @@ namespace pointmodel {
         double slope = 0.0, double aspect = 0.0, double svfa = 1.0,
         Rcpp::NumericVector shelterc = Rcpp::NumericVector::create(1.0),
         Rcpp::NumericVector Tinit = Rcpp::NumericVector(0),
-        Rcpp::NumericVector thetainit = Rcpp::NumericVector(0))
+        Rcpp::NumericVector thetainit = Rcpp::NumericVector(0),
+        bool zeroFluxGround = true)
     {
         (void)winddir;
 
@@ -2446,7 +2570,7 @@ namespace pointmodel {
             vp, sp, heat0, water0,
             gref, grefPAR, lat, lon,
             zref, reqhgt, Ca, zAbove, maxIter, tolerance, pooling, slope, aspect, svfa,
-            Rcpp::as<std::vector<double>>(shelterc));
+            Rcpp::as<std::vector<double>>(shelterc), zeroFluxGround);
 
         Rcpp::DataFrame df = Rcpp::DataFrame::create(
             Rcpp::Named("RabsGround") = res.RabsGround,
@@ -2510,10 +2634,11 @@ Rcpp::DataFrame BigLeafCpp(
     double slope = 0.0, double aspect = 0.0, double svfa = 1.0,
     Rcpp::NumericVector shelterc = Rcpp::NumericVector::create(1.0),
     Rcpp::NumericVector Tinit = Rcpp::NumericVector::create(),
-    Rcpp::NumericVector thetainit = Rcpp::NumericVector::create())
+    Rcpp::NumericVector thetainit = Rcpp::NumericVector::create(),
+    bool zeroFluxGround = true)
 {
     return pointmodel::BigLeafCpp(year, month, day, hour, temp, relhum, pres,
         swdown, difrad, lwdown, windspeed, winddir, precip, vegp, soilc, Lfrac, lat, lon,
         zref, reqhgt, Ca, matemp, zAbove, maxIter, tolerance, pooling, slope, aspect, svfa, shelterc,
-        Tinit, thetainit);
+        Tinit, thetainit, zeroFluxGround);
 }
