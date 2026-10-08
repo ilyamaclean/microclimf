@@ -2575,9 +2575,10 @@ runpointmodelasgrid <- function(weather, reqhgt = 0, dtm, vegp, soilc, tme,
   runOneCell <- function(k) {
     i <- validIJ[k, 1]; j <- validIJ[k, 2]
 
-    wx <- as.data.frame(lapply(weatherArr, function(a) a[i, j, ]))
-    if (anyNA(wx)) return(NA) # unfillable gap at this cell
+    wx <- lapply(weatherArr, function(a) a[i, j, ])
+    if (anyNA(wx, recursive = TRUE)) return(NA) # unfillable gap at this cell
     wx$obs_time <- tmeUTC
+    wx <- structure(wx, class = "data.frame", row.names = .set_row_names(nT))
 
     # Direct sunlight is removed when the sun is below the astronomical horizon or
     # below the terrain horizon in its current azimuthal sector.
@@ -2709,15 +2710,15 @@ runpointmodelasgrid <- function(weather, reqhgt = 0, dtm, vegp, soilc, tme,
   }
 
   coresN <- .resolveCores(cores)
-  oldplan <- future::plan()
-  on.exit(future::plan(oldplan), add = TRUE)
   if (coresN > 1) {
-    future::plan(future::multisession, workers = coresN)
+    oldplan <- future::plan(future::multisession, workers = coresN)
+    on.exit(future::plan(oldplan), add = TRUE)
+    results <- future.apply::future_lapply(seq_len(nrow(validIJ)), runOneCell,
+                                            future.seed = TRUE)
   } else {
-    future::plan(future::sequential)
+    # On one core the cells are solved in turn in this session.
+    results <- lapply(seq_len(nrow(validIJ)), runOneCell)
   }
-  results <- future.apply::future_lapply(seq_len(nrow(validIJ)), runOneCell,
-                                          future.seed = TRUE)
 
   # Reassemble the independently solved cells onto the original terrain grid and
   # preserve the input coordinate system in the returned raster time series.
