@@ -2096,6 +2096,10 @@ namespace pointmodel {
         // Sensible and latent heat leaving the whole surface, carried between
         // iterations and hours to set the air the ground exchanges with.
         double Hsurf = 0.0, Lsurf = 0.0;
+        // The canopy's offset from the air, the sensible heat and the momentum
+        // stability correction the last hour ended with, from which the next
+        // hour's iteration starts where the record is continuous.
+        double lastOffset = 0.0, lastH = 0.0, lastPsim = 0.0;
 
         for (int i = 0; i < n; ++i) {
             envstruct env{};
@@ -2109,6 +2113,23 @@ namespace pointmodel {
             env.Rlw = lwdown[i];
             env.uref = windspeed[i];
             env.tcanopy = temp[i]; // initial guess for this timestep's iteration
+            // Where this hour follows the last, the iteration starts from the
+            // state the last hour ended in: the canopy's offset from the air
+            // persists from hour to hour far better than neutral air does. This
+            // sets where the iteration starts, not what it converges to. The
+            // first hour, and any hour after a gap in the record, start at air
+            // temperature in neutral air.
+            if (i > 0) {
+                double dh = hour[i] - hour[i - 1];
+                const bool nextDay = dh < 0.0;
+                if (nextDay) dh += 24.0;
+                const bool sameDay = day[i] == day[i - 1] && month[i] == month[i - 1] && year[i] == year[i - 1];
+                if (std::abs(dh - 1.0) < 1e-6 && (nextDay ? !sameDay : sameDay)) {
+                    env.tcanopy = temp[i] + lastOffset;
+                    env.H = lastH;
+                    env.psi_m = lastPsim;
+                }
+            }
 
             // Solar position is computed once per timestep and shared
             // between RadswabsStepCpp and the stomatal setup below. Full
@@ -2151,20 +2172,9 @@ namespace pointmodel {
             stomatalsetup stomSetup;
             if (s.vegetated) stomSetup = StomatalSetupCpp(solp, env, vegp);
 
-            utils::Aitken1DState st_G;
             utils::Aitken1DState st_tcanopy;
             env.stabPassDone = false;
             env.stabFlipped = false;
-            // The ground heat flux is relaxed between passes. Its self-tuning
-            // Aitken step can stall after a reversal and then jump, which in light
-            // wind feeds a limit cycle with the canopy balance; there a fixed
-            // half-way step is taken after the first pass instead.
-            const bool gFixedStep = env.uref < mc::dampWindSpeed;
-            auto relaxG = [&](double oldv, double newv) {
-                if (!gFixedStep) return utils::aitken1d(oldv, newv, st_G);
-                if (!st_G.have_prev) { st_G.have_prev = true; return newv; }
-                return 0.5 * (oldv + newv);
-            };
             double G = 0.0;
             double err = 1e99;
             int iter = 0;
@@ -2321,12 +2331,9 @@ namespace pointmodel {
                 if (matchHere) {
                     matchresidual mG = matchResidualCpp(soilp, envG, &envS, wMatch, soilheat.Te[0], soilwater.theta[0], soilheat.condSlope);
                     gWeightMatch = (wMatch > 0.0) ? wMatch / (wMatch + (1.0 - wMatch) * mG.kappa) : 0.0;
-                    G = relaxG(G, mG.q);
+                    G = mG.q;
                 } else {
-                    // On bare ground nothing within the pass reads G, so it needs
-                    // no relaxation.
-                    double Gnew = soilsurfaceEBCpp(soilp, envG, soilheat.Te[0], soilwater.theta[0]);
-                    G = s.vegetated ? relaxG(G, Gnew) : Gnew;
+                    G = soilsurfaceEBCpp(soilp, envG, soilheat.Te[0], soilwater.theta[0]);
                 }
 
                 double tcanopy_old = env.tcanopy;
@@ -2404,6 +2411,10 @@ namespace pointmodel {
                 double eaR = utils::satvapCpp(env.tair) * env.rh / 100.0;
                 hSurf_conv = (eaR + Lsurf * rV_conv / kL) / utils::satvapCpp(env.tcanopy);
             }
+
+            lastOffset = env.tcanopy - env.tair;
+            lastH = env.H;
+            lastPsim = env.psi_m;
 
             // Commit the converged water stores once for this real timestep.
             swaterdepth = swaterdepthCandidate;
