@@ -859,7 +859,7 @@ Root water uptake is distributed vertically following Schenk & Jackson (2002),
 $$F(z)=\frac{1}{1+(z/z_{50})^c},\qquad
 c=\frac{1.27875}{\log_{10}(z_{50}/z_{95})}$$
 
-where $\small F(z)$ is the cumulative fraction of roots above depth $\small z$, and $\small z_{50}$ and $\small z_{95}$ are the depths above which 50% and 95% of roots occur. The mean root-zone soil water potential $\small \psi_r$ used in the stomatal model is the root-fraction-weighted mean of the layer potentials. Uptake from layer $\small i$ is weighted by both its root fraction $\small F_i$ and a water-stress factor $\small \alpha(\psi_i)$,
+where $\small F(z)$ is the cumulative fraction of roots above depth $\small z$, and $\small z_{50}$ and $\small z_{95}$ are the depths above which 50% and 95% of roots occur. The root-zone soil water potential $\small \psi_r$ used in the stomatal model is the water potential corresponding to the root-fraction-weighted mean volumetric water content of the soil layers. Uptake from layer $\small i$ is weighted by both its root fraction $\small F_i$ and a water-stress factor $\small \alpha(\psi_i)$,
 
 $$S_i=E_t\frac{F_i\alpha(\psi_i)}{\sum_jF_j\alpha(\psi_j)},$$
 
