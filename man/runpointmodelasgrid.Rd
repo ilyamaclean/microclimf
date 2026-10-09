@@ -16,7 +16,7 @@ runpointmodelasgrid(
   zin = 2,
   uzin = zin,
   maxIter = 100,
-  tolerance = 0.1,
+  tolerance = 0.3,
   nlayers = 7,
   totalDepth = 2,
   surface_organicmu = 3,

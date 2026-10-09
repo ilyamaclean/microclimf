@@ -2294,6 +2294,12 @@ namespace pointmodel {
                 // conductivity, heat capacity and surface humidity; the updated
                 // temperature profile in turn controls water/vapour transport.
                 soilheat.wc = soilwater.theta;
+                // In the first passes of an hour the soil's heat row takes one
+                // step of its own iteration: the passes repeat the solve, so a
+                // further step within a pass mostly confirms the first. From the
+                // sixth pass the row is iterated to its tolerance, which an hour
+                // with the ground near freezing needs in order to settle.
+                const int heatSteps = (iter < 5) ? 1 : maxIter;
                 // Below 10 mm the soil's surface row blends the ground's balance
                 // toward the whole surface's, the equation the canopy step
                 // solves, written in the row's form: the combined absorbed
@@ -2309,7 +2315,7 @@ namespace pointmodel {
                     envS.wholeA = cw.aNet;
                     envS.wholeB = cw.bNet;
                 }
-                SoilHeatCpp(soilheat, soilp, envG, heatWork, 3600.0, 1.0, maxIter, 1e-2,
+                SoilHeatCpp(soilheat, soilp, envG, heatWork, 3600.0, 1.0, heatSteps, 1e-2,
                     matchHere ? &envS : nullptr, wMatch);
                 soilwater.Tc = soilheat.Te;
                 soilwater.oldTc = soilheat.oldTe;

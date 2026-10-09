@@ -12,12 +12,12 @@ solve_at <- function(...) {
 
 test_that("the shipped defaults are the documented ones", {
   expect_null(formals(runpointmodel)$tolerance)
-  expect_equal(eval(formals(runpointmodelasgrid)$tolerance), 0.1)
+  expect_equal(eval(formals(runpointmodelasgrid)$tolerance), 0.3)
   expect_null(formals(runbioclim)$tolerance)
 })
 
-test_that("omitting tolerance reproduces the default of 0.1 exactly", {
-  expect_equal(solve_at()$model$Tcanopy, solve_at(tolerance = 0.1)$model$Tcanopy)
+test_that("omitting tolerance reproduces the default of 0.3 exactly", {
+  expect_equal(solve_at()$model$Tcanopy, solve_at(tolerance = 0.3)$model$Tcanopy)
 })
 
 test_that("a supplied tolerance reaches the solver", {

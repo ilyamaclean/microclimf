@@ -2374,7 +2374,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
 #' @export
 runpointmodelasgrid <- function(weather, reqhgt = 0, dtm, vegp, soilc, tme,
                                  paiFlat = FALSE, runchecks = TRUE, zin = 2, uzin = zin,
-                                 maxIter = 100, tolerance = 0.1, nlayers = 7, totalDepth = 2,
+                                 maxIter = 100, tolerance = 0.3, nlayers = 7, totalDepth = 2,
                                  surface_organicmu = 3, FreeDrain = TRUE, matemp = NA_real_,
                                  pooling = FALSE, cores = "off", soilinit = NULL,
                                  hor = NA, svf = NA, slr = NA, apr = NA, out = NULL,

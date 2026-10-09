@@ -365,7 +365,7 @@ runpointmodel <- function(weather, reqhgt = 0, dtm, vegp, soilc, tme = NULL, dtm
                            zin = 2, uzin = zin, maxIter = 100,
                            nlayers = 7, totalDepth = 2,
                            surface_organicmu = 3, FreeDrain = TRUE,
-                           matemp = NA_real_, tolerance = 0.1,
+                           matemp = NA_real_, tolerance = 0.3,
                            pooling = FALSE, paiFlat = FALSE, soilinit = NULL, soilend = FALSE) {
   dtm <- .unpackRaster(dtm)
   vegp <- lapply(vegp, .unpackRaster)
@@ -540,7 +540,7 @@ subsetpointmodel <- function(pointmodel, tstep = "month", what = "tmax", days = 
                             zin = 2, uzin = zin, maxIter = 100,
                             dtmc = NULL, nlayers = 7, totalDepth = 2,
                             surface_organicmu = 3, FreeDrain = TRUE,
-                            matemp = NA_real_, tolerance = 0.1,
+                            matemp = NA_real_, tolerance = 0.3,
                             runchecks = TRUE, cores = "off",
                             pooling = FALSE, paiFlat = FALSE, soilinit = NULL, soilend = FALSE) {
   dtm <- .unpackRaster(dtm)
