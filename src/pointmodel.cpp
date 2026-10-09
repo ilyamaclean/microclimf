@@ -1130,16 +1130,17 @@ namespace pointmodel {
         return psiw;
     }
 
-    // Root-zone water potential seen by the plant: a root-fraction-weighted
-    // mean of layer water potentials, returned in MPa for the hydraulic model.
+    // Root-zone water potential seen by the plant: the potential of the
+    // root-fraction-weighted mean water content, on the retention curve of the
+    // surface layer, returned in MPa for the hydraulic model.
     double rootzonePsiCpp(const soilpstruct& soilp, const std::vector<double>& theta, const std::vector<double>& rootfrac)
     {
-        double psir = 0.0;
+        double thetar = 0.0;
         int n = static_cast<int>(rootfrac.size());
         for (int i = 0; i < n; ++i) {
-            psir += rootfrac[i] * waterPotentialCpp(soilp, theta[i], i);
+            thetar += rootfrac[i] * theta[i];
         }
-        return psir / 1000.0; // J/kg -> MPa
+        return waterPotentialCpp(soilp, thetar, 0) / 1000.0; // J/kg -> MPa
     }
 
     // Inverse Campbell retention curve: water content corresponding to a
@@ -1915,7 +1916,7 @@ namespace pointmodel {
         std::vector<double> Tcanopy;     // bulk canopy + ground exchange-surface temperature (deg C)
 
         // Plant water state and solver diagnostics
-        std::vector<double> psi_r;       // root-weighted soil water potential (MPa)
+        std::vector<double> psi_r;       // root-zone water potential (MPa)
         std::vector<double> iters;       // outer surface-energy-balance iterations
         std::vector<double> witers;      // soil-water iterations on the final outer pass
 

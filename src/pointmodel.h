@@ -89,7 +89,7 @@ namespace pointmodel {
         double pk;      // atmospheric pressure (kPa)
         double Ca;      // atmospheric CO2 concentration (ppm)
         double precip;  // precipitation (mm)
-        double psi_r;   // mean water potential in the root zone (MPa)
+        double psi_r;   // water potential of the root zone (MPa)
         double Rsw;     // shortwave radiation flux density on the horizontal (W/m^2)
         double Rdif;    // diffuse radiation flux density on the horizontal (W/m^2)
         double Rlw;     // longwave radiation from the sky, on the horizontal (W/m^2)
@@ -577,10 +577,11 @@ namespace pointmodel {
     // unsaturated/saturated retention curve but not positive pressure heads.
     double waterPotentialCpp(const soilpstruct& soilp, double theta, int i);
 
-    // Root-zone mean water potential (MPa), weighting each soil layer's
-    // Campbell water potential by the fraction of roots assigned to that
-    // layer. This is the plant-accessible water-status signal supplied to the
-    // stomatal/hydraulic model rather than an unweighted profile average.
+    // Root-zone water potential (MPa): the Campbell water potential of the
+    // mean water content of the root zone, each soil layer's water content
+    // weighted by the fraction of roots assigned to that layer. This is the
+    // plant-accessible water-status signal supplied to the stomatal/hydraulic
+    // model, so a dry layer holding few roots does not dominate it.
     double rootzonePsiCpp(const soilpstruct& soilp, const std::vector<double>& theta, const std::vector<double>& rootfrac);
 
     // Volumetric water content (m^3/m^3) from water potential, the inverse

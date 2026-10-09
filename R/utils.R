@@ -639,7 +639,7 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
 # (friction velocity, m/s), LL (Monin-Obukhov length, m), Tground/G (soil
 # surface temperature and ground heat flux, from the full multi-layer soil
 # heat solve), Tcanopy (the canopy/ground combined heat-exchange surface
-# temperature), psi_r (root-zone mean water potential, MPa), theta0
+# temperature), psi_r (root-zone water potential, MPa), theta0
 # (surface soil water content), D_D (diurnal damping depth of the top soil
 # layer) and rHa (ground-to-reference-height aerodynamic resistance) --
 # D_D/rHa are returned every timestep regardless of reqhgt, since the grid
