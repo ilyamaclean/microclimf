@@ -328,7 +328,7 @@ For the point model, these are as follows:
 * `zin` - Height (m) of temperature and humidity data in `weather`.
 * `uzin` - Height (m) of wind speed data in `weather`.
 * `maxIter` - Maximum number of iterations allowed for model convergence.
-* `tolerance` - Convergence tolerance (°C): the maximum allowed change in canopy or ground surface temperature between successive iterations for the solution to be considered converged.
+* `tolerance` - Convergence tolerance (°C): the maximum allowed change in canopy or ground surface temperature between successive iterations for the solution to be considered converged. The default is 0.3 °C; a smaller value such as 0.1 gives a more closely converged solution, but the model takes around a third longer to run.
 * `nlayers` - Number of soil layers used for the soil temperature and water model.
 * `totalDepth` - Total depth of the soil profile (m).
 * `surface_organicmu` - Parameter controlling the concentration of soil organic matter towards the surface.

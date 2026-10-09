@@ -1037,7 +1037,10 @@ that other inputs are provided in the correct format.</li>
 model convergence.</li>
 <li><code>tolerance</code> - Convergence tolerance (°C): the maximum
 allowed change in canopy or ground surface temperature between
-successive iterations for the solution to be considered converged.</li>
+successive iterations for the solution to be considered converged. The
+default is 0.3 °C; a smaller value such as 0.1 gives a more closely
+converged solution, but the model takes around a third longer to
+run.</li>
 <li><code>nlayers</code> - Number of soil layers used for the soil
 temperature and water model.</li>
 <li><code>totalDepth</code> - Total depth of the soil profile (m).</li>
