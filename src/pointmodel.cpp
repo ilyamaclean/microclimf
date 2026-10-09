@@ -1130,17 +1130,24 @@ namespace pointmodel {
         return psiw;
     }
 
-    // Root-zone water potential seen by the plant: the potential of the
-    // root-fraction-weighted mean water content, on the retention curve of the
-    // surface layer, returned in MPa for the hydraulic model.
-    double rootzonePsiCpp(const soilpstruct& soilp, const std::vector<double>& theta, const std::vector<double>& rootfrac)
+    // Mean volumetric water content of the root zone: each layer's water
+    // content weighted by the fraction of roots in it.
+    double rootzoneThetaCpp(const std::vector<double>& theta, const std::vector<double>& rootfrac)
     {
         double thetar = 0.0;
         int n = static_cast<int>(rootfrac.size());
         for (int i = 0; i < n; ++i) {
             thetar += rootfrac[i] * theta[i];
         }
-        return waterPotentialCpp(soilp, thetar, 0) / 1000.0; // J/kg -> MPa
+        return thetar;
+    }
+
+    // Root-zone water potential seen by the plant: the potential of the
+    // root-fraction-weighted mean water content, on the retention curve of the
+    // surface layer, returned in MPa for the hydraulic model.
+    double rootzonePsiCpp(const soilpstruct& soilp, const std::vector<double>& theta, const std::vector<double>& rootfrac)
+    {
+        return waterPotentialCpp(soilp, rootzoneThetaCpp(theta, rootfrac), 0) / 1000.0; // J/kg -> MPa
     }
 
     // Inverse Campbell retention curve: water content corresponding to a
@@ -1955,6 +1962,7 @@ namespace pointmodel {
                                          // against; `rHa` above starts at the ground instead and is the soil
                                          // balance's. The two are not interchangeable.
         std::vector<double> theta0;      // volumetric water content of the surface soil layer
+        std::vector<double> thetaroot;   // root-weighted mean volumetric water content of the root zone
         std::vector<std::vector<double>> TeProfile; // complete soil-temperature profile (deg C);
                                           // diagnostic only, kept for validating the grid model's
                                           // below-ground shortcut against this real multilayer solve
@@ -2046,6 +2054,7 @@ namespace pointmodel {
         out.precipGround.resize(n);
         out.wetShare.resize(n);
         out.theta0.resize(n);
+        out.thetaroot.resize(n);
         out.TeProfile.resize(n);
         out.witers.resize(n);
         out.groundhr.resize(n);
@@ -2443,6 +2452,7 @@ namespace pointmodel {
             out.precipGround[i] = precipGround_conv;
             out.wetShare[i] = wetShare_conv;
             out.theta0[i] = soilwater.theta[0];
+            out.thetaroot[i] = rootzoneThetaCpp(soilwater.theta, soilwater.rootfrac);
             out.TeProfile[i] = soilheat.Te;
             out.swaterdepth[i] = swaterdepth;
             // Surface-soil thermal damping depth for scaling the ground heat flux.
@@ -2615,6 +2625,7 @@ namespace pointmodel {
             Rcpp::Named("precipGround") = res.precipGround,
             Rcpp::Named("wetShare") = res.wetShare,
             Rcpp::Named("theta0") = res.theta0,
+            Rcpp::Named("thetaroot") = res.thetaroot,
             Rcpp::Named("Tabove") = res.Tabove,
             Rcpp::Named("windAbove") = res.windAbove,
             Rcpp::Named("RHabove") = res.RHabove,

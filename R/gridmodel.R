@@ -731,6 +731,12 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   } else {
     raw$soilm <- naArr3
   }
+  # The reference root-zone soil water, distributed the same way: the water the
+  # stomata of each cell see.
+  if (needGroundTemp) {
+    if (is.null(pointmodel$model$thetaroot)) stop(.incompletePointmodelMessage(), call. = FALSE)
+    soilmRoot <- soilmDistributeCpp(Smin, Smax, tadd, wetw, pointmodel$model$thetaroot, tsteps)
+  }
 
   # Estimate each cell's ground heat flux and surface temperature by scaling the
   # reference thermal response for local soil properties and local absorbed energy,
@@ -743,7 +749,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
     }
     campbellMats <- lapply(campbell, tomat)
     sr <- .cellSurfaceResistance(raw, weather$swdown, weather$difrad, weather$temp, weather$relhum,
-                                 weather$pres, weather$precip, obstime$year, raw$soilm, campbellMats,
+                                 weather$pres, weather$precip, obstime$year, raw$soilm, soilmRoot,
+                                 campbellMats,
                                  hgt, pai, x, lref, ltra, svfa, .gsmaxMatrix(vegp, rows, cols),
                                  leafphys, tomat(vegp$Lfrac), pointmodel$model$wetShare,
                                  pointmodel$model$filmAvailable, paiRef)
@@ -888,7 +895,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
     # photosynthetic properties. This is distinct from the bulk canopy exchange temperature.
     tleaf_pc <- if (needLeafTemp) {
       psiCell <- soilWaterPotentialGridCpp(tomat(campbell$thetaS), tomat(campbell$psie),
-                                           tomat(campbell$b), raw$soilm)
+                                           tomat(campbell$b), soilmRoot)
       radLlw <- 0.5 * 0.97 * (lw$Rlwdown + lw$Rlwup) # 0.97 = mc::surfaceEmissivity (src/constants.h),
                                                        # the same shared canopy/ground emissivity value
                                                        # used throughout this package -- no R-side
@@ -1195,6 +1202,15 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
     theta0Fine <- naArr3
     raw$soilm <- naArr3
   }
+  # The reference root-zone soil water, distributed the same way: the water the
+  # stomata of each cell see.
+  if (needGroundTemp) {
+    if (any(vapply(modelList, function(m) !is.null(m) && is.null(m$thetaroot), logical(1)))) {
+      stop(.incompletePointmodelMessage(), call. = FALSE)
+    }
+    soilmRoot <- soilmDistributeCpp(Smin, Smax, tadd, wetw,
+                                    .coarseListToFineArray(modelList, "thetaroot", nT, dtmc, dtm), nT)
+  }
 
   # Reconstruct local ground heat flux and surface temperature using local absorbed
   # energy and soil properties, referenced to the corresponding coarse-cell thermal state.
@@ -1214,7 +1230,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
     RabsGround <- raw$radGsw + raw$radGlw
     sr <- .cellSurfaceResistance(raw, climdata$swdown, climdata$difrad, climdata$temp, climdata$relhum,
                                  climdata$pres, .coarseListToFineArray(weatherList, "precip", nT, dtmc, dtm),
-                                 obstime$year, raw$soilm, lapply(campbell, tomat),
+                                 obstime$year, raw$soilm, soilmRoot, lapply(campbell, tomat),
                                  hgt, pai, x, lref, ltra, svfa, .gsmaxMatrix(vegp, rows, cols), leafphys,
                                  tomat(vegp$Lfrac),
                                  .coarseListToFineArray(modelList, "wetShare", nT, dtmc, dtm),
@@ -1343,11 +1359,11 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
 
     # Leaf temperature at reqhgt, from the radiation, wind, air temperature and
     # humidity at that height. The leaf's stomata respond to soil drying through
-    # the soil water potential, calculated from each cell's own soil moisture
-    # and soil type.
+    # the soil water potential, calculated from each cell's own root-zone soil
+    # moisture and soil type.
     tleaf_pc <- if (needLeafTemp) {
       psiCell <- soilWaterPotentialGridCpp(tomat(campbell$thetaS), tomat(campbell$psie),
-                                           tomat(campbell$b), raw$soilm)
+                                           tomat(campbell$b), soilmRoot)
       radLlw <- 0.5 * 0.97 * (lw$Rlwdown + lw$Rlwup) # 0.97 = mc::surfaceEmissivity (src/constants.h)
       Ca <- rep(Cafromyear(stats::median(obstime$year)), nT)
       # Use local microclimate at reqhgt rather than the unmodified coarse forcing.
@@ -1563,6 +1579,9 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   needBelowSoilm   <- reqhgt_below0 && isTRUE(out[["soilm"]])
   needBelowTemp    <- reqhgt_below0 && isTRUE(out[["Tz"]])
   needRaw <- any(unlist(out[setdiff(names(out), "soilm")]))
+  if (needGroundTemp && is.null(pointmodel$model$thetaroot)) {
+    stop(.incompletePointmodelMessage(), call. = FALSE)
+  }
 
   # The reference aerodynamic geometry remains fixed through time; seasonal changes
   # in the fine-grid canopy are handled locally in each day's radiation/wind solve.
@@ -1647,6 +1666,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
       refEmG = if (needGroundTemp) pointmodel$model$emGround[idx] else rep(NA_real_, 24),
       refrGz = if (needGroundTemp) rGzRefGrid[idx] else rep(NA_real_, 24),
       reftheta0 = if (needSurfaceSoilm) pointmodel$model$theta0[idx] else rep(NA_real_, 24),
+      refthetaroot = if (needGroundTemp) pointmodel$model$thetaroot[idx] else rep(NA_real_, 24),
       precip = weather$precip[idx],
       refWet = if (needGroundTemp) pointmodel$model$wetShare[idx] else rep(NA_real_, 24),
       refAvail = if (needGroundTemp) pointmodel$model$filmAvailable[idx] else rep(NA_real_, 24),
@@ -1717,9 +1737,12 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   }
 
   if (fixed$needGroundTemp) {
+    # The reference root-zone soil water, distributed as the surface's is: the
+    # water the stomata of each cell see.
+    soilmRoot <- soilmDistributeCpp(fixed$Smin, fixed$Smax, fixed$tadd, fixed$wetw, day$refthetaroot, tsteps)
     sr <- .cellSurfaceResistance(raw, day$climdata$swdown, day$climdata$difrad, day$climdata$temp,
                                  day$climdata$relhum, day$climdata$pres, day$precip, day$obstime$year,
-                                 raw$soilm, fixed$campbellMats, hgt, pai, x, lref, ltra, fixed$svfa,
+                                 raw$soilm, soilmRoot, fixed$campbellMats, hgt, pai, x, lref, ltra, fixed$svfa,
                                  fixed$gsmax, fixed$leafphys, day$vegpl$Lfrac, day$refWet, day$refAvail,
                                  fixed$paiRef)
     RabsGround <- raw$radGsw + raw$radGlw
@@ -1837,7 +1860,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
       leafTempCpp(raw$radLpar, raw$radLsw, radLlw, raw$uz,
                   Tz_pc, relhum_pc, day$climdata$pres, Ca,
                   soilWaterPotentialGridCpp(fixed$campbellMats$thetaS, fixed$campbellMats$psie,
-                                            fixed$campbellMats$b, raw$soilm),
+                                            fixed$campbellMats$b, soilmRoot),
                   hgt, pai, fixed$leafphys$Vcmax25, fixed$leafphys$Tup, fixed$leafphys$Tlw,
                   fixed$leafphys$Dcrit, fixed$leafphys$alpha, fixed$leafphys$f0, fixed$leafphys$fd,
                   fixed$leafphys$psi50, fixed$leafphys$apsi, fixed$leafphys$rpmin,
@@ -2146,12 +2169,16 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
     theta0Fine <- array(NA_real_, dim = c(rows, cols, nT))
   }
   if (needGroundTemp) {
+    if (any(vapply(modelList, function(m) !is.null(m) && is.null(m$thetaroot), logical(1)))) {
+      stop(.incompletePointmodelMessage(), call. = FALSE)
+    }
+    thetarootFine <- .coarseListToFineArray(modelList, "thetaroot", nT, dtmc, dtm)
     wetFine <- .coarseListToFineArray(modelList, "wetShare", nT, dtmc, dtm)
     availFine <- .coarseListToFineArray(modelList, "filmAvailable", nT, dtmc, dtm)
     precipFine <- .coarseListToFineArray(weatherList, "precip", nT, dtmc, dtm)
   } else {
     wetFine <- array(NA_real_, dim = c(rows, cols, nT))
-    availFine <- wetFine; precipFine <- wetFine
+    availFine <- wetFine; precipFine <- wetFine; thetarootFine <- wetFine
   }
 
   # For below-ground output, interpolate the reference soil profiles and their
@@ -2235,6 +2262,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
       refrGz = as.vector(rGzFine)[shidx],
       refEmG = as.vector(emGFine)[shidx],
       reftheta0 = as.vector(theta0Fine)[shidx],
+      refthetaroot = as.vector(thetarootFine)[shidx],
       precip = as.vector(precipFine)[shidx],
       refWet = as.vector(wetFine)[shidx],
       refAvail = as.vector(availFine)[shidx],

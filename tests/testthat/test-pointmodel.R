@@ -6,10 +6,11 @@ wx <- climdata[1:72, ]
 test_that("a short run is finite, bounded and converges within the pass cap", {
   r <- core_run(wx, 0.3, 2)
   m <- r$model
-  for (f in c("Tcanopy", "Tground", "G", "Hout", "uf", "theta0", "psi_r")) {
+  for (f in c("Tcanopy", "Tground", "G", "Hout", "uf", "theta0", "thetaroot", "psi_r")) {
     expect_true(all(is.finite(m[[f]])), info = f)
   }
   expect_true(all(m$theta0 > 0 & m$theta0 <= max(r$soilc$Smax)))
+  expect_true(all(m$thetaroot > 0 & m$thetaroot <= max(r$soilc$Smax)))
   expect_true(all(m$iters < 100))
   expect_true(all(m$Tground > -40 & m$Tground < 70))
 })

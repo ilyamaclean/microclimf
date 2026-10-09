@@ -678,8 +678,8 @@ namespace gridmodel {
     }
 
 
-    List surfaceResistGridCpp(List rad, List clim, NumericVector soilm, List soil, List veg,
-        List ref)
+    List surfaceResistGridCpp(List rad, List clim, NumericVector soilm, NumericVector soilmRoot,
+        List soil, List veg, List ref)
     {
         NumericVector radCpar = rad["radCpar"], radGpar = rad["radGpar"], RabsCanopy = rad["RabsCanopy"];
         NumericVector zend = rad["zend"], rHa = rad["rHa"], rGz = rad["rGz"], rGm = rad["rGm"];
@@ -745,6 +745,8 @@ namespace gridmodel {
                         continue;
                     }
 
+                    double smRoot = soilmRoot[idx];
+                    if (NumericVector::is_na(smRoot)) continue;
                     double Rsw_t = climSpatial ? Rsw[idx] : Rsw[t];
                     double Rdif_t = climSpatial ? Rdif[idx] : Rdif[t];
                     double P_t = climSpatial ? precip[idx] : precip[t];
@@ -785,7 +787,8 @@ namespace gridmodel {
 
                     pointmodel::envstruct env{};
                     env.tair = Ta_t; env.rh = rh_t; env.pk = pk_t; env.Ca = Ca_t;
-                    env.psi_r = pointmodel::waterPotentialCpp(sp, sm, 0) / 1000.0;
+                    // The stomata see the root zone's water, not the surface layer's.
+                    env.psi_r = pointmodel::waterPotentialCpp(sp, smRoot, 0) / 1000.0;
 
                     // The network's legs: the node at whichever of the mean source
                     // height and the exchange surface is nearer the reference, the
@@ -2242,9 +2245,9 @@ Rcpp::NumericVector soilWaterPotentialGridCpp(Rcpp::NumericMatrix thetaS, Rcpp::
 
 // [[Rcpp::export]]
 Rcpp::List surfaceResistGridCpp(Rcpp::List rad, Rcpp::List clim, Rcpp::NumericVector soilm,
-    Rcpp::List soil, Rcpp::List veg, Rcpp::List ref)
+    Rcpp::NumericVector soilmRoot, Rcpp::List soil, Rcpp::List veg, Rcpp::List ref)
 {
-    return gridmodel::surfaceResistGridCpp(rad, clim, soilm, soil, veg, ref);
+    return gridmodel::surfaceResistGridCpp(rad, clim, soilm, soilmRoot, soil, veg, ref);
 }
 
 // [[Rcpp::export]]

@@ -17,8 +17,8 @@ soilWaterPotentialGridCpp <- function(thetaS, psie, b, soilm) {
     .Call(`_microclimf_soilWaterPotentialGridCpp`, thetaS, psie, b, soilm)
 }
 
-surfaceResistGridCpp <- function(rad, clim, soilm, soil, veg, ref) {
-    .Call(`_microclimf_surfaceResistGridCpp`, rad, clim, soilm, soil, veg, ref)
+surfaceResistGridCpp <- function(rad, clim, soilm, soilmRoot, soil, veg, ref) {
+    .Call(`_microclimf_surfaceResistGridCpp`, rad, clim, soilm, soilmRoot, soil, veg, ref)
 }
 
 referenceGroundResistCpp <- function(uref, ufRef, HRef, Ta, pk, zref, hRef, paiRef) {

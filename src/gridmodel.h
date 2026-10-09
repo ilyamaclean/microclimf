@@ -246,11 +246,15 @@ namespace gridmodel {
     // the film's water limit, is taken at air temperature. Two fixed passes:
     // the first at air temperature with the film unlimited gives the canopy
     // temperature at which the second is evaluated.
+    // soilm is the cell's surface soil moisture, which sets the soil's
+    // humidity; soilmRoot its root-zone soil moisture, which sets the water
+    // potential the stomata see.
     Rcpp::List surfaceResistGridCpp(Rcpp::List rad, Rcpp::List clim, Rcpp::NumericVector soilm,
-        Rcpp::List soil, Rcpp::List veg, Rcpp::List ref);
+        Rcpp::NumericVector soilmRoot, Rcpp::List soil, Rcpp::List veg, Rcpp::List ref);
 
-    // Each cell's soil water potential (MPa) from its own surface soil moisture
-    // and water-retention curve, used as the root-zone potential for leaves.
+    // Each cell's soil water potential (MPa) from a soil moisture and the cell's
+    // own water-retention curve. Given the root-zone soil moisture it is the
+    // root-zone potential for leaves.
     Rcpp::NumericVector soilWaterPotentialGridCpp(Rcpp::NumericMatrix thetaS, Rcpp::NumericMatrix psie,
         Rcpp::NumericMatrix b, Rcpp::NumericVector soilm);
 

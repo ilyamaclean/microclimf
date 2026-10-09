@@ -3,7 +3,7 @@
 # deliberate change, review the differences, accept them with
 # testthat::snapshot_accept("snapshot"), and record what changed.
 
-fields <- c("Tcanopy", "Tground", "G", "Hout", "uf", "theta0", "psi_r", "Tzbelow")
+fields <- c("Tcanopy", "Tground", "G", "Hout", "uf", "theta0", "thetaroot", "psi_r", "Tzbelow")
 
 test_that("point model: three bundled days", {
   r <- runpointmodel(climdata[4321:4392, ], reqhgt = -0.1, dtm = dtmcaerth, vegp = vegp,

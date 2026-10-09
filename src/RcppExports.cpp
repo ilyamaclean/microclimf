@@ -85,18 +85,19 @@ BEGIN_RCPP
 END_RCPP
 }
 // surfaceResistGridCpp
-Rcpp::List surfaceResistGridCpp(Rcpp::List rad, Rcpp::List clim, Rcpp::NumericVector soilm, Rcpp::List soil, Rcpp::List veg, Rcpp::List ref);
-RcppExport SEXP _microclimf_surfaceResistGridCpp(SEXP radSEXP, SEXP climSEXP, SEXP soilmSEXP, SEXP soilSEXP, SEXP vegSEXP, SEXP refSEXP) {
+Rcpp::List surfaceResistGridCpp(Rcpp::List rad, Rcpp::List clim, Rcpp::NumericVector soilm, Rcpp::NumericVector soilmRoot, Rcpp::List soil, Rcpp::List veg, Rcpp::List ref);
+RcppExport SEXP _microclimf_surfaceResistGridCpp(SEXP radSEXP, SEXP climSEXP, SEXP soilmSEXP, SEXP soilmRootSEXP, SEXP soilSEXP, SEXP vegSEXP, SEXP refSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::List >::type rad(radSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type clim(climSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type soilm(soilmSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type soilmRoot(soilmRootSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type soil(soilSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type veg(vegSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type ref(refSEXP);
-    rcpp_result_gen = Rcpp::wrap(surfaceResistGridCpp(rad, clim, soilm, soil, veg, ref));
+    rcpp_result_gen = Rcpp::wrap(surfaceResistGridCpp(rad, clim, soilm, soilmRoot, soil, veg, ref));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -760,7 +761,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_runmicro1Cpp", (DL_FUNC) &_microclimf_runmicro1Cpp, 13},
     {"_microclimf_dampingDepthGridCpp", (DL_FUNC) &_microclimf_dampingDepthGridCpp, 10},
     {"_microclimf_soilWaterPotentialGridCpp", (DL_FUNC) &_microclimf_soilWaterPotentialGridCpp, 4},
-    {"_microclimf_surfaceResistGridCpp", (DL_FUNC) &_microclimf_surfaceResistGridCpp, 6},
+    {"_microclimf_surfaceResistGridCpp", (DL_FUNC) &_microclimf_surfaceResistGridCpp, 7},
     {"_microclimf_referenceGroundResistCpp", (DL_FUNC) &_microclimf_referenceGroundResistCpp, 8},
     {"_microclimf_soilmDistributeCpp", (DL_FUNC) &_microclimf_soilmDistributeCpp, 6},
     {"_microclimf_groundHeatFluxCpp", (DL_FUNC) &_microclimf_groundHeatFluxCpp, 44},

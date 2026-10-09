@@ -640,7 +640,9 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
 # surface temperature and ground heat flux, from the full multi-layer soil
 # heat solve), Tcanopy (the canopy/ground combined heat-exchange surface
 # temperature), psi_r (root-zone water potential, MPa), theta0
-# (surface soil water content), D_D (diurnal damping depth of the top soil
+# (surface soil water content), thetaroot (root-weighted mean soil water
+# content of the root zone, which the grid distributes to its cells'
+# stomata), D_D (diurnal damping depth of the top soil
 # layer) and rHa (ground-to-reference-height aerodynamic resistance) --
 # D_D/rHa are returned every timestep regardless of reqhgt, since the grid
 # model's ground-heat-flux shortcut needs them to evaluate a target cell's
@@ -1400,8 +1402,9 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
 # stomata, soil and resistances and the reference run's wet-canopy state
 # (surfaceResistGridCpp): `rSurf`, `hSurf`, the foliage's share `hFol` and the
 # soil humidity `hr`. `raw` is the grid radiation and wind state; climate fields
-# may be hourly vectors or fine-grid arrays.
-.cellSurfaceResistance <- function(raw, Rsw, Rdif, Ta, rh, pk, precip, year, soilm,
+# may be hourly vectors or fine-grid arrays. `soilm` is each cell's surface soil
+# moisture and `soilmRoot` its root-zone soil moisture, which the stomata see.
+.cellSurfaceResistance <- function(raw, Rsw, Rdif, Ta, rh, pk, precip, year, soilm, soilmRoot,
                                    campbellMats, hgt, pai, x, lref, ltra, svfa, gsmax,
                                    leafphys, Lfrac, wetShare, filmAvailable, paiRef) {
   nT <- dim(soilm)[3]
@@ -1414,6 +1417,7 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
                 pk = as.vector(pk), precip = as.vector(precip),
                 Ca = rep(Cafromyear(stats::median(year)), nT)),
     soilm = soilm,
+    soilmRoot = soilmRoot,
     soil = list(thetaS = campbellMats$thetaS, psie = campbellMats$psie, b = campbellMats$b),
     veg = veg,
     ref = list(wetShare = as.vector(wetShare), filmAvailable = as.vector(filmAvailable),

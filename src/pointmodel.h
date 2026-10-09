@@ -577,6 +577,10 @@ namespace pointmodel {
     // unsaturated/saturated retention curve but not positive pressure heads.
     double waterPotentialCpp(const soilpstruct& soilp, double theta, int i);
 
+    // Mean volumetric water content of the root zone: each soil layer's water
+    // content weighted by the fraction of roots assigned to that layer.
+    double rootzoneThetaCpp(const std::vector<double>& theta, const std::vector<double>& rootfrac);
+
     // Root-zone water potential (MPa): the Campbell water potential of the
     // mean water content of the root zone, each soil layer's water content
     // weighted by the fraction of roots assigned to that layer. This is the

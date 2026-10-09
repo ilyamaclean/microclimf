@@ -306,7 +306,8 @@ checkinputs <- function(weather, vegp, soilc, dtm, uzin = 2) {
 #'   state (\code{model}: \code{Tcanopy}/\code{Tground} (deg C), ground heat
 #'   flux \code{G} (W/m2), friction velocity \code{uf} (m/s), Monin-Obukhov
 #'   length \code{LL} (m), surface soil water content \code{theta0} (m3/m3),
-#'   root-zone water potential \code{psi_r} (MPa), canopy water storage
+#'   root-weighted mean soil water content of the root zone \code{thetaroot}
+#'   (m3/m3), root-zone water potential \code{psi_r} (MPa), canopy water storage
 #'   \code{swaterdepth} (mm)), plus \code{vegp}/\code{soilc} (the resolved parameters used),
 #'   \code{pft}, \code{lat}/\code{lon}, \code{zref} (the height weather was
 #'   actually run at) and \code{matemp} (the mean annual temperature used).
