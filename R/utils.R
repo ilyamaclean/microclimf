@@ -907,6 +907,8 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
   realvegp <- createvegp(pft)
   realvegp$h <- meanhgt
   realvegp$pai <- meanpai
+  # Photosynthetic pathway, which the stomatal model needs with the type's parameters.
+  realvegp$C3 <- !identical(pft, "C4")
   # Use the observed/supplied canopy structure and shortwave optical
   # properties for this location where they exist; PFT defaults provide them
   # otherwise, and provide the physiological parameters that cannot be

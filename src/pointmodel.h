@@ -57,6 +57,7 @@ namespace pointmodel {
         double alpha;    // photosynthetic quantum efficiency (mol CO2 / mol PAR)
         double f0;       // ratio of ci / (ci - Gamma) under low vapour pressure deficit
         double fd;       // fraction of Vcmax lost to leaf dark respiration
+        bool C3 = true;  // photosynthetic pathway: C3, or C4 if false
         double gsmaxCap = -1.0; // optional empirical ceiling on stomatal conductance
                           // (mol m^-2 s^-1), applied in addition to the
                           // photosynthesis/hydraulic model's own limit; a

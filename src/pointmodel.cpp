@@ -879,7 +879,7 @@ namespace pointmodel {
             return out;
         }
 
-        double rStom = bulkstomatalresistCpp(stomSetup, env, vegp);
+        double rStom = bulkstomatalresistCpp(stomSetup, env, vegp, vegp.C3);
         double ec = utils::satvapCpp(env.tcanopy);                       // kPa
         double ea = utils::satvapCpp(env.tair) * (env.rh / 100.0);        // kPa
         double Tk = env.tair + 273.15;
@@ -1769,6 +1769,8 @@ namespace pointmodel {
         out.f0 = vegp["f0"];
         out.fd = vegp["fd"];
         out.gsmaxCap = vegp["gsmaxCap"];
+        // Photosynthetic pathway of the plant type; C3 where none is given.
+        if (vegp.containsElementNamed("C3")) out.C3 = Rcpp::as<bool>(vegp["C3"]);
         // Minimum whole-plant hydraulic resistance is supplied directly
         // as the PFT-specific structural parameter rpmin.
         out.rpmin = vegp["rpmin"];
