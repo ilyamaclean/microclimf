@@ -256,7 +256,7 @@ habitattoPFT <- function(habitat, lat) {
 # the values the habitat's plant functional type would give. Only the seasonal
 # fields may carry more than one layer.
 .VEGP_STRUCTURE <- c("hgt", "pai", "x", "clump", "leafr", "leaft", "gsmax", "Lfrac", "habitat")
-.VEGP_PHYSIOLOGY <- c("Vcmx25", "Tup", "Tlow", "Dcrit", "alpha", "rpmin", "f0", "fd",
+.VEGP_PHYSIOLOGY <- c("Vcmx25", "Tup", "Tlow", "alpha", "rpmin", "fd",
                       "psi50", "apsi", "len", "wid")
 .VEGP_SEASONAL <- c("hgt", "pai", "x", "clump", "leafr", "leaft", "Lfrac")
 
@@ -510,7 +510,7 @@ createvegp <- function(vegtype = "BET.Te") {
 # renamed Vcmax25/Tlw in the returned list to match toVegpstructCpp's own
 # field names (C++ source).
 .leafPhysiologyMatrices <- function(pftM, vegcell, rows, cols, vegp = NULL) {
-  physVars <- c("Vcmx25", "Tup", "Tlow", "Dcrit", "alpha", "f0", "fd",
+  physVars <- c("Vcmx25", "Tup", "Tlow", "alpha", "fd",
                 "psi50", "apsi", "rpmin", "len", "wid")
   out <- stats::setNames(vector("list", length(physVars)), physVars)
   for (v in physVars) out[[v]] <- matrix(NA_real_, nrow = rows, ncol = cols)
@@ -527,8 +527,8 @@ createvegp <- function(vegtype = "BET.Te") {
   leafd <- sqrt(out$len * out$wid)
   isC3 <- matrix(NA, nrow = rows, ncol = cols)
   isC3[vegcell] <- pftM[vegcell] != "C4"
-  list(Vcmax25 = out$Vcmx25, Tup = out$Tup, Tlw = out$Tlow, Dcrit = out$Dcrit,
-       alpha = out$alpha, f0 = out$f0, fd = out$fd, psi50 = out$psi50,
+  list(Vcmax25 = out$Vcmx25, Tup = out$Tup, Tlw = out$Tlow,
+       alpha = out$alpha, fd = out$fd, psi50 = out$psi50,
        apsi = out$apsi, rpmin = out$rpmin, leafd = leafd, isC3 = isC3)
 }
 

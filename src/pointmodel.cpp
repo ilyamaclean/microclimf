@@ -1764,9 +1764,7 @@ namespace pointmodel {
         out.Vcmax25 = vegp["Vcmx25"];
         out.Tup = vegp["Tup"];
         out.Tlw = vegp["Tlow"];
-        out.Dcrit = vegp["Dcrit"];
         out.alpha = vegp["alpha"];
-        out.f0 = vegp["f0"];
         out.fd = vegp["fd"];
         out.gsmaxCap = vegp["gsmaxCap"];
         // Photosynthetic pathway of the plant type; C3 where none is given.

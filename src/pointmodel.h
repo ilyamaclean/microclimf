@@ -53,9 +53,7 @@ namespace pointmodel {
         double Vcmax25;  // maximum carboxylation rate at 25 degC (micromol / m^2 / s)
         double Tup;      // upper temperature limit for photosynthesis (deg C)
         double Tlw;      // lower temperature limit for photosynthesis (deg C)
-        double Dcrit;    // vapour pressure deficit at stomatal closure (kPa)
         double alpha;    // photosynthetic quantum efficiency (mol CO2 / mol PAR)
-        double f0;       // ratio of ci / (ci - Gamma) under low vapour pressure deficit
         double fd;       // fraction of Vcmax lost to leaf dark respiration
         bool C3 = true;  // photosynthetic pathway: C3, or C4 if false
         double gsmaxCap = -1.0; // optional empirical ceiling on stomatal conductance

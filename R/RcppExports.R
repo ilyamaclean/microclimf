@@ -41,8 +41,8 @@ canopyTempCpp <- function(RabsCanopy, rHa, G_est, Ta, rh, pk, svfa, emCanopy, rS
     .Call(`_microclimf_canopyTempCpp`, RabsCanopy, rHa, G_est, Ta, rh, pk, svfa, emCanopy, rSurf_ref, hSurf_ref)
 }
 
-leafTempCpp <- function(radLpar, radLsw, radLlw, uz, Ta, rh, pk, Ca, psi_r, hgt, pai, Vcmax25, Tup, Tlw, Dcrit, alpha, f0, fd, psi50, apsi, rpmin, leafd, isC3, reqhgt) {
-    .Call(`_microclimf_leafTempCpp`, radLpar, radLsw, radLlw, uz, Ta, rh, pk, Ca, psi_r, hgt, pai, Vcmax25, Tup, Tlw, Dcrit, alpha, f0, fd, psi50, apsi, rpmin, leafd, isC3, reqhgt)
+leafTempCpp <- function(radLpar, radLsw, radLlw, uz, Ta, rh, pk, Ca, psi_r, hgt, pai, Vcmax25, Tup, Tlw, alpha, fd, psi50, apsi, rpmin, leafd, isC3, reqhgt) {
+    .Call(`_microclimf_leafTempCpp`, radLpar, radLsw, radLlw, uz, Ta, rh, pk, Ca, psi_r, hgt, pai, Vcmax25, Tup, Tlw, alpha, fd, psi50, apsi, rpmin, leafd, isC3, reqhgt)
 }
 
 longwaveGridCpp <- function(Ts_est, Tcanopy_est, Ta, hgt, pai, paia, svfa, lwdown, reqhgt) {

@@ -907,8 +907,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
       # the same above- or below-canopy microclimate being returned for that cell.
       leafTempCpp(raw$radLpar, raw$radLsw, radLlw, raw$uz,
                   Tz_pc, relhum_pc, weather$pres, Ca, psiCell,
-                  hgt, pai, leafphys$Vcmax25, leafphys$Tup, leafphys$Tlw, leafphys$Dcrit,
-                  leafphys$alpha, leafphys$f0, leafphys$fd, leafphys$psi50, leafphys$apsi,
+                  hgt, pai, leafphys$Vcmax25, leafphys$Tup, leafphys$Tlw,
+                  leafphys$alpha, leafphys$fd, leafphys$psi50, leafphys$apsi,
                   leafphys$rpmin, leafphys$leafd, leafphys$isC3, reqhgt)
     } else {
       naArr3
@@ -1369,8 +1369,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
       # Use local microclimate at reqhgt rather than the unmodified coarse forcing.
       leafTempCpp(raw$radLpar, raw$radLsw, radLlw, raw$uz,
                   Tz_pc, relhum_pc, climdata$pres, Ca, psiCell,
-                  hgt, pai, leafphys$Vcmax25, leafphys$Tup, leafphys$Tlw, leafphys$Dcrit,
-                  leafphys$alpha, leafphys$f0, leafphys$fd, leafphys$psi50, leafphys$apsi,
+                  hgt, pai, leafphys$Vcmax25, leafphys$Tup, leafphys$Tlw,
+                  leafphys$alpha, leafphys$fd, leafphys$psi50, leafphys$apsi,
                   leafphys$rpmin, leafphys$leafd, leafphys$isC3, reqhgt)
     } else {
       naArr3
@@ -1862,7 +1862,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
                   soilWaterPotentialGridCpp(fixed$campbellMats$thetaS, fixed$campbellMats$psie,
                                             fixed$campbellMats$b, soilmRoot),
                   hgt, pai, fixed$leafphys$Vcmax25, fixed$leafphys$Tup, fixed$leafphys$Tlw,
-                  fixed$leafphys$Dcrit, fixed$leafphys$alpha, fixed$leafphys$f0, fixed$leafphys$fd,
+                  fixed$leafphys$alpha, fixed$leafphys$fd,
                   fixed$leafphys$psi50, fixed$leafphys$apsi, fixed$leafphys$rpmin,
                   fixed$leafphys$leafd, fixed$leafphys$isC3, fixed$reqhgt)
     } else {
@@ -2722,8 +2722,8 @@ runpointmodelasgrid <- function(weather, reqhgt = 0, dtm, vegp, soilc, tme,
         Ta = Tz, rh = RHz, pk = wx$pres, Ca = Ca, psi_r = m$psi_r,
         hgt = matrix(hgtCell, 1, 1), pai = matrix(paiCell, 1, 1),
         Vcmax25 = matrix(lp$Vcmax25[i, j], 1, 1), Tup = matrix(lp$Tup[i, j], 1, 1),
-        Tlw = matrix(lp$Tlw[i, j], 1, 1), Dcrit = matrix(lp$Dcrit[i, j], 1, 1),
-        alpha = matrix(lp$alpha[i, j], 1, 1), f0 = matrix(lp$f0[i, j], 1, 1),
+        Tlw = matrix(lp$Tlw[i, j], 1, 1),
+        alpha = matrix(lp$alpha[i, j], 1, 1),
         fd = matrix(lp$fd[i, j], 1, 1), psi50 = matrix(lp$psi50[i, j], 1, 1),
         apsi = matrix(lp$apsi[i, j], 1, 1), rpmin = matrix(lp$rpmin[i, j], 1, 1),
         leafd = matrix(lp$leafd[i, j], 1, 1), isC3 = matrix(lp$isC3[i, j], 1, 1),

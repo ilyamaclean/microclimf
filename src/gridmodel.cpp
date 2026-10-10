@@ -689,8 +689,8 @@ namespace gridmodel {
         NumericMatrix thetaS = soil["thetaS"], psie = soil["psie"], b = soil["b"];
         NumericMatrix hgt = veg["hgt"], pai = veg["pai"], x = veg["x"], lref = veg["leafr"], ltra = veg["leaft"];
         NumericMatrix svfa = veg["svfa"], gsmax = veg["gsmax"], LfracM = veg["Lfrac"];
-        NumericMatrix Vcmax25 = veg["Vcmax25"], Tup = veg["Tup"], Tlw = veg["Tlw"], Dcrit = veg["Dcrit"];
-        NumericMatrix alpha = veg["alpha"], f0 = veg["f0"], fd = veg["fd"], psi50 = veg["psi50"];
+        NumericMatrix Vcmax25 = veg["Vcmax25"], Tup = veg["Tup"], Tlw = veg["Tlw"];
+        NumericMatrix alpha = veg["alpha"], fd = veg["fd"], psi50 = veg["psi50"];
         NumericMatrix apsi = veg["apsi"], rpmin = veg["rpmin"];
         LogicalMatrix isC3 = veg["isC3"];
         NumericVector wetRef = ref["wetShare"], availRef = ref["filmAvailable"], paiRef = ref["pai"];
@@ -716,7 +716,7 @@ namespace gridmodel {
                 pointmodel::vegpstruct vp{};
                 if (vegetated) {
                     vp.Vcmax25 = Vcmax25(i, j); vp.Tup = Tup(i, j); vp.Tlw = Tlw(i, j);
-                    vp.Dcrit = Dcrit(i, j); vp.alpha = alpha(i, j); vp.f0 = f0(i, j); vp.fd = fd(i, j);
+                    vp.alpha = alpha(i, j); vp.fd = fd(i, j);
                     vp.psi50 = psi50(i, j); vp.apsi = apsi(i, j); vp.rpmin = rpmin(i, j);
                     vp.gsmaxCap = NumericMatrix::is_na(gsmax(i, j)) ? -1.0 : gsmax(i, j);
                 }
@@ -1752,8 +1752,8 @@ namespace gridmodel {
         NumericVector radLpar, NumericVector radLsw, NumericVector radLlw, NumericVector uz,
         NumericVector Ta, NumericVector rh, NumericVector pk, NumericVector Ca, NumericVector psi_r,
         NumericMatrix hgt, NumericMatrix pai,
-        NumericMatrix Vcmax25, NumericMatrix Tup, NumericMatrix Tlw, NumericMatrix Dcrit,
-        NumericMatrix alpha, NumericMatrix f0, NumericMatrix fd, NumericMatrix psi50,
+        NumericMatrix Vcmax25, NumericMatrix Tup, NumericMatrix Tlw,
+        NumericMatrix alpha, NumericMatrix fd, NumericMatrix psi50,
         NumericMatrix apsi, NumericMatrix rpmin, NumericMatrix leafd, LogicalMatrix isC3,
         double reqhgt)
     {
@@ -1784,9 +1784,7 @@ namespace gridmodel {
                 vp.Vcmax25 = Vcmax25(i, j);
                 vp.Tup = Tup(i, j);
                 vp.Tlw = Tlw(i, j);
-                vp.Dcrit = Dcrit(i, j);
                 vp.alpha = alpha(i, j);
-                vp.f0 = f0(i, j);
                 vp.fd = fd(i, j);
                 vp.psi50 = psi50(i, j);
                 vp.apsi = apsi(i, j);
@@ -2318,13 +2316,13 @@ Rcpp::NumericVector leafTempCpp(
     Rcpp::NumericVector pk, Rcpp::NumericVector Ca, Rcpp::NumericVector psi_r,
     Rcpp::NumericMatrix hgt, Rcpp::NumericMatrix pai,
     Rcpp::NumericMatrix Vcmax25, Rcpp::NumericMatrix Tup, Rcpp::NumericMatrix Tlw,
-    Rcpp::NumericMatrix Dcrit, Rcpp::NumericMatrix alpha, Rcpp::NumericMatrix f0,
+    Rcpp::NumericMatrix alpha,
     Rcpp::NumericMatrix fd, Rcpp::NumericMatrix psi50, Rcpp::NumericMatrix apsi,
     Rcpp::NumericMatrix rpmin, Rcpp::NumericMatrix leafd, Rcpp::LogicalMatrix isC3,
     double reqhgt)
 {
     return gridmodel::leafTempCpp(radLpar, radLsw, radLlw, uz, Ta, rh, pk, Ca, psi_r,
-        hgt, pai, Vcmax25, Tup, Tlw, Dcrit, alpha, f0, fd, psi50, apsi, rpmin, leafd, isC3, reqhgt);
+        hgt, pai, Vcmax25, Tup, Tlw, alpha, fd, psi50, apsi, rpmin, leafd, isC3, reqhgt);
 }
 
 // [[Rcpp::export]]

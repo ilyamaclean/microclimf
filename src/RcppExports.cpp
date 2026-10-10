@@ -227,8 +227,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // leafTempCpp
-Rcpp::NumericVector leafTempCpp(Rcpp::NumericVector radLpar, Rcpp::NumericVector radLsw, Rcpp::NumericVector radLlw, Rcpp::NumericVector uz, Rcpp::NumericVector Ta, Rcpp::NumericVector rh, Rcpp::NumericVector pk, Rcpp::NumericVector Ca, Rcpp::NumericVector psi_r, Rcpp::NumericMatrix hgt, Rcpp::NumericMatrix pai, Rcpp::NumericMatrix Vcmax25, Rcpp::NumericMatrix Tup, Rcpp::NumericMatrix Tlw, Rcpp::NumericMatrix Dcrit, Rcpp::NumericMatrix alpha, Rcpp::NumericMatrix f0, Rcpp::NumericMatrix fd, Rcpp::NumericMatrix psi50, Rcpp::NumericMatrix apsi, Rcpp::NumericMatrix rpmin, Rcpp::NumericMatrix leafd, Rcpp::LogicalMatrix isC3, double reqhgt);
-RcppExport SEXP _microclimf_leafTempCpp(SEXP radLparSEXP, SEXP radLswSEXP, SEXP radLlwSEXP, SEXP uzSEXP, SEXP TaSEXP, SEXP rhSEXP, SEXP pkSEXP, SEXP CaSEXP, SEXP psi_rSEXP, SEXP hgtSEXP, SEXP paiSEXP, SEXP Vcmax25SEXP, SEXP TupSEXP, SEXP TlwSEXP, SEXP DcritSEXP, SEXP alphaSEXP, SEXP f0SEXP, SEXP fdSEXP, SEXP psi50SEXP, SEXP apsiSEXP, SEXP rpminSEXP, SEXP leafdSEXP, SEXP isC3SEXP, SEXP reqhgtSEXP) {
+Rcpp::NumericVector leafTempCpp(Rcpp::NumericVector radLpar, Rcpp::NumericVector radLsw, Rcpp::NumericVector radLlw, Rcpp::NumericVector uz, Rcpp::NumericVector Ta, Rcpp::NumericVector rh, Rcpp::NumericVector pk, Rcpp::NumericVector Ca, Rcpp::NumericVector psi_r, Rcpp::NumericMatrix hgt, Rcpp::NumericMatrix pai, Rcpp::NumericMatrix Vcmax25, Rcpp::NumericMatrix Tup, Rcpp::NumericMatrix Tlw, Rcpp::NumericMatrix alpha, Rcpp::NumericMatrix fd, Rcpp::NumericMatrix psi50, Rcpp::NumericMatrix apsi, Rcpp::NumericMatrix rpmin, Rcpp::NumericMatrix leafd, Rcpp::LogicalMatrix isC3, double reqhgt);
+RcppExport SEXP _microclimf_leafTempCpp(SEXP radLparSEXP, SEXP radLswSEXP, SEXP radLlwSEXP, SEXP uzSEXP, SEXP TaSEXP, SEXP rhSEXP, SEXP pkSEXP, SEXP CaSEXP, SEXP psi_rSEXP, SEXP hgtSEXP, SEXP paiSEXP, SEXP Vcmax25SEXP, SEXP TupSEXP, SEXP TlwSEXP, SEXP alphaSEXP, SEXP fdSEXP, SEXP psi50SEXP, SEXP apsiSEXP, SEXP rpminSEXP, SEXP leafdSEXP, SEXP isC3SEXP, SEXP reqhgtSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -246,9 +246,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type Vcmax25(Vcmax25SEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type Tup(TupSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type Tlw(TlwSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type Dcrit(DcritSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type f0(f0SEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type fd(fdSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type psi50(psi50SEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type apsi(apsiSEXP);
@@ -256,7 +254,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type leafd(leafdSEXP);
     Rcpp::traits::input_parameter< Rcpp::LogicalMatrix >::type isC3(isC3SEXP);
     Rcpp::traits::input_parameter< double >::type reqhgt(reqhgtSEXP);
-    rcpp_result_gen = Rcpp::wrap(leafTempCpp(radLpar, radLsw, radLlw, uz, Ta, rh, pk, Ca, psi_r, hgt, pai, Vcmax25, Tup, Tlw, Dcrit, alpha, f0, fd, psi50, apsi, rpmin, leafd, isC3, reqhgt));
+    rcpp_result_gen = Rcpp::wrap(leafTempCpp(radLpar, radLsw, radLlw, uz, Ta, rh, pk, Ca, psi_r, hgt, pai, Vcmax25, Tup, Tlw, alpha, fd, psi50, apsi, rpmin, leafd, isC3, reqhgt));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -788,7 +786,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_groundHeatFluxCpp", (DL_FUNC) &_microclimf_groundHeatFluxCpp, 44},
     {"_microclimf_belowGroundShortcutCpp", (DL_FUNC) &_microclimf_belowGroundShortcutCpp, 7},
     {"_microclimf_canopyTempCpp", (DL_FUNC) &_microclimf_canopyTempCpp, 10},
-    {"_microclimf_leafTempCpp", (DL_FUNC) &_microclimf_leafTempCpp, 24},
+    {"_microclimf_leafTempCpp", (DL_FUNC) &_microclimf_leafTempCpp, 22},
     {"_microclimf_longwaveGridCpp", (DL_FUNC) &_microclimf_longwaveGridCpp, 9},
     {"_microclimf_aboveCanopyProfileGridCpp", (DL_FUNC) &_microclimf_aboveCanopyProfileGridCpp, 15},
     {"_microclimf_belowCanopyProfileGridCpp", (DL_FUNC) &_microclimf_belowCanopyProfileGridCpp, 17},

@@ -242,10 +242,8 @@ The remaining optional inputs describe leaf physiology and are used in the photo
 
 * `Vcmx25` - maximum Rubisco carboxylation rate at 25 °C (µmol / m^2 / s).
 * `Tup`, `Tlow` - upper and lower temperature limits for photosynthesis (°C).
-* `Dcrit` - vapour pressure deficit at which stomatal limitation becomes strong (kPa).
 * `alpha` - quantum efficiency of photosynthesis (mol CO2 / mol PAR).
 * `rpmin` - minimum whole-plant hydraulic resistance (m^2 s MPa / mol).
-* `f0` - ratio of intercellular to ambient CO2 above the compensation point at low vapour pressure deficit.
 * `fd` - ratio of leaf dark respiration to Vcmax.
 * `psi50` - water potential at which the plant loses half of its maximum hydraulic conductance (MPa).
 * `apsi` - xylem hydraulic conductance parameter.

@@ -287,7 +287,7 @@ namespace gridmodel {
         Rcpp::NumericVector pk, Rcpp::NumericVector Ca, Rcpp::NumericVector psi_r,
         Rcpp::NumericMatrix hgt, Rcpp::NumericMatrix pai,
         Rcpp::NumericMatrix Vcmax25, Rcpp::NumericMatrix Tup, Rcpp::NumericMatrix Tlw,
-        Rcpp::NumericMatrix Dcrit, Rcpp::NumericMatrix alpha, Rcpp::NumericMatrix f0,
+        Rcpp::NumericMatrix alpha,
         Rcpp::NumericMatrix fd, Rcpp::NumericMatrix psi50, Rcpp::NumericMatrix apsi,
         Rcpp::NumericMatrix rpmin, Rcpp::NumericMatrix leafd, Rcpp::LogicalMatrix isC3,
         double reqhgt);
