@@ -22,6 +22,10 @@ A data frame with columns:
   \item{multiplier}{Conversion factor from stored values to working units.}
 }
 }
+\source{
+Photosynthesis parameters are from Harper et al. (2016), Table 2; plant hydraulic parameters are
+from Eller et al. (2020), Table 2.
+}
 \usage{
 PFTparams
 }
