@@ -117,7 +117,7 @@ This version does not yet incorporate the snow model. A new and improved multila
 
 There have been minor changes to function names and inputs, reflecting these updated capabilities, and outputs are now returned as multilayer rasters by default. Most of the function renaming reflects the current package structure: the headline function for running the grid model is rungridmodel, with runmodel reserved for automatically handling simulations with or without snow once the snow model is fully integrated. To a large extent, however, forward and backward compatibility has been preserved.
 
-The inbuilt weather dataset has been updated using a more reliable source of humidity data precipitation data as relative humidity data in the old dataset was implausably high at times. Radiation data at dawn and dusk were capped to ensure they cannot exceed expected clearsky. The dataset is now identical to that used in the sister packages `micropoint` and `microclimlearn`.
+The inbuilt weather dataset has been updated using a more reliable source of humidity and precipitation data, as relative humidity data in the old dataset was implausibly high at times. Radiation data at dawn and dusk were capped to ensure they cannot exceed expected clearsky. The dataset is now identical to that used in the sister packages `micropoint` and `microclimlearn`.
 
 
 ## Package install
