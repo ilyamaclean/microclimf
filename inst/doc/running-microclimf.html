@@ -546,6 +546,12 @@ grid model is rungridmodel, with runmodel reserved for automatically
 handling simulations with or without snow once the snow model is fully
 integrated. To a large extent, however, forward and backward
 compatibility has been preserved.</p>
+<p>The inbuilt weather dataset has been updated using a more reliable
+source of humidity data precipitation data as relative humidity data in
+the old dataset was implausably high at times. Radiation data at dawn
+and dusk were capped to ensure they cannot exceed expected clearsky. The
+dataset is now identical to that used in the sister packages
+<code>micropoint</code> and <code>microclimlearn</code>.</p>
 </div>
 <div id="package-install" class="section level2">
 <h2>Package install</h2>
