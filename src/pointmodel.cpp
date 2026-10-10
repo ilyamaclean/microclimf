@@ -663,6 +663,13 @@ namespace pointmodel {
     // Stomatal conductance (JULES-SOX)
     // ========================================================================
 
+    // Rate of assimilation where two limiting rates meet: a little below the
+    // lesser, passing smoothly from one to the other (Collatz et al. 1991).
+    static inline double coLimited(double a, double b, double beta)
+    {
+        return ((a + b) - std::sqrt(std::max((a + b) * (a + b) - 4.0 * beta * a * b, 0.0))) / (2.0 * beta);
+    }
+
     // Leaf stomatal conductance from the JULES-SOX optimisation framework.
     // Photosynthetic carbon gain is balanced against the hydraulic cost of
     // supplying transpiration through a vulnerable xylem pathway. Light,
@@ -692,73 +699,55 @@ namespace pointmodel {
             // to zero from above.
             double DD = std::max(es - ea, 0.0);
             double ca = env.Ca * env.pk / 1000.0;  // convert CO2 concentration to Pa
-            double ci = vegp.f0 * (1.0 - DD / vegp.Dcrit) * (ca - photocomp); // in Pa
+            const double P = env.pk * 1000.0; // air pressure (Pa)
             double Aca;
             double Acol;
             double cicol;
             if (C3) {
-                // C3 Rubisco kinetics and the three potential limitations on
-                // assimilation: carboxylation, light and electron transport.
+                // Rubisco's affinity for CO2 at leaf temperature, allowing for
+                // competition from oxygen (Pa).
                 double Q10Kc = 2.1;
-                double Kc = 30.0 * std::pow(Q10Kc, 0.1 * (env.tair - 25.0));
+                double Kc = 30.0 * std::pow(Q10Kc, 0.1 * (env.tcanopy - 25.0));
                 double Q10Ko = 1.2;
-                double Ko = 30000.0 * std::pow(Q10Ko, 0.1 * (env.tair - 25.0));
-                // Gross assimilation, limited by carbon, light or transport --
-                // evaluated at ci (the Jacobs (1994) formula). This retains
-                // the physically-meaningful ci-response of Wl (real leaves
-                // draw ci down below ca as light/assimilation rises, which
-                // is what gives the light-response curve its shape) and
-                // feeds the co-limitation smoothing (Wcol/cicol) below.
-                double Wc = Vcmax * ((ci - photocomp) / (ci + Kc * (1 + Oa / Ko)));
-                double Wl = vegp.alpha * IPAR * ((ci - photocomp) / (ci + 2.0 * photocomp));
-                double We = 0.5 * Vcmax;
-                if (Wc < 0.0) Wc = 0.0;
-                if (Wl < 0.0) Wl = 0.0;
-                if (We < 0.0) We = 0.0;
-                // Co-limiting assimilation and CO2 concentration -- still
-                // derived from the ci-evaluated We/Wl (see below for why).
-                double Wcol = ((We + Wl) - std::sqrt(std::pow(We + Wl, 2.0) - 4.0 * 0.93 * (We * Wl))) / (2.0 * 0.93);
-                Acol = Wcol - Rd;
-                cicol = (-Vcmax * photocomp - Kc * (1.0 + Oa / Ko) * Wcol) / (Wcol - Vcmax);
-                // Assimilation at ambient CO2 represents the fully open-
-                // stomata end member. Together with the co-limitation point
-                // above it gives the marginal carbon gain from increasing
-                // intercellular CO2, required by the SOX optimum.
-                double Wc_ca = Vcmax * ((ca - photocomp) / (ca + Kc * (1 + Oa / Ko)));
-                double Wl_ca = vegp.alpha * IPAR * ((ca - photocomp) / (ca + 2.0 * photocomp));
-                double We_ca = We;
-                if (Wc_ca < 0.0) Wc_ca = 0.0;
-                if (Wl_ca < 0.0) Wl_ca = 0.0;
-                double Wca = Wc_ca;
-                if (Wl_ca < Wca) Wca = Wl_ca;
-                if (We_ca < Wca) Wca = We_ca;
-                Aca = Wca - Rd;
+                double Ko = 30000.0 * std::pow(Q10Ko, 0.1 * (env.tcanopy - 25.0));
+                const double Km = Kc * (1.0 + Oa / Ko);
+                // Internal CO2 above which more CO2 adds nothing: where the
+                // Rubisco-limited rate meets the co-limited rate of light and
+                // transport (Eller et al. 2020, Eqs S2.4 to S2.6).
+                const double We = 0.5 * Vcmax;
+                const double light = vegp.alpha * IPAR;
+                const double Wcol = coLimited(We, light, 0.93);
+                cicol = (-Vcmax * photocomp - Km * Wcol) / (Wcol - Vcmax);
+                // Net assimilation at a given internal CO2: the co-limited rate
+                // of the Rubisco-limited, light-limited and transport-limited
+                // rates (Collatz et al. 1991).
+                auto assimilation = [&](double c) {
+                    const double Wc = std::max(Vcmax * (c - photocomp) / (c + Km), 0.0);
+                    const double Wl = std::max(light * (c - photocomp) / (c + 2.0 * photocomp), 0.0);
+                    return coLimited(coLimited(Wc, Wl, 0.83), We, 0.93) - Rd;
+                };
+                Aca = assimilation(ca);
+                Acol = assimilation(cicol);
             }
             else {
-                // C4 photosynthetic pathway: PEP-carboxylase-limited
-                // assimilation, using a simpler light/Rubisco/CO2
-                // co-limitation than the C3 branch above (C4 plants
-                // concentrate CO2 internally, so their assimilation is not
-                // CO2-limited in the same way C3 photosynthesis is).
-                double k = 2.0e-4;
-                double Wc = Vcmax;
-                double Wl = vegp.alpha * IPAR;
-                double We = k * Vcmax * (ci / (env.pk * 1000.0));
-                double W = Wc;
-                if (Wl < W) W = Wl;
-                if (We < W) W = We;
-                Aca = W - Rd;
-                double Wcol = ((Wc + Wl) - std::sqrt(std::pow(Wc + Wl, 2.0) - 4.0 * 0.83 * (We * Wl))) / (2.0 * 0.83);
-                Acol = Wcol - Rd;
-                cicol = (Wcol * env.pk * 1000.0) / (k * Vcmax);
+                // C4 pathway. Internal CO2 above which more CO2 adds nothing:
+                // where the CO2-limited rate meets the co-limited rate of
+                // Rubisco and light (Eller et al. 2020, Eqs S2.7, S2.8).
+                const double k = 2.0e4;
+                const double Wcol = coLimited(Vcmax, vegp.alpha * IPAR, 0.83);
+                cicol = (Wcol * P) / (k * Vcmax);
+                // Net assimilation at a given internal CO2: the co-limited rate
+                // of that and the CO2-limited rate (Collatz et al. 1992).
+                auto assimilation = [&](double c) {
+                    return coLimited(Wcol, k * Vcmax * (c / P), 0.93) - Rd;
+                };
+                Aca = assimilation(ca);
+                Acol = assimilation(cicol);
             }
-            // Change in assimilation per unit change in intercellular CO2:
-            // a finite difference between assimilation evaluated at ambient
-            // CO2 (ca, the fully-open-stomata case) and at the co-limitation
-            // point (cicol) -- the marginal carbon gain the stomatal-
-            // optimisation scheme below weighs against the marginal water
-            // cost of opening the stomata further.
-            double dadc = (Aca - Acol) / (ca - cicol);
+            // Gain in assimilation per unit CO2 from opening the stomata: from
+            // the point where CO2 stops limiting to stomata fully open,
+            // internal CO2 equal to ambient (Eller et al. 2020, Eq. S2.1).
+            const double dadc = (Aca - Acol) / (ca - cicol);
             // Hydraulic supply cost. Leaf water potential becomes more
             // negative with height, and the vulnerability curve translates
             // that water potential into the fraction of xylem conductivity
@@ -781,10 +770,18 @@ namespace pointmodel {
             // stomatal conductance.
             double DDm = DD / env.pk; // divide by pk to convert to mol / mol
             double zeta = 2.0 / (dKdpKi * rp * 1.6 * DDm);
-            if (dadc < 1e-99) dadc = 1e-99;
-            double mu = 1.0 + (4.0 * zeta) / dadc;
-            if (mu < 1.0) mu = 1.0;
-            gs = 0.5 * dadc * (std::sqrt(mu) - 1.0);
+            if (dadc > 0.0) {
+                // Conductance at which the gain in carbon balances the loss of
+                // water supply (Eller et al. 2020, Eq. 4).
+                double mu = 1.0 + (4.0 * zeta) / dadc;
+                if (mu < 1.0) mu = 1.0;
+                gs = 0.5 * dadc * (std::sqrt(mu) - 1.0);
+            }
+            else {
+                // No gain from more CO2: conductance just brings internal CO2
+                // to that point (Eq. S2.2).
+                gs = std::max(Acol * P / (ca - cicol), 0.0);
+            }
             // Keep the optimum within the conductance supported by the
             // photosynthetic parameterisation.
             double gsmax = vegp.Vcmax25 * 1e4;
