@@ -521,8 +521,8 @@ micropoint50 <- subsetpointmodel(micropoint50, tstep = "month", what = "tmax")
 mout10 <- rungridmodel(micropoint10, reqhgt = -0.1, dtmcaerth, vegp, soilc)
 mout50 <- rungridmodel(micropoint50, reqhgt = -0.5, dtmcaerth, vegp, soilc)
 # Plot below ground temperatures
-plot(mout10$Tz[[134]], range = c(13, 38)) # 10 cm below
-plot(mout50$Tz[[134]], range = c(13, 38)) # 50 cm below
+plot(mout10$Tz[[134]], range = c(10, 36)) # 10 cm below
+plot(mout50$Tz[[134]], range = c(10, 36)) # 50 cm below
 ```
 ![](images/image8.png)\
 
