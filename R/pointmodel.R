@@ -130,8 +130,8 @@ checkinputs <- function(weather, vegp, soilc, dtm, uzin = 2) {
   if (any(dirr > csr, na.rm = TRUE)) {
     warning("Direct radiation values higher than expected clear-sky radiation values in places")
   }
-  if (any(weather$swdown > csr + 50, na.rm = TRUE)) {
-    warning("Shortwave radiation values significantly higher than expected clear-sky radiation values in places")
+  if (any(weather$swdown > csr, na.rm = TRUE)) {
+    warning("Shortwave radiation values higher than expected clear-sky radiation values in places")
   }
 
   # ---- vegp ----

@@ -755,6 +755,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// clearskyradCpp
+Rcpp::NumericVector clearskyradCpp(Rcpp::NumericVector year, Rcpp::NumericVector month, Rcpp::NumericVector day, Rcpp::NumericVector hour, Rcpp::NumericVector temp, Rcpp::NumericVector relhum, Rcpp::NumericVector pres, double lat, double lon, bool haze, bool hourmean);
+RcppExport SEXP _microclimf_clearskyradCpp(SEXP yearSEXP, SEXP monthSEXP, SEXP daySEXP, SEXP hourSEXP, SEXP tempSEXP, SEXP relhumSEXP, SEXP presSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP hazeSEXP, SEXP hourmeanSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type year(yearSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type month(monthSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type day(daySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type hour(hourSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type temp(tempSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type relhum(relhumSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type pres(presSEXP);
+    Rcpp::traits::input_parameter< double >::type lat(latSEXP);
+    Rcpp::traits::input_parameter< double >::type lon(lonSEXP);
+    Rcpp::traits::input_parameter< bool >::type haze(hazeSEXP);
+    Rcpp::traits::input_parameter< bool >::type hourmean(hourmeanSEXP);
+    rcpp_result_gen = Rcpp::wrap(clearskyradCpp(year, month, day, hour, temp, relhum, pres, lat, lon, haze, hourmean));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_runbioclimCpp", (DL_FUNC) &_microclimf_runbioclimCpp, 7},
@@ -799,6 +820,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_fillByTypeCpp", (DL_FUNC) &_microclimf_fillByTypeCpp, 3},
     {"_microclimf_rowAnyPositiveCpp", (DL_FUNC) &_microclimf_rowAnyPositiveCpp, 1},
     {"_microclimf_maxClearHeightCpp", (DL_FUNC) &_microclimf_maxClearHeightCpp, 2},
+    {"_microclimf_clearskyradCpp", (DL_FUNC) &_microclimf_clearskyradCpp, 11},
     {NULL, NULL, 0}
 };
 

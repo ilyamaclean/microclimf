@@ -169,3 +169,7 @@ maxClearHeightCpp <- function(hgt, pai) {
     .Call(`_microclimf_maxClearHeightCpp`, hgt, pai)
 }
 
+clearskyradCpp <- function(year, month, day, hour, temp, relhum, pres, lat, lon, haze = FALSE, hourmean = TRUE) {
+    .Call(`_microclimf_clearskyradCpp`, year, month, day, hour, temp, relhum, pres, lat, lon, haze, hourmean)
+}
+

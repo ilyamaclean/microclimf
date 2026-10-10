@@ -190,56 +190,19 @@ Cafromyear <- function(year) {
 # vectorised over cells, so R and the model share one definition.
 
 # =========================================================================== #
-# Solar geometry and clear-sky radiation
+# Clear-sky radiation
 # =========================================================================== #
-# These calculations provide an independent clear-sky benchmark used to flag
-# meteorological radiation inputs that are physically implausible.
+# An independent clear-sky benchmark used to flag meteorological radiation
+# inputs that are physically implausible.
 
-# Julian day (including fractional day) from a POSIXlt time.
-.jday <- function(tme) {
-  yr <- tme$year + 1900
-  mth <- tme$mon + 1
-  dd <- tme$mday + (tme$hour + (tme$min + tme$sec / 60) / 60) / 24
-  madj <- mth + (mth < 3) * 12
-  yadj <- yr + (mth < 3) * -1
-  jd <- trunc(365.25 * (yadj + 4716)) + trunc(30.6001 * (madj + 1)) + dd - 1524.5
-  b <- 2 - trunc(yadj / 100) + trunc(trunc(yadj / 100) / 4)
-  jd + (jd > 2299160) * b
-}
-
-# Solar time (decimal hours), accounting for longitude and the equation of time.
-.soltime <- function(localtime, long, jd, merid = 0, dst = 0) {
-  m <- 6.24004077 + 0.01720197 * (jd - 2451545)
-  eot <- -7.659 * sin(m) + 9.863 * sin(2 * m + 3.5932)
-  localtime + (4 * (long - merid) + eot) / 60 - dst
-}
-
-# Solar altitude (degrees above the horizon).
-.solalt <- function(localtime, lat, long, jd, merid = 0, dst = 0) {
-  st <- .soltime(localtime, long, jd, merid, dst)
-  tt <- 0.261799 * (st - 12)
-  d <- (pi * 23.5 / 180) * cos(2 * pi * ((jd - 159.5) / 365.25))
-  sh <- sin(d) * sin(lat * pi / 180) + cos(d) * cos(lat * pi / 180) * cos(tt)
-  (180 * atan(sh / sqrt(1 - sh^2))) / pi
-}
-
-# Estimated clear-sky shortwave radiation (W/m^2) on a horizontal surface,
-# from Crawford & Duchon (1999)-style atmospheric transmittance terms
-# (Rayleigh/permanent-gas, water-vapour and aerosol transmittances).
-.clearskyrad <- function(tme, lat, long, tc, rh, pk) {
-  jd <- .jday(tme)
-  lt <- tme$hour + tme$min / 60 + tme$sec / 3600
-  sa <- .solalt(lt, lat, long, jd) * pi / 180
-  m <- 35 * sin(sa) * ((1224 * sin(sa)^2 + 1)^(-0.5))
-  TrTpg <- 1.021 - 0.084 * (m * 0.00949 * pk + 0.051)^0.5
-  xx <- log(rh / 100) + ((17.27 * tc) / (237.3 + tc))
-  Td <- (237.3 * xx) / (17.27 - xx)
-  u <- exp(0.1133 - log(3.78) + 0.0393 * Td)
-  Tw <- 1 - 0.077 * (u * m)^0.3
-  Ta <- 0.935 * m
-  Ic <- 1352.778 * sin(sa) * TrTpg * Tw * Ta
-  Ic[is.na(Ic)] <- 0
-  Ic
+# Clear-sky shortwave radiation (W/m^2) on a horizontal surface, after Crawford &
+# Duchon (1999). With haze = FALSE the air is clean, giving the most a cloudless
+# sky can deliver. With hourmean = TRUE it is the mean over the hour centred on
+# each time.
+.clearskyrad <- function(tme, lat, long, tc, rh, pk, haze = FALSE, hourmean = TRUE) {
+  hour <- tme$hour + tme$min / 60 + tme$sec / 3600
+  clearskyradCpp(tme$year + 1900, tme$mon + 1, tme$mday, hour, tc, rh, pk,
+                 lat, long, haze, hourmean)
 }
 
 # =========================================================================== #

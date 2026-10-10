@@ -1663,3 +1663,43 @@ double maxClearHeightCpp(Rcpp::NumericMatrix hgt, Rcpp::NumericMatrix pai) {
     }
     return best;
 }
+
+// Clear-sky shortwave radiation (W/m^2) on a horizontal surface, allowing for
+// scattering and absorption by gases and water vapour and, if haze is true, by
+// a typical amount of haze and dust. If hourmean is true it is the mean over
+// the hour centred on each time, from the sun's position every five minutes.
+// [[Rcpp::export]]
+Rcpp::NumericVector clearskyradCpp(Rcpp::NumericVector year, Rcpp::NumericVector month,
+    Rcpp::NumericVector day, Rcpp::NumericVector hour, Rcpp::NumericVector temp,
+    Rcpp::NumericVector relhum, Rcpp::NumericVector pres, double lat, double lon,
+    bool haze = false, bool hourmean = true) {
+    const R_xlen_t n = hour.size();
+    const int nstep = hourmean ? 12 : 1;
+    const double latr = lat * torad;
+    Rcpp::NumericVector csr(n, 0.0);
+    for (R_xlen_t i = 0; i < n; ++i) {
+        // Water in the column of air above the surface, from dew point (degrees Fahrenheit)
+        const double xx = std::log(relhum[i] / 100.0) + (17.27 * temp[i]) / (237.3 + temp[i]);
+        const double Td = (237.3 * xx) / (17.27 - xx);
+        const double u = std::exp(0.1133 - std::log(3.78) + 0.0393 * (Td * 1.8 + 32.0));
+        const int jd = utils::juldayCpp(static_cast<int>(year[i]), static_cast<int>(month[i]),
+            static_cast<int>(day[i]));
+        const double dec = (pi * 23.5 / 180.0) * std::cos(2.0 * pi * ((jd - 159.5) / 365.25));
+        for (int k = 0; k < nstep; ++k) {
+            const double lt = hourmean ? hour[i] + (5.0 * k - 27.5) / 60.0 : hour[i];
+            const double tt = 0.261799 * (utils::soltimeCpp(jd, lt, lon) - 12.0);
+            const double cosz = std::sin(dec) * std::sin(latr) + std::cos(dec) * std::cos(latr) * std::cos(tt);
+            if (cosz >= 0.0) {
+                // Depth of atmosphere crossed by the beam, relative to the sun overhead
+                const double m = 35.0 / std::sqrt(1224.0 * cosz * cosz + 1.0);
+                // Fractions passed by the gases of the air, by water vapour and by haze
+                const double TrTpg = 1.021 - 0.084 * std::sqrt(m * 0.00949 * pres[i] + 0.051);
+                const double Tw = 1.0 - 0.077 * std::pow(u * m, 0.3);
+                const double Ta = haze ? std::pow(0.935, m) : 1.0;
+                csr[i] += 1352.778 * cosz * TrTpg * Tw * Ta;
+            }
+        }
+        csr[i] /= nstep;
+    }
+    return csr;
+}
