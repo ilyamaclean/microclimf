@@ -107,7 +107,7 @@
 #'   \item{Vm}{Volumetric mineral content.}
 #'   \item{Vo}{Volumetric organic content.}
 #'   \item{Mc}{Clay mass fraction.}
-#'   \item{rho}{Soil bulk density (Mg/m3).}
+#'   \item{rho}{Dry bulk density (Mg/m3), from the constituents and particle densities of 2.66 (quartz), 2.65 (other minerals) and 1.30 (organic matter). Not used by the model.}
 #'   \item{b}{Campbell soil-water retention parameter (dimensionless).}
 #'   \item{psi_e}{Air-entry matric-potential magnitude (J/kg), stored as a positive value.}
 #' }

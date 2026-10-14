@@ -547,7 +547,7 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
   s <- which(tab$Soil.type == soiltype)
   # Extract the Campbell retention/conductivity and thermal-composition
   # parameters for the selected soil type.
-  campbellcols <- c("Smax", "Smin", "Ksat", "Vq", "Vm", "Vo", "Mc", "rho", "b", "psi_e")
+  campbellcols <- c("Smax", "Smin", "Ksat", "Vq", "Vm", "Vo", "Mc", "b", "psi_e")
   v <- as.numeric(tab[s, campbellcols])
   names(v) <- campbellcols
   soilc <- as.list(v)
@@ -564,9 +564,6 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
   soilc$Vm <- soilc$Vm * mu
   soilc$Vq <- soilc$Vq * mu
   soilc$Mc <- soilc$Mc * mu
-  # Bulk density increases slightly with depth
-  mu <- seq(0.9, 1.1, length.out = nlayers + 1)
-  soilc$rho <- soilc$rho * mu
   soilc$gref <- 0.15
   soilc$groundem <- 0.97
   soilc$grefPAR <- 0.75 * soilc$gref
