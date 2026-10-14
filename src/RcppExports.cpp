@@ -120,18 +120,21 @@ BEGIN_RCPP
 END_RCPP
 }
 // soilmDistributeCpp
-Rcpp::NumericVector soilmDistributeCpp(Rcpp::NumericMatrix Smin, Rcpp::NumericMatrix Smax, Rcpp::NumericMatrix tadd, Rcpp::NumericMatrix wet, Rcpp::NumericVector theta0, int tsteps);
-RcppExport SEXP _microclimf_soilmDistributeCpp(SEXP SminSEXP, SEXP SmaxSEXP, SEXP taddSEXP, SEXP wetSEXP, SEXP theta0SEXP, SEXP tstepsSEXP) {
+Rcpp::NumericVector soilmDistributeCpp(Rcpp::NumericMatrix Smax, Rcpp::NumericMatrix psie, Rcpp::NumericMatrix b, Rcpp::NumericMatrix tadd, Rcpp::NumericMatrix wet, Rcpp::NumericVector theta0, Rcpp::NumericVector Ta, Rcpp::NumericVector rh, int tsteps);
+RcppExport SEXP _microclimf_soilmDistributeCpp(SEXP SmaxSEXP, SEXP psieSEXP, SEXP bSEXP, SEXP taddSEXP, SEXP wetSEXP, SEXP theta0SEXP, SEXP TaSEXP, SEXP rhSEXP, SEXP tstepsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type Smin(SminSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type Smax(SmaxSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type psie(psieSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type b(bSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type tadd(taddSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type wet(wetSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type theta0(theta0SEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type Ta(TaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type rh(rhSEXP);
     Rcpp::traits::input_parameter< int >::type tsteps(tstepsSEXP);
-    rcpp_result_gen = Rcpp::wrap(soilmDistributeCpp(Smin, Smax, tadd, wet, theta0, tsteps));
+    rcpp_result_gen = Rcpp::wrap(soilmDistributeCpp(Smax, psie, b, tadd, wet, theta0, Ta, rh, tsteps));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -782,7 +785,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_microclimf_soilWaterPotentialGridCpp", (DL_FUNC) &_microclimf_soilWaterPotentialGridCpp, 4},
     {"_microclimf_surfaceResistGridCpp", (DL_FUNC) &_microclimf_surfaceResistGridCpp, 7},
     {"_microclimf_referenceGroundResistCpp", (DL_FUNC) &_microclimf_referenceGroundResistCpp, 8},
-    {"_microclimf_soilmDistributeCpp", (DL_FUNC) &_microclimf_soilmDistributeCpp, 6},
+    {"_microclimf_soilmDistributeCpp", (DL_FUNC) &_microclimf_soilmDistributeCpp, 9},
     {"_microclimf_groundHeatFluxCpp", (DL_FUNC) &_microclimf_groundHeatFluxCpp, 44},
     {"_microclimf_belowGroundShortcutCpp", (DL_FUNC) &_microclimf_belowGroundShortcutCpp, 7},
     {"_microclimf_canopyTempCpp", (DL_FUNC) &_microclimf_canopyTempCpp, 10},

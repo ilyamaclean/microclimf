@@ -882,20 +882,20 @@ namespace gridmodel {
         return out;
     }
 
-    // Distribute the reference surface-soil moisture across the landscape.
-    // Each cell inherits the reference degree of wetness within its own soil-
-    // specific residual-to-saturated range, then a topographic-wetness anomaly
-    // shifts that fraction in logit space so the result remains physically
-    // bounded between the cell's dry and saturated limits. Last, the cell is
-    // raised toward saturation by its wet weight (0 to 1): the share of the
-    // gap to saturation that is closed in every hour, 1 where the ground is
-    // permanently wet, whatever the reference soil is doing.
-    NumericVector soilmDistributeCpp(NumericMatrix Smin, NumericMatrix Smax, NumericMatrix tadd,
-        NumericMatrix wet, NumericVector theta0, int tsteps)
+    // Distribute the reference soil moisture across the landscape. The
+    // reference water content, as a degree of saturation of the cell's soil,
+    // is shifted in logit space by the cell's topographic-wetness anomaly, held
+    // no drier than the cell's soil when air-dry in that day's driest air, or
+    // than the reference where that is drier, then raised toward saturation by
+    // the cell's wet weight (1 where the ground is permanently wet).
+    NumericVector soilmDistributeCpp(NumericMatrix Smax, NumericMatrix psie, NumericMatrix b,
+        NumericMatrix tadd, NumericMatrix wet, NumericVector theta0, NumericVector Ta,
+        NumericVector rh, int tsteps)
     {
-        int rows = Smin.nrow();
-        int cols = Smin.ncol();
+        int rows = Smax.nrow();
+        int cols = Smax.ncol();
         bool theta0Spatial = (theta0.size() != tsteps);
+        bool climSpatial = (Ta.size() != tsteps);
         int n = rows * cols * tsteps;
         IntegerVector dim = { rows, cols, tsteps };
         NumericVector soilm(n, NA_REAL);
@@ -903,40 +903,42 @@ namespace gridmodel {
 
         for (int i = 0; i < rows; ++i) {
             for (int j = 0; j < cols; ++j) {
-                double smn = Smin(i, j);
                 double smx = Smax(i, j);
                 double ta = tadd(i, j);
                 double w = wet(i, j);
-                if (NumericMatrix::is_na(smn) || NumericMatrix::is_na(smx) || NumericMatrix::is_na(ta) ||
+                if (NumericMatrix::is_na(smx) || NumericMatrix::is_na(psie(i, j)) ||
+                    NumericMatrix::is_na(b(i, j)) || NumericMatrix::is_na(ta) ||
                     NumericMatrix::is_na(w)) continue;
-                double rge = smx - smn;
-                for (int k = 0; k < tsteps; ++k) {
-                    int idx = i + rows * j + rows * cols * k;
-                    // The reference soil moisture is expressed as a
-                    // fraction of this cell's own physically plausible
-                    // range, shifted in logit space by this cell's own
-                    // topographic wetness anomaly (working in logit space
-                    // keeps the shifted value within [0, 1] regardless of
-                    // how large the anomaly is), then rescaled back into
-                    // this cell's own physical units.
-                    double theta0_i = theta0Spatial ? theta0[idx] : theta0[k];
-                    // An evaporating surface dries below the residual water
-                    // content, and the wetness anomaly has no meaning there:
-                    // the reference's own value is carried across unchanged, so
-                    // that a cell identical to the reference reproduces it.
-                    double thetaCell;
-                    if (theta0_i < smn) {
-                        thetaCell = theta0_i;
-                    } else {
-                        double theta = (theta0_i - smn) / rge;
-                        if (theta > 0.9999) theta = 0.9999;
-                        if (theta < 0.0001) theta = 0.0001;
-                        double lt = std::log(theta / (1.0 - theta));
-                        double sm = lt + ta;
-                        sm = 1.0 / (1.0 + std::exp(-sm));
-                        thetaCell = sm * rge + smn;
+                pointmodel::soilpstruct sp = miniSoilpCpp(0.0, 0.0, 0.0, 0.0, smx, psie(i, j), b(i, j));
+                for (int d0 = 0; d0 < tsteps; d0 += 24) {
+                    int d1 = std::min(d0 + 24, tsteps);
+                    double rhMin = R_PosInf, TaMin = NA_REAL;
+                    for (int k = d0; k < d1; ++k) {
+                        int idx = i + rows * j + rows * cols * k;
+                        double r = climSpatial ? rh[idx] : rh[k];
+                        if (std::isfinite(r) && r < rhMin) {
+                            rhMin = r;
+                            TaMin = climSpatial ? Ta[idx] : Ta[k];
+                        }
                     }
-                    soilm[idx] = thetaCell + w * (smx - thetaCell);
+                    double thetaAirDry = 0.0;
+                    if (std::isfinite(rhMin) && std::isfinite(TaMin)) {
+                        double r = std::min(std::max(rhMin, 1.0), 100.0) / 100.0;
+                        double psiAirDry = mc::RgasC * (TaMin + 273.15) / mc::Mw * std::log(r);
+                        thetaAirDry = pointmodel::thetaFromPsiCpp(sp, psiAirDry, 0);
+                    }
+                    for (int k = d0; k < d1; ++k) {
+                        int idx = i + rows * j + rows * cols * k;
+                        double theta0_i = theta0Spatial ? theta0[idx] : theta0[k];
+                        double S = theta0_i / smx;
+                        if (S > 0.9999) S = 0.9999;
+                        if (S < 0.0001) S = 0.0001;
+                        double lt = std::log(S / (1.0 - S)) + ta;
+                        double thetaCell = smx / (1.0 + std::exp(-lt));
+                        double thetaFloor = std::min(thetaAirDry, theta0_i);
+                        if (thetaCell < thetaFloor) thetaCell = thetaFloor;
+                        soilm[idx] = thetaCell + w * (smx - thetaCell);
+                    }
                 }
             }
         }
@@ -2257,10 +2259,11 @@ Rcpp::NumericVector referenceGroundResistCpp(Rcpp::NumericVector uref, Rcpp::Num
 }
 
 // [[Rcpp::export]]
-Rcpp::NumericVector soilmDistributeCpp(Rcpp::NumericMatrix Smin, Rcpp::NumericMatrix Smax,
-    Rcpp::NumericMatrix tadd, Rcpp::NumericMatrix wet, Rcpp::NumericVector theta0, int tsteps)
+Rcpp::NumericVector soilmDistributeCpp(Rcpp::NumericMatrix Smax, Rcpp::NumericMatrix psie,
+    Rcpp::NumericMatrix b, Rcpp::NumericMatrix tadd, Rcpp::NumericMatrix wet,
+    Rcpp::NumericVector theta0, Rcpp::NumericVector Ta, Rcpp::NumericVector rh, int tsteps)
 {
-    return gridmodel::soilmDistributeCpp(Smin, Smax, tadd, wet, theta0, tsteps);
+    return gridmodel::soilmDistributeCpp(Smax, psie, b, tadd, wet, theta0, Ta, rh, tsteps);
 }
 
 // [[Rcpp::export]]

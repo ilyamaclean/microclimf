@@ -16,6 +16,7 @@ runbioclim(
   uzin = zin,
   tfact = 1.7,
   twiwet = 10,
+  twiref = NULL,
   hor = NA,
   twi = NA,
   svf = NA,
@@ -70,6 +71,11 @@ in topographic wetness.}
 \item{twiwet}{topographic wetness index at and above which the ground is
 permanently wet: soil there is saturated at every time step. Set to
 \code{Inf} for no permanently wet ground.}
+
+\item{twiref}{topographic wetness index at which soil moisture is that of
+the point model. If \code{NULL}, the mean index of a typical landscape at
+the resolution of \code{dtm}: 8 at 10 m, plus half the natural logarithm of
+the ratio of the cell size to 10 m.}
 
 \item{hor}{an optional array of horizon angles (degrees) in 24 directions.
 Calculated automatically from \code{dtm} if not supplied.}

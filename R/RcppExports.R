@@ -25,8 +25,8 @@ referenceGroundResistCpp <- function(uref, ufRef, HRef, Ta, pk, zref, hRef, paiR
     .Call(`_microclimf_referenceGroundResistCpp`, uref, ufRef, HRef, Ta, pk, zref, hRef, paiRef)
 }
 
-soilmDistributeCpp <- function(Smin, Smax, tadd, wet, theta0, tsteps) {
-    .Call(`_microclimf_soilmDistributeCpp`, Smin, Smax, tadd, wet, theta0, tsteps)
+soilmDistributeCpp <- function(Smax, psie, b, tadd, wet, theta0, Ta, rh, tsteps) {
+    .Call(`_microclimf_soilmDistributeCpp`, Smax, psie, b, tadd, wet, theta0, Ta, rh, tsteps)
 }
 
 groundHeatFluxCpp <- function(RabsGround, rGz, rGm, RabsCanopy, rHa, rSurf_ref, hSurf_ref, hFol_ref, soilm, Ta, rh, pk, Vq, Vm, Vo, Mc, thetaS, psie, b, svfa, emGround, emCanopy, slope, aspect, Rsw, Rdif, lats, lons, year, month, day, hour, G_ref, RabsGround_ref, rGz_ref, theta0_ref, emGround_ref, VqRef, VmRef, VoRef, McRef, thetaSRef, psieRef, bRef) {

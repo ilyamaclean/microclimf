@@ -12,6 +12,7 @@ rungridmodel(
   soilc,
   tfact = 1.7,
   twiwet = 10,
+  twiref = NULL,
   altcorrect = 0,
   hor = NA,
   twi = NA,
@@ -53,6 +54,11 @@ variation in topographic wetness.}
 \item{twiwet}{topographic wetness index at and above which the ground is
 permanently wet: soil there is saturated at every time step. Set to
 \code{Inf} for no permanently wet ground.}
+
+\item{twiref}{topographic wetness index at which soil moisture is that of
+the point model. If \code{NULL}, the mean index of a typical landscape at
+the resolution of \code{dtm}: 8 at 10 m, plus half the natural logarithm of
+the ratio of the cell size to 10 m.}
 
 \item{altcorrect}{a single numeric value indicating whether to apply an
 elevational lapse rate correction to temperatures (0 = no correction, 1 =
@@ -139,10 +145,11 @@ meaning of the requested outputs.
 
 
 Soil moisture is distributed from the point model's by the topographic
-wetness index. The point model stands for a flat cell with no contributing
-area: a cell with that cell's index takes the point model's soil moisture, a
-cell with a higher index is wetter and one with a lower index drier, by an
-amount set by \code{tfact}. Ground whose index is at or above \code{twiwet},
+wetness index. A cell whose index is \code{twiref} takes the point model's
+soil moisture, a cell with a higher index is wetter and one with a lower
+index drier, by an amount set by \code{tfact}, but never drier than soil
+left air-dry by the day's driest air, or than the point model's soil where
+that is drier. Ground whose index is at or above \code{twiwet},
 such as a stream channel, is saturated at every time step.
 
 For vegetation supplied as several layers, each field is treated as a

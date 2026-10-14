@@ -134,12 +134,13 @@ namespace gridmodel {
 
     // Distribute reference surface soil moisture according to local soil
     // capacity and topographic wetness. The reference moisture is first
-    // expressed as a fraction between each cell's residual and saturated water
-    // contents, shifted by the wetness anomaly in logit space, and converted
-    // back to volumetric water content. Each cell is then raised toward
+    // expressed as a degree of saturation, shifted by the wetness anomaly in
+    // logit space and held no drier than air-dry soil in the day's driest air,
+    // or the reference where that is drier. Each cell is then raised toward
     // saturation by its wet weight, which is 1 on permanently wet ground.
-    Rcpp::NumericVector soilmDistributeCpp(Rcpp::NumericMatrix Smin, Rcpp::NumericMatrix Smax,
-        Rcpp::NumericMatrix tadd, Rcpp::NumericMatrix wet, Rcpp::NumericVector theta0, int tsteps);
+    Rcpp::NumericVector soilmDistributeCpp(Rcpp::NumericMatrix Smax, Rcpp::NumericMatrix psie,
+        Rcpp::NumericMatrix b, Rcpp::NumericMatrix tadd, Rcpp::NumericMatrix wet,
+        Rcpp::NumericVector theta0, Rcpp::NumericVector Ta, Rcpp::NumericVector rh, int tsteps);
 
     // ========================================================================
     // Ground heat flux / surface temperature shortcut

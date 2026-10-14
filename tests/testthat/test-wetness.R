@@ -7,13 +7,33 @@ box <- terra::ext(terra::xmin(e), terra::xmin(e) + 8 * terra::res(d)[1],
 crp <- function(x) terra::crop(terra::rast(x), box)
 dm <- crp(dtmcaerth); vg <- lapply(vegp, crp); sl <- lapply(soilc, crp)
 
-test_that("the anchor is the index of a flat cell with no contributing area", {
+test_that("the anchor is the typical-landscape index for the cell size, and twiref replaces it", {
   anchor <- microclimf:::.referenceWetnessIndex(dm)
-  expect_equal(anchor, log(terra::res(dm)[1] / tan(0.1 * pi / 180)))
+  expect_equal(anchor, 8 + 0.5 * log(terra::res(dm)[1] / 10))
   # An index equal to the anchor everywhere leaves the reference's moisture unshifted.
   w <- microclimf:::.topoWetness(dm, dm * 0 + anchor, tfact = 1.7, twiwet = Inf)
   expect_true(all(terra::values(w$shift) == 0, na.rm = TRUE))
   expect_true(all(terra::values(w$wet) == 0, na.rm = TRUE))
+  w <- microclimf:::.topoWetness(dm, dm * 0 + 5, tfact = 2, twiwet = Inf, twiref = 7)
+  expect_true(all(terra::values(w$shift) == -1, na.rm = TRUE))
+})
+
+test_that("unshifted cells keep the reference water content, and no cell is drier than air-dry soil or the reference", {
+  m <- function(v) matrix(v, 1, 3)
+  smax <- m(c(0.37, 0.45, 0.5)); psie <- m(c(0.73, 2.59, 3.73)); b <- m(c(1.69, 5.15, 7.63))
+  theta0 <- c(0.2, 0.05)
+  # The floor is set by the day's lowest relative humidity, at the air temperature of that hour.
+  Ta <- c(20, 15); rh <- c(48, 90)
+  psiAirDry <- 8.314 * (20 + 273.15) / 0.018015 * log(0.48)
+  dry <- as.vector(smax) * (as.vector(psie) / -psiAirDry)^(1 / as.vector(b))
+  # With no shift each cell takes the reference's water content.
+  s0 <- microclimf:::soilmDistributeCpp(smax, psie, b, m(0), m(0), theta0, Ta, rh, 2)
+  expect_equal(as.vector(s0[1, , 1]), rep(0.2, 3), tolerance = 1e-12)
+  expect_equal(as.vector(s0[1, , 2]), rep(0.05, 3), tolerance = 1e-12)
+  # A large negative shift stops at each soil's air-dry water content, or at the reference where drier.
+  s1 <- microclimf:::soilmDistributeCpp(smax, psie, b, m(-30), m(0), theta0, Ta, rh, 2)
+  expect_equal(as.vector(s1[1, , 1]), pmin(dry, 0.2), tolerance = 1e-12)
+  expect_equal(as.vector(s1[1, , 2]), pmin(dry, 0.05), tolerance = 1e-12)
 })
 
 test_that("the wet weight is 1 at and above the threshold and falls off below it", {

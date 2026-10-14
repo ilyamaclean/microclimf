@@ -67,6 +67,10 @@
 #' @param twiwet topographic wetness index at and above which the ground is
 #'   permanently wet: soil there is saturated at every time step. Set to
 #'   \code{Inf} for no permanently wet ground.
+#' @param twiref topographic wetness index at which soil moisture is that of
+#'   the point model. If \code{NULL}, the mean index of a typical landscape at
+#'   the resolution of \code{dtm}: 8 at 10 m, plus half the natural logarithm of
+#'   the ratio of the cell size to 10 m.
 #' @param hor an optional array of horizon angles (degrees) in 24 directions.
 #'   Calculated automatically from \code{dtm} if not supplied.
 #' @param twi optional raster object of topographic wetness index values.
@@ -103,7 +107,7 @@
 #'
 #' @export
 runbioclim <- function(weather, reqhgt = 0.05, dtm, vegp, soilc, tme = NULL,
-                        temp = "air", zin = 2, uzin = zin, tfact = 1.7, twiwet = 10,
+                        temp = "air", zin = 2, uzin = zin, tfact = 1.7, twiwet = 10, twiref = NULL,
                         hor = NA, twi = NA, svf = NA, slr = NA, apr = NA,
                         out = rep(TRUE, 19), runchecks = TRUE, matemp = NA_real_,
                         dtmc = NULL, cores = "off", maxmemGB = 4, tilesize = NA,
@@ -132,7 +136,7 @@ runbioclim <- function(weather, reqhgt = 0.05, dtm, vegp, soilc, tme = NULL,
                            tolerance, refhgt)
     nT <- nrow(ref$pm$weather)
     worker <- function(dtm, vegp, soilc, hor, twi, svf, slr, apr) {
-      list(bio = .runbioclim1PerTile(ref, reqhgt, dtm, vegp, soilc, temp, tfact, twiwet,
+      list(bio = .runbioclim1PerTile(ref, reqhgt, dtm, vegp, soilc, temp, tfact, twiwet, twiref,
                                       hor, twi, svf, slr, apr, out))
     }
     result <- .tiledDispatch(dtm, vegp, soilc, hor, twi, svf, slr, apr,
@@ -153,7 +157,7 @@ runbioclim <- function(weather, reqhgt = 0.05, dtm, vegp, soilc, tme = NULL,
     validIdx <- which(vapply(ref$pma$points, is.list, logical(1)))[1]
     nT <- nrow(ref$pma$points[[validIdx]]$weather)
     worker <- function(dtm, vegp, soilc, hor, twi, svf, slr, apr) {
-      list(bio = .runbioclim2PerTile(ref, reqhgt, dtm, vegp, soilc, temp, tfact, twiwet,
+      list(bio = .runbioclim2PerTile(ref, reqhgt, dtm, vegp, soilc, temp, tfact, twiwet, twiref,
                                       hor, twi, svf, slr, apr, out))
     }
     result <- .tiledDispatch(dtm, vegp, soilc, hor, twi, svf, slr, apr,
@@ -297,13 +301,13 @@ runbioclim <- function(weather, reqhgt = 0.05, dtm, vegp, soilc, tme = NULL,
 
 # Downscale the shared reference state across one fine-resolution tile and
 # reduce the resulting temperature/moisture series to BIO variables.
-.runbioclim1PerTile <- function(ref, reqhgt, dtm, vegp, soilc, temp, tfact, twiwet,
+.runbioclim1PerTile <- function(ref, reqhgt, dtm, vegp, soilc, temp, tfact, twiwet, twiref,
                                  hor, twi, svf, slr, apr, out) {
   outT <- c(Tz = identical(temp, "air"), tleaf = identical(temp, "leaf"),
             soilm = (!is.na(reqhgt) && reqhgt <= 0),
             relhum = FALSE, windspeed = FALSE, Rdirdown = FALSE, Rdifdown = FALSE,
             Rswup = FALSE, Rlwdown = FALSE, Rlwup = FALSE)
-  rawT <- .gridmodelCore1(ref$pm, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet,
+  rawT <- .gridmodelCore1(ref$pm, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet, twiref = twiref,
                            hor = hor, twi = twi, svf = svf, slr = slr, apr = apr, out = outT)
   Tz <- if (identical(temp, "air")) rawT$Tz else rawT$tleaf
 
@@ -314,7 +318,7 @@ runbioclim <- function(weather, reqhgt = 0.05, dtm, vegp, soilc, tme = NULL,
   soilm <- if (!is.na(reqhgt) && reqhgt <= 0) {
     rawT$soilm
   } else {
-    rawS <- .gridmodelCore1(ref$pm, vegp, soilc, dtm, reqhgt = 0, tfact = tfact, twiwet = twiwet,
+    rawS <- .gridmodelCore1(ref$pm, vegp, soilc, dtm, reqhgt = 0, tfact = tfact, twiwet = twiwet, twiref = twiref,
                              hor = hor, twi = twi, svf = svf, slr = slr, apr = apr,
                              out = c(soilm = TRUE))
     rawS$soilm
@@ -379,20 +383,20 @@ runbioclim <- function(weather, reqhgt = 0.05, dtm, vegp, soilc, tme = NULL,
 
 # Downscale the coarse-cell reference states across one fine-resolution tile
 # and reduce the resulting temperature/moisture series to BIO variables.
-.runbioclim2PerTile <- function(ref, reqhgt, dtm, vegp, soilc, temp, tfact, twiwet,
+.runbioclim2PerTile <- function(ref, reqhgt, dtm, vegp, soilc, temp, tfact, twiwet, twiref,
                                  hor, twi, svf, slr, apr, out) {
   outT <- c(Tz = identical(temp, "air"), tleaf = identical(temp, "leaf"),
             soilm = (!is.na(reqhgt) && reqhgt <= 0),
             relhum = FALSE, windspeed = FALSE, Rdirdown = FALSE, Rdifdown = FALSE,
             Rswup = FALSE, Rlwdown = FALSE, Rlwup = FALSE)
-  rawT <- .gridmodelCore2(ref$pma, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet,
+  rawT <- .gridmodelCore2(ref$pma, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet, twiref = twiref,
                            hor = hor, twi = twi, svf = svf, slr = slr, apr = apr, out = outT)
   Tz <- if (identical(temp, "air")) rawT$Tz else rawT$tleaf
 
   soilm <- if (!is.na(reqhgt) && reqhgt <= 0) {
     rawT$soilm
   } else {
-    rawS <- .gridmodelCore2(ref$pma, vegp, soilc, dtm, reqhgt = 0, tfact = tfact, twiwet = twiwet,
+    rawS <- .gridmodelCore2(ref$pma, vegp, soilc, dtm, reqhgt = 0, tfact = tfact, twiwet = twiwet, twiref = twiref,
                              hor = hor, twi = twi, svf = svf, slr = slr, apr = apr,
                              out = c(soilm = TRUE))
     rawS$soilm

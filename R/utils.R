@@ -1137,14 +1137,16 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
   out
 }
 
-# Map soil classes to their residual and saturated volumetric water contents
-# so topographic redistribution of soil moisture respects each cell's own
-# physically attainable range.
-.soilcSminSmax <- function(soiltypeR) {
+# Map soil classes to the Campbell retention parameters that topographic
+# redistribution of soil moisture needs: saturated water content, and the
+# air-entry potential and exponent that fix each cell's water content at oven
+# dryness.
+.soilcRetention <- function(soiltypeR) {
   if (inherits(soiltypeR, "PackedSpatRaster")) soiltypeR <- terra::rast(soiltypeR)
-  lookup <- microclimf::soilparamstable[, c("Number", "Smin", "Smax")]
-  list(Smin = terra::classify(soiltypeR, rcl = cbind(lookup$Number, lookup$Smin)),
-       Smax = terra::classify(soiltypeR, rcl = cbind(lookup$Number, lookup$Smax)))
+  lookup <- microclimf::soilparamstable[, c("Number", "Smax", "psi_e", "b")]
+  list(Smax = terra::classify(soiltypeR, rcl = cbind(lookup$Number, lookup$Smax)),
+       psie = terra::classify(soiltypeR, rcl = cbind(lookup$Number, lookup$psi_e)),
+       b    = terra::classify(soiltypeR, rcl = cbind(lookup$Number, lookup$b)))
 }
 
 # Surface-layer Campbell soil parameters required by the grid model's local
@@ -1202,12 +1204,13 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
                  min_slope = .TWI_MIN_SLOPE, fillna = TRUE)
 }
 
-# Topographic wetness index of the reference run. The reference is a flat cell
-# with no contributing area: its upslope area per metre of contour is one cell
-# width, and its slope is the smallest the index allows. A cell with this
-# index takes the reference run's soil moisture.
+# Topographic wetness index at which a cell takes the reference run's soil
+# moisture: the mean index of a typical landscape, which rises with cell size
+# by about half the logarithm of cell size.
+.TWI_REF_10M <- 8
+.TWI_REF_SCALE <- 0.5
 .referenceWetnessIndex <- function(dtm) {
-  log(terra::res(.unpackRaster(dtm))[1] / tan(.TWI_MIN_SLOPE * pi / 180))
+  .TWI_REF_10M + .TWI_REF_SCALE * log(terra::res(.unpackRaster(dtm))[1] / 10)
 }
 
 # Width, in units of the topographic wetness index, over which ground just
@@ -1217,7 +1220,7 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
 # The two terms by which topographic wetness redistributes reference soil
 # moisture across the landscape.
 #   shift: the log-scaled topographic wetness index less the reference run's
-#     (.referenceWetnessIndex), divided by tfact. Positive values identify
+#     (.referenceWetnessIndex, or twiref where supplied), divided by tfact. Positive values identify
 #     cells topographically wetter than the reference run and negative values
 #     drier ones.
 #   wet: the share of the gap to saturation closed in every hour. It is 1 at
@@ -1228,7 +1231,7 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
 # indicates an unlogged index -- log-TWI rarely exceeds ~25-30 while raw TWI
 # reaches into the hundreds or thousands, so a value above 50 is taken as raw.
 # An index not supplied is computed from dtm (.wetnessIndex).
-.topoWetness <- function(dtm, twi, tfact, twiwet) {
+.topoWetness <- function(dtm, twi, tfact, twiwet, twiref = NULL) {
   if (is.logical(twi)) {
     ltwi <- .wetnessIndex(dtm)
   } else {
@@ -1236,7 +1239,8 @@ createsoilc <- function(soiltype = "Clay loam", nlayers = 15, totalDepth = 2, sl
     maxtwi <- max(terra::values(twi), na.rm = TRUE)
     ltwi <- if (maxtwi > 50) log(twi) else twi
   }
-  list(shift = (ltwi - .referenceWetnessIndex(dtm)) / tfact,
+  anchor <- if (is.null(twiref)) .referenceWetnessIndex(dtm) else twiref
+  list(shift = (ltwi - anchor) / tfact,
        wet = terra::clamp(exp((ltwi - twiwet) / .TWI_WET_JOIN), upper = 1))
 }
 

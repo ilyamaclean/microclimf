@@ -31,10 +31,11 @@
 #'
 #' @details
 #' Soil moisture is distributed from the point model's by the topographic
-#' wetness index. The point model stands for a flat cell with no contributing
-#' area: a cell with that cell's index takes the point model's soil moisture, a
-#' cell with a higher index is wetter and one with a lower index drier, by an
-#' amount set by \code{tfact}. Ground whose index is at or above \code{twiwet},
+#' wetness index. A cell whose index is \code{twiref} takes the point model's
+#' soil moisture, a cell with a higher index is wetter and one with a lower
+#' index drier, by an amount set by \code{tfact}, but never drier than soil
+#' left air-dry by the day's driest air, or than the point model's soil where
+#' that is drier. Ground whose index is at or above \code{twiwet},
 #' such as a stream channel, is saturated at every time step.
 #'
 #' For vegetation supplied as several layers, each field is treated as a
@@ -69,6 +70,10 @@
 #' @param twiwet topographic wetness index at and above which the ground is
 #'   permanently wet: soil there is saturated at every time step. Set to
 #'   \code{Inf} for no permanently wet ground.
+#' @param twiref topographic wetness index at which soil moisture is that of
+#'   the point model. If \code{NULL}, the mean index of a typical landscape at
+#'   the resolution of \code{dtm}: 8 at 10 m, plus half the natural logarithm of
+#'   the ratio of the cell size to 10 m.
 #' @param altcorrect a single numeric value indicating whether to apply an
 #'   elevational lapse rate correction to temperatures (0 = no correction, 1 =
 #'   fixed lapse rate correction, 2 = humidity-dependent variable lapse rate
@@ -123,7 +128,7 @@
 #'   \code{tleaf}, but not \code{soilm}. \code{tleaf} holds values only in
 #'   cells where \code{reqhgt} lies within the canopy.
 #' @export
-rungridmodel <- function(pointmodel, reqhgt = 0, dtm, vegp, soilc, tfact = 1.7, twiwet = 10,
+rungridmodel <- function(pointmodel, reqhgt = 0, dtm, vegp, soilc, tfact = 1.7, twiwet = 10, twiref = NULL,
                           altcorrect = 0, hor = NA, twi = NA, svf = NA,
                           slr = NA, apr = NA, out = NULL, splineveg = FALSE,
                           saveout = FALSE, filename = NULL,
@@ -151,18 +156,18 @@ rungridmodel <- function(pointmodel, reqhgt = 0, dtm, vegp, soilc, tfact = 1.7, 
   # radiation, turbulence, soil and temperature calculations.
   dispatchOne <- function(dtm, vegp, soilc, hor, twi, svf, slr, apr) {
     if (!isArray && !isTimeVariant) {
-      .rungridmodel1(pointmodel, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet,
+      .rungridmodel1(pointmodel, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet, twiref = twiref,
                      hor = hor, twi = twi, svf = svf, slr = slr, apr = apr, out = out)
     } else if (isArray && !isTimeVariant) {
-      .rungridmodel2(pointmodel, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet,
+      .rungridmodel2(pointmodel, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet, twiref = twiref,
                      altcorrect = altcorrect, hor = hor, twi = twi, svf = svf,
                      slr = slr, apr = apr, out = out)
     } else if (!isArray && isTimeVariant) {
-      .rungridmodel3(pointmodel, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet,
+      .rungridmodel3(pointmodel, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet, twiref = twiref,
                      hor = hor, twi = twi, svf = svf, slr = slr, apr = apr, out = out,
                      splineveg = splineveg)
     } else {
-      .rungridmodel4(pointmodel, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet,
+      .rungridmodel4(pointmodel, vegp, soilc, dtm, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet, twiref = twiref,
                      altcorrect = altcorrect, hor = hor, twi = twi, svf = svf,
                      slr = slr, apr = apr, out = out, splineveg = splineveg)
     }
@@ -219,6 +224,10 @@ rungridmodel <- function(pointmodel, reqhgt = 0, dtm, vegp, soilc, tfact = 1.7, 
 #' @param twiwet topographic wetness index at and above which the ground is
 #'   permanently wet: soil there is saturated at every time step. Set to
 #'   \code{Inf} for no permanently wet ground.
+#' @param twiref topographic wetness index at which soil moisture is that of
+#'   the point model. If \code{NULL}, the mean index of a typical landscape at
+#'   the resolution of \code{dtm}: 8 at 10 m, plus half the natural logarithm of
+#'   the ratio of the cell size to 10 m.
 #' @param altcorrect a single numeric value indicating whether to apply an
 #'   elevational lapse rate correction to temperatures (0 = no correction, 1 =
 #'   fixed lapse rate correction, 2 = humidity-dependent variable lapse rate
@@ -257,7 +266,7 @@ rungridmodel <- function(pointmodel, reqhgt = 0, dtm, vegp, soilc, tfact = 1.7, 
 #' @return Invisibly, the paths of tile files written (empty if every tile
 #'   was entirely non-land and so skipped -- not an error).
 #' @export
-rungridmodelbig <- function(pointmodel, reqhgt = 0, dtm, vegp, soilc, tfact = 1.7, twiwet = 10,
+rungridmodelbig <- function(pointmodel, reqhgt = 0, dtm, vegp, soilc, tfact = 1.7, twiwet = 10, twiref = NULL,
                              altcorrect = 0, out = NULL, splineveg = FALSE,
                              hor = NA, twi = NA, svf = NA, slr = NA, apr = NA,
                              pathout = getwd(), tilesize = NA, toverlap = 0,
@@ -339,7 +348,7 @@ rungridmodelbig <- function(pointmodel, reqhgt = 0, dtm, vegp, soilc, tfact = 1.
          twii = terra::crop(dwt$twiR, e))
   }
   # What every tile shares.
-  common <- list(pointmodel = pointmodel, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet, altcorrect = altcorrect,
+  common <- list(pointmodel = pointmodel, reqhgt = reqhgt, tfact = tfact, twiwet = twiwet, twiref = twiref, altcorrect = altcorrect,
                  out = out, splineveg = splineveg,
                  scalefactor = scalefactor, writeformat = writeformat, outdir = outdir,
                  rowWidth = nchar(as.character(rws)), colWidth = nchar(as.character(cls)))
@@ -403,7 +412,7 @@ rungridmodelbig <- function(pointmodel, reqhgt = 0, dtm, vegp, soilc, tfact = 1.
   # across independent tiles rather than nested within them.
   resulti <- rungridmodel(common$pointmodel, reqhgt = common$reqhgt, dtm = dtmi,
                           vegp = .unwrapFromWorker(job$vegpi), soilc = .unwrapFromWorker(job$soilci),
-                          tfact = common$tfact, twiwet = common$twiwet,
+                          tfact = common$tfact, twiwet = common$twiwet, twiref = common$twiref,
                           altcorrect = common$altcorrect, hor = job$hori,
                           twi = .unwrapFromWorker(job$twii), svf = .unwrapFromWorker(job$svfi),
                           slr = .unwrapFromWorker(job$slri), apr = .unwrapFromWorker(job$apri),
@@ -538,7 +547,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
 # own vegetation, radiation geometry, exposure, soil and topographic wetness.
 # The calculation proceeds from radiation/wind, through soil moisture and ground
 # temperature, to canopy temperature and finally the requested vertical profile.
-.gridmodelCore1 <- function(pointmodel, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10,
+.gridmodelCore1 <- function(pointmodel, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10, twiref = NULL,
                            hor = NA, twi = NA, svf = NA, slr = NA, apr = NA, out = NULL) {
   if (is.null(pointmodel$weather) || is.null(pointmodel$weather$obs_time)) {
     stop(.incompletePointmodelMessage(), call. = FALSE)
@@ -645,13 +654,14 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   # Ground reflectance sets the lower boundary for shortwave exchange beneath the canopy.
   grefm <- tomat(soilc$groundr)
 
-  # Soil type sets the local residual and saturated water contents. Topographic
-  # wetness then redistributes the reference soil-water state so convergent terrain
+  # Soil type sets the local saturated water content and retention curve.
+  # Topographic wetness then redistributes the reference soil-water state so convergent terrain
   # is relatively wetter and divergent terrain relatively drier.
-  sminsmax <- .soilcSminSmax(soilc$soiltype)
-  Smin <- tomat(sminsmax$Smin)
-  Smax <- tomat(sminsmax$Smax)
-  wetness <- .topoWetness(dtm, twi, tfact, twiwet)
+  soilRet <- .soilcRetention(soilc$soiltype)
+  Smax <- tomat(soilRet$Smax)
+  soilPsie <- tomat(soilRet$psie)
+  soilB <- tomat(soilRet$b)
+  wetness <- .topoWetness(dtm, twi, tfact, twiwet, twiref)
   tadd <- tomat(wetness$shift)
   wetw <- tomat(wetness$wet)
 
@@ -727,7 +737,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   # to each soil's water-content limits and its topographic wetness anomaly.
   if (needSurfaceSoilm) {
     if (is.null(pointmodel$model$theta0)) stop(.incompletePointmodelMessage(), call. = FALSE)
-    raw$soilm <- soilmDistributeCpp(Smin, Smax, tadd, wetw,pointmodel$model$theta0, tsteps)
+    raw$soilm <- soilmDistributeCpp(Smax, soilPsie, soilB, tadd, wetw, pointmodel$model$theta0,
+                                    climdata$temp, climdata$relhum, tsteps)
   } else {
     raw$soilm <- naArr3
   }
@@ -735,7 +746,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   # stomata of each cell see.
   if (needGroundTemp) {
     if (is.null(pointmodel$model$thetaroot)) stop(.incompletePointmodelMessage(), call. = FALSE)
-    soilmRoot <- soilmDistributeCpp(Smin, Smax, tadd, wetw, pointmodel$model$thetaroot, tsteps)
+    soilmRoot <- soilmDistributeCpp(Smax, soilPsie, soilB, tadd, wetw, pointmodel$model$thetaroot,
+                                    climdata$temp, climdata$relhum, tsteps)
   }
 
   # Estimate each cell's ground heat flux and surface temperature by scaling the
@@ -827,7 +839,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
     # Soil moisture at depth uses the reference moisture trajectory at that same
     # depth, redistributed spatially with the same soil/topographic constraints.
     soilm_below <- if (needBelowSoilm) {
-      soilmDistributeCpp(Smin, Smax, tadd, wetw,pointmodel$model$thetazbelow, tsteps)
+      soilmDistributeCpp(Smax, soilPsie, soilB, tadd, wetw, pointmodel$model$thetazbelow,
+                         climdata$temp, climdata$relhum, tsteps)
     } else {
       naArr3
     }
@@ -928,9 +941,9 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
 
 # Convert the raw spatial/time arrays from the single-reference calculation into
 # georeferenced raster time series matching the input terrain.
-.rungridmodel1 <- function(pointmodel, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10,
+.rungridmodel1 <- function(pointmodel, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10, twiref = NULL,
                            hor = NA, twi = NA, svf = NA, slr = NA, apr = NA, out = NULL) {
-  result <- .gridmodelCore1(pointmodel, vegp, soilc, dtm, reqhgt, tfact, twiwet,
+  result <- .gridmodelCore1(pointmodel, vegp, soilc, dtm, reqhgt, tfact, twiwet, twiref,
                              hor, twi, svf, slr, apr, out)
   # Restore the terrain extent and coordinate reference system on every output field.
   .gridOutputRasters(result, dtm, .fieldsAtHeight(reqhgt))
@@ -941,7 +954,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
 # surrounding coarse climate field, with smooth resampling where appropriate, then
 # receives the same local terrain, vegetation, soil and vertical-profile adjustments
 # as the single-reference pathway.
-.gridmodelCore2 <- function(pointmodela, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10,
+.gridmodelCore2 <- function(pointmodela, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10, twiref = NULL,
                             altcorrect = 0, hor = NA, twi = NA, svf = NA,
                             slr = NA, apr = NA, out = NULL) {
   # The coarse grid defines where independent reference energy-balance solutions
@@ -1131,12 +1144,13 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   if (any(vegcell)) paia[vegcell] <- .paiaboveheightPFT(reqhgt, hgt[vegcell], pai[vegcell], group[vegcell])
   grefm <- tomat(soilc$groundr)
 
-  # Local soil class sets the physical moisture bounds; topographic wetness
-  # shifts the reference soil-water state within those bounds across the fine grid.
-  sminsmax <- .soilcSminSmax(soilc$soiltype)
-  Smin <- tomat(sminsmax$Smin)
-  Smax <- tomat(sminsmax$Smax)
-  wetness <- .topoWetness(dtm, twi, tfact, twiwet)
+  # Local soil class sets the saturated water content and retention curve;
+  # topographic wetness shifts the reference soil-water state across the fine grid.
+  soilRet <- .soilcRetention(soilc$soiltype)
+  Smax <- tomat(soilRet$Smax)
+  soilPsie <- tomat(soilRet$psie)
+  soilB <- tomat(soilRet$b)
+  wetness <- .topoWetness(dtm, twi, tfact, twiwet, twiref)
   tadd <- tomat(wetness$shift)
   wetw <- tomat(wetness$wet)
 
@@ -1197,7 +1211,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   # fine cell according to local soil limits and topographic wetness.
   if (needSurfaceSoilm) {
     theta0Fine <- .coarseListToFineArray(modelList, "theta0", nT, dtmc, dtm)
-    raw$soilm <- soilmDistributeCpp(Smin, Smax, tadd, wetw,theta0Fine, nT)
+    raw$soilm <- soilmDistributeCpp(Smax, soilPsie, soilB, tadd, wetw, theta0Fine,
+                                    climdata$temp, climdata$relhum, nT)
   } else {
     theta0Fine <- naArr3
     raw$soilm <- naArr3
@@ -1208,8 +1223,9 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
     if (any(vapply(modelList, function(m) !is.null(m) && is.null(m$thetaroot), logical(1)))) {
       stop(.incompletePointmodelMessage(), call. = FALSE)
     }
-    soilmRoot <- soilmDistributeCpp(Smin, Smax, tadd, wetw,
-                                    .coarseListToFineArray(modelList, "thetaroot", nT, dtmc, dtm), nT)
+    soilmRoot <- soilmDistributeCpp(Smax, soilPsie, soilB, tadd, wetw,
+                                    .coarseListToFineArray(modelList, "thetaroot", nT, dtmc, dtm),
+                                    climdata$temp, climdata$relhum, nT)
   }
 
   # Reconstruct local ground heat flux and surface temperature using local absorbed
@@ -1302,7 +1318,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
 
     soilm_below <- if (needBelowSoilm) {
       thetazbelowFine <- .coarseListToFineArray(modelList, "thetazbelow", nT, dtmc, dtm)
-      soilmDistributeCpp(Smin, Smax, tadd, wetw,thetazbelowFine, nT)
+      soilmDistributeCpp(Smax, soilPsie, soilB, tadd, wetw, thetazbelowFine,
+                         climdata$temp, climdata$relhum, nT)
     } else {
       naArr3
     }
@@ -1388,10 +1405,10 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
 }
 
 # Convert coarse-reference raw arrays into georeferenced fine-grid raster time series.
-.rungridmodel2 <- function(pointmodela, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10,
+.rungridmodel2 <- function(pointmodela, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10, twiref = NULL,
                             altcorrect = 0, hor = NA, twi = NA, svf = NA,
                             slr = NA, apr = NA, out = NULL) {
-  result <- .gridmodelCore2(pointmodela, vegp, soilc, dtm, reqhgt, tfact, twiwet,
+  result <- .gridmodelCore2(pointmodela, vegp, soilc, dtm, reqhgt, tfact, twiwet, twiref,
                              altcorrect, hor, twi, svf, slr, apr, out)
   # Restore the terrain extent and coordinate reference system on each field.
   .gridOutputRasters(result, dtm, .fieldsAtHeight(reqhgt))
@@ -1401,7 +1418,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
 # Fixed terrain and soil properties are prepared once, while canopy structure and
 # optical properties are resolved for each modelled day before the radiation, wind
 # and energy-balance shortcuts are applied.
-.rungridmodel3 <- function(pointmodel, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10,
+.rungridmodel3 <- function(pointmodel, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10, twiref = NULL,
                            hor = NA, twi = NA, svf = NA, slr = NA, apr = NA, out = NULL,
                            splineveg = FALSE) {
   if (is.null(pointmodel$weather) || is.null(pointmodel$weather$obs_time)) {
@@ -1520,10 +1537,11 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   # Terrain geometry and soil physical properties do not vary with seasonal vegetation
   # and are therefore resolved once for the whole run.
   grefm <- tomat(soilc$groundr)
-  sminsmax <- .soilcSminSmax(soilc$soiltype)
-  Smin <- tomat(sminsmax$Smin)
-  Smax <- tomat(sminsmax$Smax)
-  wetness <- .topoWetness(dtm, twi, tfact, twiwet)
+  soilRet <- .soilcRetention(soilc$soiltype)
+  Smax <- tomat(soilRet$Smax)
+  soilPsie <- tomat(soilRet$psie)
+  soilB <- tomat(soilRet$b)
+  wetness <- .topoWetness(dtm, twi, tfact, twiwet, twiref)
   tadd <- tomat(wetness$shift)
   wetw <- tomat(wetness$wet)
   sky <- .horizonAndSkyview(dtm, hor, svf)
@@ -1630,7 +1648,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
                 needLeafTemp = needLeafTemp,
                 group = group, leafphys = leafphys,
                 grefm = grefm, slope = slope, aspect = aspect, svfa = svfa, hora = hora,
-                Smin = Smin, Smax = Smax, tadd = tadd, wetw = wetw,
+                Smax = Smax, soilPsie = soilPsie, soilB = soilB, tadd = tadd, wetw = wetw,
                 zref = zref, zrefRepresentative = zref, dRef = dRef, zmRef = zmRef,
                 campbellMats = campbellMats,
                 refVq = pointmodel$soilc$Vq[1], refVm = pointmodel$soilc$Vm[1],
@@ -1731,7 +1749,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   }
 
   if (fixed$needSurfaceSoilm) {
-    raw$soilm <- soilmDistributeCpp(fixed$Smin, fixed$Smax, fixed$tadd, fixed$wetw,day$reftheta0, tsteps)
+    raw$soilm <- soilmDistributeCpp(fixed$Smax, fixed$soilPsie, fixed$soilB, fixed$tadd, fixed$wetw, day$reftheta0,
+                                    day$climdata$temp, day$climdata$relhum, tsteps)
   } else {
     raw$soilm <- naArr3
   }
@@ -1739,7 +1758,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   if (fixed$needGroundTemp) {
     # The reference root-zone soil water, distributed as the surface's is: the
     # water the stomata of each cell see.
-    soilmRoot <- soilmDistributeCpp(fixed$Smin, fixed$Smax, fixed$tadd, fixed$wetw, day$refthetaroot, tsteps)
+    soilmRoot <- soilmDistributeCpp(fixed$Smax, fixed$soilPsie, fixed$soilB, fixed$tadd, fixed$wetw, day$refthetaroot,
+                                    day$climdata$temp, day$climdata$relhum, tsteps)
     sr <- .cellSurfaceResistance(raw, day$climdata$swdown, day$climdata$difrad, day$climdata$temp,
                                  day$climdata$relhum, day$climdata$pres, day$precip, day$obstime$year,
                                  raw$soilm, soilmRoot, fixed$campbellMats, hgt, pai, x, lref, ltra, fixed$svfa,
@@ -1795,7 +1815,8 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
       naArr3
     }
     soilm_below <- if (fixed$needBelowSoilm) {
-      soilmDistributeCpp(fixed$Smin, fixed$Smax, fixed$tadd, fixed$wetw,day$refthetazbelow, tsteps)
+      soilmDistributeCpp(fixed$Smax, fixed$soilPsie, fixed$soilB, fixed$tadd, fixed$wetw, day$refthetazbelow,
+                         day$climdata$temp, day$climdata$relhum, tsteps)
     } else {
       naArr3
     }
@@ -1881,7 +1902,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
 # This is the most spatially and temporally resolved shortcut pathway: atmospheric
 # and reference surface state vary across the coarse climate grid, while canopy
 # structure can also change by day on the fine terrain grid.
-.rungridmodel4 <- function(pointmodela, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10,
+.rungridmodel4 <- function(pointmodela, vegp, soilc, dtm, reqhgt = 0, tfact = 1.7, twiwet = 10, twiref = NULL,
                            altcorrect = 0, hor = NA, twi = NA, svf = NA,
                            slr = NA, apr = NA, out = NULL, splineveg = FALSE) {
   if (is.null(pointmodela$points) || is.null(pointmodela$dtmc)) {
@@ -2075,10 +2096,11 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
   # Soil properties and terrain geometry are fixed landscape attributes and are
   # resolved once before the daily vegetation cycle is evaluated.
   grefm <- tomat(soilc$groundr)
-  sminsmax <- .soilcSminSmax(soilc$soiltype)
-  Smin <- tomat(sminsmax$Smin)
-  Smax <- tomat(sminsmax$Smax)
-  wetness <- .topoWetness(dtm, twi, tfact, twiwet)
+  soilRet <- .soilcRetention(soilc$soiltype)
+  Smax <- tomat(soilRet$Smax)
+  soilPsie <- tomat(soilRet$psie)
+  soilB <- tomat(soilRet$b)
+  wetness <- .topoWetness(dtm, twi, tfact, twiwet, twiref)
   tadd <- tomat(wetness$shift)
   wetw <- tomat(wetness$wet)
   sky <- .horizonAndSkyview(dtm, hor, svf)
@@ -2218,7 +2240,7 @@ mosaicblend <- function(path, field = NULL, format = c("rds", "nc")) {
                 needLeafTemp = needLeafTemp,
                 group = group, leafphys = leafphys,
                 grefm = grefm, slope = slope, aspect = aspect, svfa = svfa, hora = hora,
-                Smin = Smin, Smax = Smax, tadd = tadd, wetw = wetw,
+                Smax = Smax, soilPsie = soilPsie, soilB = soilB, tadd = tadd, wetw = wetw,
                 zref = as.vector(zrefFine), zrefRepresentative = zrefRepresentative,
                 dRef = as.vector(dRefFine), zmRef = as.vector(zmRefFine),
                 campbellMats = campbellMats,

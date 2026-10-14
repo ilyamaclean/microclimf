@@ -12,6 +12,7 @@ rungridmodelbig(
   soilc,
   tfact = 1.7,
   twiwet = 10,
+  twiref = NULL,
   altcorrect = 0,
   out = NULL,
   splineveg = FALSE,
@@ -55,6 +56,11 @@ variation in topographic wetness.}
 \item{twiwet}{topographic wetness index at and above which the ground is
 permanently wet: soil there is saturated at every time step. Set to
 \code{Inf} for no permanently wet ground.}
+
+\item{twiref}{topographic wetness index at which soil moisture is that of
+the point model. If \code{NULL}, the mean index of a typical landscape at
+the resolution of \code{dtm}: 8 at 10 m, plus half the natural logarithm of
+the ratio of the cell size to 10 m.}
 
 \item{altcorrect}{a single numeric value indicating whether to apply an
 elevational lapse rate correction to temperatures (0 = no correction, 1 =
