@@ -347,7 +347,8 @@ Additionally, for the grid model, these are as follows:
 * `splineveg` - Logical indicating whether to interpolate seasonal vegetation layers smoothly rather than assigning discrete layers to days.
 * `saveout` - Logical; when set to `TRUE` the results are saved to `filename`.
 * `filename` - File path used when `saveout = TRUE`.
-* `twiMeanOverride` - Optional common mean wetness reference for tiled runs.
+* `twiwet` - topographic wetness index at and above which the ground is permanently saturated, such as along stream channels (default 10).
+* `twiref` - topographic wetness index at which soil moisture equals that of the point model. By default, the mean index of a typical landscape at the resolution of `dtm`.
 * `maxmemGB` - Memory budget (GB) used to choose tile size when parallelised. Used only when `cores` is set such that the model runs in parallel tiles; ignored with the default `cores = "off"`.
 * `tilesize` - Optional tile width/height in pixels. Used only when `cores` is set to run the model in parallel mode.
 
@@ -413,7 +414,7 @@ The entire grid model is run in one go using `rungridmodel`, but to illustrate i
 ```
 
 ### Soil moisture
-The first step of the microclimate model is to estimate soil moisture. This is handled in `microclimf`, by spatially distributing the soil moisture values returned by the point microclimate model for each time increment using the Beven and Kirkby (1979) topographic wetness index, such that valleys and flat areas are assumed to have higher water content. Values are adjusted such that the average for the study area in each time step is equivalent to the value obtained by running the point model. To ensure surface soil moisture is exposed as an output to the user, we set `reqhgt = 0.0`.
+The first step of the microclimate model is to estimate soil moisture. This is handled in `microclimf`, by spatially distributing the soil moisture values returned by the point microclimate model for each time increment using the Beven and Kirkby (1979) topographic wetness index, such that valleys and flat areas are assumed to have higher water content. A cell whose index equals that of a typical landscape (`twiref`) takes the point model's soil moisture, and no cell dries beyond the state soil reaches in that day's driest air. Because the index depends on the water draining into each cell, it is best computed over the whole catchment, or at least an area wider than that modelled, and supplied as `twi`. The small example area lacks the ground upslope of it, so its slopes come out drier than they would in reality. To ensure surface soil moisture is exposed as an output to the user, we set `reqhgt = 0.0`.
 
 
 ```{r eval=FALSE}

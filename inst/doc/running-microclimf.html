@@ -1096,8 +1096,12 @@ layers to days.</li>
 results are saved to <code>filename</code>.</li>
 <li><code>filename</code> - File path used when
 <code>saveout = TRUE</code>.</li>
-<li><code>twiMeanOverride</code> - Optional common mean wetness
-reference for tiled runs.</li>
+<li><code>twiwet</code> - topographic wetness index at and above which
+the ground is permanently saturated, such as along stream channels
+(default 10).</li>
+<li><code>twiref</code> - topographic wetness index at which soil
+moisture equals that of the point model. By default, the mean index of a
+typical landscape at the resolution of <code>dtm</code>.</li>
 <li><code>maxmemGB</code> - Memory budget (GB) used to choose tile size
 when parallelised. Used only when <code>cores</code> is set such that
 the model runs in parallel tiles; ignored with the default
@@ -1236,10 +1240,15 @@ moisture. This is handled in <code>microclimf</code>, by spatially
 distributing the soil moisture values returned by the point microclimate
 model for each time increment using the Beven and Kirkby (1979)
 topographic wetness index, such that valleys and flat areas are assumed
-to have higher water content. Values are adjusted such that the average
-for the study area in each time step is equivalent to the value obtained
-by running the point model. To ensure surface soil moisture is exposed
-as an output to the user, we set <code>reqhgt = 0.0</code>.</p>
+to have higher water content. A cell whose index equals that of a
+typical landscape (<code>twiref</code>) takes the point model’s soil
+moisture, and no cell dries beyond the state soil reaches in that day’s
+driest air. Because the index depends on the water draining into each
+cell, it is best computed over the whole catchment, or at least an area
+wider than that modelled, and supplied as <code>twi</code>. The small
+example area lacks the ground upslope of it, so its slopes come out
+drier than they would in reality. To ensure surface soil moisture is
+exposed as an output to the user, we set <code>reqhgt = 0.0</code>.</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># Takes ~10 seconds to run</span></span>
 <span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>micro <span class="ot">&lt;-</span> <span class="fu">rungridmodel</span>(micropoint, <span class="at">reqhgt =</span> <span class="fl">0.0</span>, dtmcaerth, vegp, soilc)</span>
 <span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># Surface soil moisture (2017-01-30 19:00:00 UTC)</span></span>
