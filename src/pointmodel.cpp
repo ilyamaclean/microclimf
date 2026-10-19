@@ -674,7 +674,9 @@ namespace pointmodel {
     // Photosynthetic carbon gain is balanced against the hydraulic cost of
     // supplying transpiration through a vulnerable xylem pathway. Light,
     // temperature, CO2, VPD, root-zone water potential and leaf height all
-    // therefore influence the optimum stomatal opening.
+    // therefore influence the optimum stomatal opening. The optimum is a
+    // conductance to CO2; the value returned is the conductance to water
+    // vapour (mol / m^2 / s), 1.6 times as large.
     double leafgsCpp(const envstruct& env, vegpstruct& vegp, double z, bool C3)
     {
         double gs = 0.0;
@@ -746,8 +748,9 @@ namespace pointmodel {
             }
             // Gain in assimilation per unit CO2 from opening the stomata: from
             // the point where CO2 stops limiting to stomata fully open,
-            // internal CO2 equal to ambient (Eller et al. 2020, Eq. S2.1).
-            const double dadc = (Aca - Acol) / (ca - cicol);
+            // internal CO2 equal to ambient (Eller et al. 2020, Eq. S2.1). Per
+            // unit mole fraction of CO2, as the conductance equation requires.
+            const double dadc = P * (Aca - Acol) / (ca - cicol);
             // Hydraulic supply cost. Leaf water potential becomes more
             // negative with height, and the vulnerability curve translates
             // that water potential into the fraction of xylem conductivity
@@ -792,12 +795,15 @@ namespace pointmodel {
                 // to that point (Eq. S2.2).
                 gs = std::max(Acol * P / (ca - cicol), 0.0);
             }
-            // Keep the optimum within the conductance supported by the
+            // Keep the optimum within the conductance to CO2 supported by the
             // photosynthetic parameterisation.
             double gsmax = vegp.Vcmax25 * 1e4;
             gs = std::fmin(gs, gsmax);
-            // An optional measured/empirical maximum can impose a stricter
-            // ceiling; negative means no additional cap.
+            // Conductance to water vapour: vapour diffuses 1.6 times faster
+            // than CO2 (Eller et al. 2020, Eq. S1.8).
+            gs *= 1.6;
+            // An optional measured/empirical maximum conductance to water
+            // vapour can impose a stricter ceiling; negative means no cap.
             if (vegp.gsmaxCap >= 0.0) gs = std::fmin(gs, vegp.gsmaxCap);
         }
         return gs;

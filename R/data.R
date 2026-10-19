@@ -120,9 +120,9 @@
 #' functional types represented by the model, mirroring the convention used in
 #' JULES. Each row is one parameter; PFT columns contain its stored value and
 #' \code{multiplier} converts that value to the working units reported in
-#' \code{units}. \code{rpmin} (minimum whole-plant hydraulic resistance) is
-#' stored as a precomputed constant per type rather than derived at run time,
-#' since it depends only on static structural parameters. \code{h} (canopy
+#' \code{units}. \code{rpmin} (minimum whole-plant hydraulic resistance) is a
+#' constant per type, from Eller et al. (2020, New Phytologist 226:1622-1637,
+#' Table 2). \code{h} (canopy
 #' height) is kept as its own row because it is also used elsewhere in the
 #' model (canopy structure, wind profile).
 #' \code{root50} and \code{root95} are the depths (m) above which 50\% and 95\% of

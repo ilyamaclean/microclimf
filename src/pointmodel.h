@@ -57,16 +57,14 @@ namespace pointmodel {
         double fd;       // fraction of Vcmax lost to leaf dark respiration
         bool C3 = true;  // photosynthetic pathway: C3, or C4 if false
         double gsmaxCap = -1.0; // optional empirical ceiling on stomatal conductance
-                          // (mol m^-2 s^-1), applied in addition to the
+                          // to water vapour (mol m^-2 s^-1), applied in addition to the
                           // photosynthesis/hydraulic model's own limit; a
                           // negative value means no additional cap.
 
         // Xylem hydraulics
         double rpmin;    // minimum whole-plant hydraulic resistance (m^2 s MPa / mol),
-                          // precomputed per plant-functional-type from stem/vessel
-                          // geometry via the xylem-tapering model -- a constant for a
-                          // given plant-functional-type, since it depends only on
-                          // static structural parameters, not on run-time conditions
+                          // a constant per plant functional type (Eller et al. 2020,
+                          // Table 2)
         double psi50;    // water potential at 50% loss of hydraulic conductance (MPa)
         double apsi = -1.0; // hydraulic vulnerability curve shape parameter; computed
                              // from psi50 on first use if left negative.
