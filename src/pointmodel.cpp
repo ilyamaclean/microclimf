@@ -760,9 +760,19 @@ namespace pointmodel {
                 (508929.2 * (env.tcanopy + 68.12963)));
             double psi_pd = env.psi_r - z * g * rhow * 1e-6;
             double K_psi_pd = 1.0 / (1.0 + std::pow(psi_pd / vegp.psi50, vegp.apsi));
-            double K_50f = 0.5 / (1.0 + std::pow((psi_pd + vegp.psi50) / vegp.psi50, vegp.apsi));
+            // Slope of the vulnerability curve relative to conductivity: the
+            // secant between pre-dawn potential and the midpoint to psi50
+            // (Eller et al. 2020, Eq. S2.9). Where the two coincide at psi50
+            // the secant is the curve's slope there, -apsi / (4 psi50).
             double psi_50f = (psi_pd + vegp.psi50) / 2.0;
-            double dKdpKi = ((K_psi_pd - K_50f) / (psi_pd - psi_50f)) * (1.0 / K_psi_pd);
+            double dKdpKi;
+            if (std::abs(psi_pd - psi_50f) > 1e-9) {
+                double K_50f = 1.0 / (1.0 + std::pow(psi_50f / vegp.psi50, vegp.apsi));
+                dKdpKi = ((K_psi_pd - K_50f) / (psi_pd - psi_50f)) * (1.0 / K_psi_pd);
+            }
+            else {
+                dKdpKi = (-vegp.apsi / (4.0 * vegp.psi50)) / K_psi_pd;
+            }
             // Whole-plant hydraulic resistance increases as xylem
             // conductivity is lost relative to its unstressed maximum.
             double rp = vegp.rpmin / K_psi_pd;
