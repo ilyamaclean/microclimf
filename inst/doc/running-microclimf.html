@@ -1485,10 +1485,9 @@ distributes the work across the available CPU cores while leaving one
 core free to keep the machine responsive. The point model output is then
 subset in the usual way, here to select the warmest day in each month,
 and the output then passed to the grid model as in previous examples,
-here deliberately choosing to do no elevation lapse rate correction. The
-output is no different to previous examples as would be expected as all
-we have done is change the format of the input climate data rather than
-the values themselves.</p>
+here deliberately choosing to do no elevation lapse rate correction. As
+expected, the output is very similar to that in the previous
+example.</p>
 <div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="fu">library</span>(terra)</span>
 <span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="co"># Create a dummy 5 x 5 array of the climate variables </span></span>
 <span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a><span class="co">#  -- Convert array to raster --</span></span>
