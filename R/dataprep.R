@@ -1218,7 +1218,7 @@ writetonc <- function(mout, fileout, dtm, reqhgt, vars = NULL) {
 
     # Create nc file
     nc.name<-fileout
-    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist,raddir,raddif,radlw,radusw,radulw, crs_var))
+    ncnew<-nc_create(filename=nc.name,nclist)
     # Put variables in
     if("Tz" %in% vars) {ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))}
     if("soilm" %in% vars) {ncvar_put(nccew, soilmoist, vals=atonc(mout$soilm,100))}
@@ -1248,7 +1248,7 @@ writetonc <- function(mout, fileout, dtm, reqhgt, vars = NULL) {
     nclist[[(length(nclist)+1)]]<-crs_var
 
     nc.name<-fileout
-    ncnew<-nc_create(filename=nc.name,list(soiltemp,soilmoist, crs_var))
+    ncnew<-nc_create(filename=nc.name,nclist)
     # Put variables in
     if("Tz" %in% vars) {ncvar_put(ncnew,soiltemp,vals=atonc(mout$Tz,100))}
     if("soilm" %in% vars) {ncvar_put(nccew, soilmoist, vals=atonc(mout$soilm,100))}
