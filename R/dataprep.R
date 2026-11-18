@@ -897,7 +897,7 @@ vegpfromhab <- function(habitats, hgts = NA, pai = NA, lat = NA, long = NA, tme 
     h_latlong <- project(habitats, "EPSG:4326")
     e <- ext(h_latlong)
     lat <- (e$ymin + e$ymax) / 2
-    long <- (e$ymin + e$ymax) / 2
+    long <- (e$xmin + e$xmax) / 2
   }
   if (class(tme)[1] == "logical") {
     current_year <- as.numeric(format(Sys.time(), "%Y"))
